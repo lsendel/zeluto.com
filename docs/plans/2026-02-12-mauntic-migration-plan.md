@@ -1,20 +1,24 @@
-# Mauntic3 Migration Implementation Plan
+# Mauntic3 Migration Implementation Plan (v2)
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Rewrite Mautic marketing automation platform as TypeScript micro-Workers on Cloudflare with DDD architecture.
+**Goal:** Rewrite Mautic + Parcelvoy + BillionMail as a unified TypeScript marketing platform on Cloudflare Workers + Fly.io with DDD architecture.
 
-**Architecture:** Contract-first micro-Workers per bounded context. Gateway Worker handles auth/routing/HTMX composition. Domain Workers (Identity, CRM, Campaign, Messaging, Content, Analytics, Integrations) communicate via Service Bindings (sync) and Cloudflare Queues (async events). Neon Postgres with separate schemas per context.
+**Architecture:** Dual-tier deployment — Cloudflare Workers at the edge for API/UI/light processing, Fly.io machines for heavy compute (journey execution, bulk sends, analytics, mail server). Domain logic lives in shared packages (`packages/domains/*`), deployed to either tier via different entry points. 10 bounded contexts, contract-first with ts-rest.
 
-**Tech Stack:** Hono, ts-rest, Zod, Drizzle ORM, Better Auth, Cloudflare Workers/R2/Queues/KV/Hyperdrive, Turborepo, pnpm, HTMX, Hono JSX, Tailwind CSS
+**Tech Stack:** Hono, ts-rest, Zod, Drizzle ORM, Better Auth, Cloudflare Workers/R2/Queues/KV/Hyperdrive, Fly.io, BullMQ, Redis, Postfix/Dovecot/Rspamd, Turborepo, pnpm, HTMX, Hono JSX, Tailwind CSS
 
-**Design Doc:** `docs/plans/2026-02-12-mauntic-migration-design.md`
+**Design Doc:** `docs/plans/2026-02-12-mauntic-migration-design.md` (v2)
 
-**Auth Reference:** `/Users/lsendel/Projects/knowledge-management-tool` (Better Auth + Hono + ts-rest + Drizzle + CF Workers)
+**Auth Reference:** `/Users/lsendel/Projects/knowledge-management-tool`
+
+**Journey Reference:** [Parcelvoy](https://github.com/parcelvoy/platform)
+
+**Mail Reference:** [BillionMail](https://github.com/Billionmail/BillionMail)
 
 ---
 
-## Phase 0: Foundation (Tasks 1-12)
+## Phase 0: Foundation (Tasks 1-15)
 
 ### Task 1: Initialize Monorepo
 
@@ -37,7 +41,9 @@ pnpm init
 ```yaml
 packages:
   - "packages/*"
+  - "packages/domains/*"
   - "workers/*"
+  - "services/*"
 ```
 
 **Step 3: Create turbo.json**
@@ -94,8 +100,9 @@ packages:
 }
 ```
 
-**Step 5: Create .gitignore**
+**Step 5: Create .gitignore and .npmrc**
 
+`.gitignore`:
 ```
 node_modules/
 dist/
@@ -107,24 +114,22 @@ dist/
 *.log
 ```
 
-**Step 6: Create .npmrc**
-
+`.npmrc`:
 ```
 auto-install-peers=true
 strict-peer-dependencies=false
 ```
 
-**Step 7: Install root dev dependencies**
+**Step 6: Install root dev dependencies**
 
 ```bash
 pnpm add -Dw turbo typescript @cloudflare/workers-types
 ```
 
-**Step 8: Commit**
+**Step 7: Commit**
 
 ```bash
-git add -A
-git commit -m "feat: initialize monorepo with Turborepo and pnpm workspaces"
+git add -A && git commit -m "feat: initialize monorepo with Turborepo and pnpm workspaces"
 ```
 
 ---
@@ -140,6 +145,8 @@ git commit -m "feat: initialize monorepo with Turborepo and pnpm workspaces"
 - Create: `packages/domain-kernel/src/value-objects/index.ts`
 - Create: `packages/domain-kernel/src/events/domain-event.ts`
 - Create: `packages/domain-kernel/src/events/index.ts`
+- Create: `packages/domain-kernel/src/delivery/provider.ts`
+- Create: `packages/domain-kernel/src/delivery/index.ts`
 - Create: `packages/domain-kernel/src/types/index.ts`
 
 **Step 1: Create package.json**
@@ -156,42 +163,22 @@ git commit -m "feat: initialize monorepo with Turborepo and pnpm workspaces"
     ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
     "./value-objects": { "import": "./dist/value-objects/index.js", "types": "./dist/value-objects/index.d.ts" },
     "./events": { "import": "./dist/events/index.js", "types": "./dist/events/index.d.ts" },
+    "./delivery": { "import": "./dist/delivery/index.js", "types": "./dist/delivery/index.d.ts" },
     "./types": { "import": "./dist/types/index.js", "types": "./dist/types/index.d.ts" }
   },
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "zod": "^3.23.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0"
-  }
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": { "zod": "^3.23.0" },
+  "devDependencies": { "typescript": "^5.7.0" }
 }
 ```
 
-**Step 2: Create tsconfig.json**
-
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
-  },
-  "include": ["src/**/*"]
-}
-```
-
-**Step 3: Create branded ID value object**
+**Step 2: Create branded IDs**
 
 File: `packages/domain-kernel/src/value-objects/branded-id.ts`
 
 ```typescript
 import { z } from 'zod';
 
-// Branded type for type-safe IDs across contexts
 declare const brand: unique symbol;
 type Brand<T, B extends string> = T & { readonly [brand]: B };
 
@@ -208,44 +195,21 @@ export type OrganizationId = Brand<number, 'OrganizationId'>;
 export type WebhookId = Brand<number, 'WebhookId'>;
 export type IntegrationId = Brand<number, 'IntegrationId'>;
 export type ReportId = Brand<number, 'ReportId'>;
+export type JourneyId = Brand<number, 'JourneyId'>;
+export type JourneyVersionId = Brand<number, 'JourneyVersionId'>;
+export type JourneyStepId = Brand<string, 'JourneyStepId'>;
+export type DeliveryJobId = Brand<string, 'DeliveryJobId'>;
+export type TemplateId = Brand<number, 'TemplateId'>;
 
-// Zod schemas for validation at boundaries
 export const ContactIdSchema = z.number().int().positive() as z.ZodType<ContactId>;
 export const CompanyIdSchema = z.number().int().positive() as z.ZodType<CompanyId>;
 export const CampaignIdSchema = z.number().int().positive() as z.ZodType<CampaignId>;
-export const EmailIdSchema = z.number().int().positive() as z.ZodType<EmailId>;
-export const FormIdSchema = z.number().int().positive() as z.ZodType<FormId>;
-export const PageIdSchema = z.number().int().positive() as z.ZodType<PageId>;
-export const AssetIdSchema = z.number().int().positive() as z.ZodType<AssetId>;
-export const SegmentIdSchema = z.number().int().positive() as z.ZodType<SegmentId>;
-export const UserIdSchema = z.number().int().positive() as z.ZodType<UserId>;
-export const OrganizationIdSchema = z.number().int().positive() as z.ZodType<OrganizationId>;
-export const WebhookIdSchema = z.number().int().positive() as z.ZodType<WebhookId>;
-export const IntegrationIdSchema = z.number().int().positive() as z.ZodType<IntegrationId>;
-export const ReportIdSchema = z.number().int().positive() as z.ZodType<ReportId>;
+export const JourneyIdSchema = z.number().int().positive() as z.ZodType<JourneyId>;
+export const DeliveryJobIdSchema = z.string().uuid() as z.ZodType<DeliveryJobId>;
+// ... remaining schemas follow same pattern
 ```
 
-**Step 4: Create email address value object**
-
-File: `packages/domain-kernel/src/value-objects/email-address.ts`
-
-```typescript
-import { z } from 'zod';
-
-export const EmailAddressSchema = z.string().email().toLowerCase().brand('EmailAddress');
-export type EmailAddress = z.infer<typeof EmailAddressSchema>;
-```
-
-**Step 5: Create value-objects index**
-
-File: `packages/domain-kernel/src/value-objects/index.ts`
-
-```typescript
-export * from './branded-id';
-export * from './email-address';
-```
-
-**Step 6: Create domain event base type**
+**Step 3: Create domain events including journey + delivery events**
 
 File: `packages/domain-kernel/src/events/domain-event.ts`
 
@@ -268,193 +232,138 @@ export interface ContactCreatedEvent extends DomainEvent<'ContactCreated', { con
 export interface ContactUpdatedEvent extends DomainEvent<'ContactUpdated', { contactId: number; fields: string[] }> {}
 export interface ContactMergedEvent extends DomainEvent<'ContactMerged', { winnerId: number; loserId: number }> {}
 export interface SegmentRebuiltEvent extends DomainEvent<'SegmentRebuilt', { segmentId: number; contactCount: number }> {}
-export interface ContactAddedToSegmentEvent extends DomainEvent<'ContactAddedToSegment', { contactId: number; segmentId: number }> {}
+
+// Journey Events (from Parcelvoy)
+export interface JourneyPublishedEvent extends DomainEvent<'JourneyPublished', { journeyId: number; versionId: number }> {}
+export interface JourneyStepExecutedEvent extends DomainEvent<'JourneyStepExecuted', { journeyId: number; stepId: string; contactId: number; stepType: string }> {}
+export interface JourneyCompletedEvent extends DomainEvent<'JourneyCompleted', { journeyId: number; executionId: string; contactId: number }> {}
+export interface ExecuteNextStepEvent extends DomainEvent<'ExecuteNextStep', { executionId: string; stepId: string }> {}
+
+// Delivery Events (from BillionMail + Parcelvoy)
+export interface SendMessageEvent extends DomainEvent<'SendMessage', { channel: Channel; contactId: number; templateId: number; journeyExecutionId?: string; campaignId?: number }> {}
+export interface EmailSentEvent extends DomainEvent<'EmailSent', { deliveryJobId: string; contactId: number; provider: string }> {}
+export interface EmailOpenedEvent extends DomainEvent<'EmailOpened', { deliveryJobId: string; contactId: number }> {}
+export interface EmailClickedEvent extends DomainEvent<'EmailClicked', { deliveryJobId: string; contactId: number; url: string }> {}
+export interface EmailBouncedEvent extends DomainEvent<'EmailBounced', { deliveryJobId: string; contactId: number; bounceType: 'hard' | 'soft'; reason: string }> {}
+export interface SmsSentEvent extends DomainEvent<'SmsSent', { deliveryJobId: string; contactId: number; provider: string }> {}
+export interface PushSentEvent extends DomainEvent<'PushSent', { deliveryJobId: string; contactId: number; provider: string }> {}
 
 // Campaign Events
-export interface CampaignPublishedEvent extends DomainEvent<'CampaignPublished', { campaignId: number }> {}
-export interface CampaignEventExecutedEvent extends DomainEvent<'CampaignEventExecuted', { campaignId: number; eventId: number; contactId: number }> {}
+export interface CampaignSentEvent extends DomainEvent<'CampaignSent', { campaignId: number; contactCount: number }> {}
 export interface PointsAwardedEvent extends DomainEvent<'PointsAwarded', { contactId: number; points: number }> {}
 
-// Messaging Events
-export interface EmailSentEvent extends DomainEvent<'EmailSent', { emailId: number; contactId: number }> {}
-export interface EmailOpenedEvent extends DomainEvent<'EmailOpened', { emailId: number; contactId: number }> {}
-export interface EmailClickedEvent extends DomainEvent<'EmailClicked', { emailId: number; contactId: number; url: string }> {}
-export interface EmailBouncedEvent extends DomainEvent<'EmailBounced', { emailId: number; contactId: number; reason: string }> {}
-
 // Content Events
-export interface FormSubmittedEvent extends DomainEvent<'FormSubmitted', { formId: number; submissionId: number }> {}
+export interface FormSubmittedEvent extends DomainEvent<'FormSubmitted', { formId: number; submissionId: number; contactId?: number }> {}
 export interface PageVisitedEvent extends DomainEvent<'PageVisited', { pageId: number; contactId?: number }> {}
 export interface AssetDownloadedEvent extends DomainEvent<'AssetDownloaded', { assetId: number; contactId?: number }> {}
 
 // Identity Events
 export interface UserCreatedEvent extends DomainEvent<'UserCreated', { userId: number }> {}
 
-export type CrmEvent = ContactCreatedEvent | ContactUpdatedEvent | ContactMergedEvent | SegmentRebuiltEvent | ContactAddedToSegmentEvent;
-export type CampaignEvent = CampaignPublishedEvent | CampaignEventExecutedEvent | PointsAwardedEvent;
-export type MessagingEvent = EmailSentEvent | EmailOpenedEvent | EmailClickedEvent | EmailBouncedEvent;
-export type ContentEvent = FormSubmittedEvent | PageVisitedEvent | AssetDownloadedEvent;
-export type IdentityEvent = UserCreatedEvent;
+export type Channel = 'email' | 'sms' | 'push' | 'webhook';
 
-export type AnyDomainEvent = CrmEvent | CampaignEvent | MessagingEvent | ContentEvent | IdentityEvent;
+export type AnyDomainEvent =
+  | ContactCreatedEvent | ContactUpdatedEvent | ContactMergedEvent | SegmentRebuiltEvent
+  | JourneyPublishedEvent | JourneyStepExecutedEvent | JourneyCompletedEvent | ExecuteNextStepEvent
+  | SendMessageEvent | EmailSentEvent | EmailOpenedEvent | EmailClickedEvent | EmailBouncedEvent | SmsSentEvent | PushSentEvent
+  | CampaignSentEvent | PointsAwardedEvent
+  | FormSubmittedEvent | PageVisitedEvent | AssetDownloadedEvent
+  | UserCreatedEvent;
 ```
 
-**Step 7: Create events index and types index**
+**Step 4: Create DeliveryProvider interface**
 
-File: `packages/domain-kernel/src/events/index.ts`
+File: `packages/domain-kernel/src/delivery/provider.ts`
+
 ```typescript
-export * from './domain-event';
+import type { Channel } from '../events/domain-event';
+
+export interface EmailPayload {
+  to: string;
+  from: string;
+  subject: string;
+  html: string;
+  text?: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+  attachments?: Array<{ filename: string; content: string; contentType: string }>;
+}
+
+export interface SmsPayload {
+  to: string;
+  from: string;
+  body: string;
+}
+
+export interface PushPayload {
+  deviceToken: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  badge?: number;
+}
+
+export interface WebhookPayload {
+  url: string;
+  method: 'GET' | 'POST' | 'PUT';
+  headers?: Record<string, string>;
+  body?: unknown;
+}
+
+export type ChannelPayload<T extends Channel> =
+  T extends 'email' ? EmailPayload :
+  T extends 'sms' ? SmsPayload :
+  T extends 'push' ? PushPayload :
+  T extends 'webhook' ? WebhookPayload :
+  never;
+
+export interface DeliveryResult {
+  success: boolean;
+  externalId?: string;
+  error?: string;
+}
+
+export type DeliveryStatus = 'queued' | 'sent' | 'delivered' | 'bounced' | 'failed' | 'opened' | 'clicked';
+
+export interface TrackingEvent {
+  type: 'open' | 'click' | 'bounce' | 'complaint' | 'unsubscribe';
+  externalId: string;
+  contactId?: number;
+  timestamp: string;
+  data?: Record<string, unknown>;
+}
+
+export interface DeliveryProvider<TChannel extends Channel> {
+  channel: TChannel;
+  name: string;
+  send(payload: ChannelPayload<TChannel>): Promise<DeliveryResult>;
+  checkStatus?(externalId: string): Promise<DeliveryStatus>;
+  handleWebhook?(request: Request): Promise<TrackingEvent[]>;
+}
 ```
 
-File: `packages/domain-kernel/src/types/index.ts`
-```typescript
-export type { DomainEvent, DomainEventMetadata, AnyDomainEvent } from '../events/domain-event';
-```
-
-File: `packages/domain-kernel/src/index.ts`
-```typescript
-export * from './value-objects';
-export * from './events';
-export * from './types';
-```
-
-**Step 8: Install deps and build**
+**Step 5: Create index files, build, commit**
 
 ```bash
 cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/domain-kernel build
-```
-
-**Step 9: Commit**
-
-```bash
-git add packages/domain-kernel/
-git commit -m "feat: add domain-kernel package with value objects and domain events"
+git add packages/domain-kernel/ && git commit -m "feat: add domain-kernel with value objects, events, and delivery provider interface"
 ```
 
 ---
 
 ### Task 3: Create contracts Package
 
-**Files:**
-- Create: `packages/contracts/package.json`
-- Create: `packages/contracts/tsconfig.json`
-- Create: `packages/contracts/src/index.ts`
-- Create: `packages/contracts/src/common.ts`
-- Create: `packages/contracts/src/identity.contract.ts`
-- Create: `packages/contracts/src/crm.contract.ts`
+Same as original plan Task 3, but add journey and delivery contract stubs:
 
-**Step 1: Create package.json**
+**Additional files:**
+- Create: `packages/contracts/src/journey.contract.ts`
+- Create: `packages/contracts/src/delivery.contract.ts`
 
-```json
-{
-  "name": "@mauntic/contracts",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" }
-  },
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@ts-rest/core": "^3.51.0",
-    "zod": "^3.23.0",
-    "@mauntic/domain-kernel": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0"
-  }
-}
-```
+**Step 1-5:** Same as original plan (package.json, tsconfig, common schemas, identity contract, CRM contract)
 
-**Step 2: Create tsconfig.json**
+**Step 6: Create journey contract stub**
 
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src"
-  },
-  "include": ["src/**/*"]
-}
-```
-
-**Step 3: Create common schemas**
-
-File: `packages/contracts/src/common.ts`
-
-```typescript
-import { z } from 'zod';
-
-export const PaginationQuerySchema = z.object({
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  search: z.string().optional(),
-  orderBy: z.string().optional(),
-  orderDir: z.enum(['asc', 'desc']).default('desc'),
-});
-
-export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
-  z.object({
-    items: z.array(itemSchema),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-    totalPages: z.number(),
-  });
-
-export const ErrorSchema = z.object({
-  error: z.string(),
-  message: z.string().optional(),
-});
-
-export const IdParamSchema = z.object({
-  id: z.coerce.number().int().positive(),
-});
-```
-
-**Step 4: Create identity contract (stub)**
-
-File: `packages/contracts/src/identity.contract.ts`
-
-```typescript
-import { initContract } from '@ts-rest/core';
-import { z } from 'zod';
-import { ErrorSchema } from './common';
-
-const c = initContract();
-
-const UserSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  email: z.string().email(),
-  role: z.enum(['user', 'admin', 'superadmin']),
-  image: z.string().nullable(),
-  emailVerified: z.boolean(),
-  createdAt: z.string(),
-});
-
-export const identityContract = c.router({
-  me: {
-    method: 'GET',
-    path: '/api/auth/me',
-    responses: {
-      200: UserSchema,
-      401: ErrorSchema,
-    },
-  },
-}, { pathPrefix: '' });
-
-export { UserSchema };
-```
-
-**Step 5: Create CRM contract (stub with contacts)**
-
-File: `packages/contracts/src/crm.contract.ts`
+File: `packages/contracts/src/journey.contract.ts`
 
 ```typescript
 import { initContract } from '@ts-rest/core';
@@ -463,115 +372,268 @@ import { PaginationQuerySchema, PaginatedResponseSchema, ErrorSchema, IdParamSch
 
 const c = initContract();
 
-export const ContactSchema = z.object({
+export const JourneyStepTypeSchema = z.enum([
+  'action_email', 'action_sms', 'action_push', 'action_webhook', 'action_update_contact',
+  'delay_duration', 'delay_until', 'delay_event',
+  'split_random', 'split_conditional', 'gate', 'exit',
+]);
+
+export const JourneySchema = z.object({
   id: z.number(),
-  firstname: z.string().nullable(),
-  lastname: z.string().nullable(),
-  email: z.string().email().nullable(),
-  phone: z.string().nullable(),
-  company: z.string().nullable(),
-  position: z.string().nullable(),
-  points: z.number().default(0),
-  stage: z.string().nullable(),
-  ownerId: z.number().nullable(),
+  name: z.string(),
+  description: z.string().nullable(),
+  status: z.enum(['draft', 'published', 'paused', 'archived']),
+  currentVersionId: z.number().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
 
-export const CreateContactSchema = z.object({
-  firstname: z.string().optional(),
-  lastname: z.string().optional(),
-  email: z.string().email().optional(),
+export const JourneyStepSchema = z.object({
+  id: z.string(),
+  type: JourneyStepTypeSchema,
+  name: z.string(),
+  config: z.record(z.unknown()),
+  nextStepIds: z.array(z.string()),
+  position: z.object({ x: z.number(), y: z.number() }),
+});
+
+export const JourneyVersionSchema = z.object({
+  id: z.number(),
+  journeyId: z.number(),
+  version: z.number(),
+  steps: z.array(JourneyStepSchema),
+  triggers: z.array(z.record(z.unknown())),
+  publishedAt: z.string(),
+});
+
+export const CreateJourneySchema = z.object({
+  name: z.string().min(1),
+  description: z.string().optional(),
+});
+
+export const journeyContract = c.router({
+  list: {
+    method: 'GET',
+    path: '/api/journey/journeys',
+    query: PaginationQuerySchema,
+    responses: { 200: PaginatedResponseSchema(JourneySchema) },
+  },
+  get: {
+    method: 'GET',
+    path: '/api/journey/journeys/:id',
+    pathParams: IdParamSchema,
+    responses: { 200: JourneySchema.extend({ versions: z.array(JourneyVersionSchema) }), 404: ErrorSchema },
+  },
+  create: {
+    method: 'POST',
+    path: '/api/journey/journeys',
+    body: CreateJourneySchema,
+    responses: { 201: JourneySchema, 400: ErrorSchema },
+  },
+  publish: {
+    method: 'POST',
+    path: '/api/journey/journeys/:id/publish',
+    pathParams: IdParamSchema,
+    body: z.object({ steps: z.array(JourneyStepSchema), triggers: z.array(z.record(z.unknown())) }),
+    responses: { 200: JourneyVersionSchema, 400: ErrorSchema, 404: ErrorSchema },
+  },
+  pause: {
+    method: 'POST',
+    path: '/api/journey/journeys/:id/pause',
+    pathParams: IdParamSchema,
+    body: z.object({}).optional(),
+    responses: { 200: JourneySchema, 404: ErrorSchema },
+  },
+  executions: {
+    method: 'GET',
+    path: '/api/journey/journeys/:id/executions',
+    pathParams: IdParamSchema,
+    query: PaginationQuerySchema,
+    responses: { 200: PaginatedResponseSchema(z.object({
+      id: z.string(),
+      contactId: z.number(),
+      currentStepId: z.string().nullable(),
+      status: z.enum(['running', 'completed', 'failed', 'exited']),
+      startedAt: z.string(),
+      completedAt: z.string().nullable(),
+    })) },
+  },
+});
+```
+
+**Step 7: Create delivery contract stub**
+
+File: `packages/contracts/src/delivery.contract.ts`
+
+```typescript
+import { initContract } from '@ts-rest/core';
+import { z } from 'zod';
+import { PaginationQuerySchema, PaginatedResponseSchema, ErrorSchema, IdParamSchema } from './common';
+
+const c = initContract();
+
+export const ProviderConfigSchema = z.object({
+  id: z.number(),
+  channel: z.enum(['email', 'sms', 'push']),
+  providerName: z.string(),
+  isActive: z.boolean(),
+  isDefault: z.boolean(),
+  config: z.record(z.unknown()),
+  createdAt: z.string(),
+});
+
+export const DeliveryJobSchema = z.object({
+  id: z.string(),
+  channel: z.enum(['email', 'sms', 'push']),
+  contactId: z.number(),
+  templateId: z.number(),
+  providerName: z.string().nullable(),
+  status: z.enum(['queued', 'sent', 'delivered', 'bounced', 'failed']),
+  externalId: z.string().nullable(),
+  attempts: z.number(),
+  createdAt: z.string(),
+  sentAt: z.string().nullable(),
+});
+
+export const SuppressionEntrySchema = z.object({
+  id: z.number(),
+  email: z.string().optional(),
   phone: z.string().optional(),
-  company: z.string().optional(),
-  position: z.string().optional(),
+  channel: z.enum(['email', 'sms', 'push']),
+  reason: z.enum(['hard_bounce', 'complaint', 'unsubscribe', 'manual']),
+  createdAt: z.string(),
 });
 
-export const UpdateContactSchema = CreateContactSchema.partial();
-
-const ContactListQuerySchema = PaginationQuerySchema.extend({
-  segment: z.coerce.number().optional(),
-  tag: z.string().optional(),
+export const WarmupScheduleSchema = z.object({
+  id: z.number(),
+  domain: z.string(),
+  ipAddress: z.string().nullable(),
+  currentDay: z.number(),
+  dailyLimit: z.number(),
+  sentToday: z.number(),
+  isActive: z.boolean(),
 });
 
-export const crmContract = c.router({
-  contacts: {
+export const deliveryContract = c.router({
+  providers: {
     list: {
       method: 'GET',
-      path: '/api/crm/contacts',
-      query: ContactListQuerySchema,
-      responses: { 200: PaginatedResponseSchema(ContactSchema) },
-    },
-    get: {
-      method: 'GET',
-      path: '/api/crm/contacts/:id',
-      pathParams: IdParamSchema,
-      responses: { 200: ContactSchema, 404: ErrorSchema },
+      path: '/api/delivery/providers',
+      responses: { 200: z.array(ProviderConfigSchema) },
     },
     create: {
       method: 'POST',
-      path: '/api/crm/contacts',
-      body: CreateContactSchema,
-      responses: { 201: ContactSchema, 400: ErrorSchema },
+      path: '/api/delivery/providers',
+      body: z.object({
+        channel: z.enum(['email', 'sms', 'push']),
+        providerName: z.string(),
+        config: z.record(z.unknown()),
+        isDefault: z.boolean().optional(),
+      }),
+      responses: { 201: ProviderConfigSchema, 400: ErrorSchema },
     },
     update: {
       method: 'PATCH',
-      path: '/api/crm/contacts/:id',
+      path: '/api/delivery/providers/:id',
       pathParams: IdParamSchema,
-      body: UpdateContactSchema,
-      responses: { 200: ContactSchema, 404: ErrorSchema },
+      body: z.object({ config: z.record(z.unknown()), isActive: z.boolean().optional(), isDefault: z.boolean().optional() }),
+      responses: { 200: ProviderConfigSchema, 404: ErrorSchema },
     },
-    delete: {
+  },
+  jobs: {
+    list: {
+      method: 'GET',
+      path: '/api/delivery/jobs',
+      query: PaginationQuerySchema.extend({ channel: z.enum(['email', 'sms', 'push']).optional(), status: z.string().optional() }),
+      responses: { 200: PaginatedResponseSchema(DeliveryJobSchema) },
+    },
+  },
+  suppressions: {
+    list: {
+      method: 'GET',
+      path: '/api/delivery/suppressions',
+      query: PaginationQuerySchema.extend({ channel: z.enum(['email', 'sms', 'push']).optional() }),
+      responses: { 200: PaginatedResponseSchema(SuppressionEntrySchema) },
+    },
+    add: {
+      method: 'POST',
+      path: '/api/delivery/suppressions',
+      body: z.object({ email: z.string().optional(), phone: z.string().optional(), channel: z.enum(['email', 'sms', 'push']), reason: z.enum(['manual']) }),
+      responses: { 201: SuppressionEntrySchema },
+    },
+    remove: {
       method: 'DELETE',
-      path: '/api/crm/contacts/:id',
+      path: '/api/delivery/suppressions/:id',
       pathParams: IdParamSchema,
       body: z.any().optional(),
-      responses: { 204: z.void(), 404: ErrorSchema },
+      responses: { 204: z.void() },
+    },
+  },
+  warmup: {
+    list: {
+      method: 'GET',
+      path: '/api/delivery/warmup',
+      responses: { 200: z.array(WarmupScheduleSchema) },
+    },
+    create: {
+      method: 'POST',
+      path: '/api/delivery/warmup',
+      body: z.object({ domain: z.string(), ipAddress: z.string().optional() }),
+      responses: { 201: WarmupScheduleSchema },
+    },
+  },
+  tracking: {
+    webhook: {
+      method: 'POST',
+      path: '/api/delivery/tracking/:provider',
+      body: z.any(),
+      responses: { 200: z.object({ received: z.boolean() }) },
     },
   },
 });
 ```
 
-**Step 6: Create root index**
+**Step 8: Update root index, build, commit**
 
 File: `packages/contracts/src/index.ts`
 
 ```typescript
 export { identityContract, UserSchema } from './identity.contract';
 export { crmContract, ContactSchema, CreateContactSchema, UpdateContactSchema } from './crm.contract';
+export { journeyContract, JourneySchema, JourneyStepSchema, JourneyVersionSchema } from './journey.contract';
+export { deliveryContract, ProviderConfigSchema, DeliveryJobSchema, SuppressionEntrySchema, WarmupScheduleSchema } from './delivery.contract';
 export { PaginationQuerySchema, PaginatedResponseSchema, ErrorSchema, IdParamSchema } from './common';
 ```
 
-**Step 7: Install deps, build, commit**
-
 ```bash
-cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/contracts build
-git add packages/contracts/
-git commit -m "feat: add contracts package with identity and CRM ts-rest contracts"
+pnpm install && pnpm --filter @mauntic/contracts build
+git add packages/contracts/ && git commit -m "feat: add contracts with journey, delivery, CRM, and identity ts-rest contracts"
 ```
 
 ---
 
 ### Task 4: Create worker-lib Package
 
+Same as original plan Task 4. No changes needed.
+
+---
+
+### Task 5: Create process-lib Package (NEW)
+
 **Files:**
-- Create: `packages/worker-lib/package.json`
-- Create: `packages/worker-lib/tsconfig.json`
-- Create: `packages/worker-lib/src/index.ts`
-- Create: `packages/worker-lib/src/middleware/cors.ts`
-- Create: `packages/worker-lib/src/middleware/error-handler.ts`
-- Create: `packages/worker-lib/src/middleware/request-tracing.ts`
-- Create: `packages/worker-lib/src/middleware/index.ts`
-- Create: `packages/worker-lib/src/queue/event-publisher.ts`
-- Create: `packages/worker-lib/src/queue/index.ts`
-- Create: `packages/worker-lib/src/hyperdrive/drizzle-client.ts`
-- Create: `packages/worker-lib/src/hyperdrive/index.ts`
+- Create: `packages/process-lib/package.json`
+- Create: `packages/process-lib/tsconfig.json`
+- Create: `packages/process-lib/src/index.ts`
+- Create: `packages/process-lib/src/bullmq/job-processor.ts`
+- Create: `packages/process-lib/src/redis/connection.ts`
+- Create: `packages/process-lib/src/scheduler/cron.ts`
+- Create: `packages/process-lib/src/health/server.ts`
 
 **Step 1: Create package.json**
 
 ```json
 {
-  "name": "@mauntic/worker-lib",
+  "name": "@mauntic/process-lib",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -579,1479 +641,663 @@ git commit -m "feat: add contracts package with identity and CRM ts-rest contrac
   "types": "./dist/index.d.ts",
   "exports": {
     ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./middleware": { "import": "./dist/middleware/index.js", "types": "./dist/middleware/index.d.ts" },
-    "./queue": { "import": "./dist/queue/index.js", "types": "./dist/queue/index.d.ts" },
-    "./hyperdrive": { "import": "./dist/hyperdrive/index.js", "types": "./dist/hyperdrive/index.d.ts" }
+    "./bullmq": { "import": "./dist/bullmq/job-processor.js", "types": "./dist/bullmq/job-processor.d.ts" },
+    "./redis": { "import": "./dist/redis/connection.js", "types": "./dist/redis/connection.d.ts" },
+    "./health": { "import": "./dist/health/server.js", "types": "./dist/health/server.d.ts" }
   },
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
-  },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "hono": "^4.6.0",
-    "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.0",
     "@mauntic/domain-kernel": "workspace:*"
   },
-  "devDependencies": {
-    "typescript": "^5.7.0",
-    "@cloudflare/workers-types": "^4.20250109.0"
-  }
+  "devDependencies": { "typescript": "^5.7.0" }
 }
 ```
 
-**Step 2: Create tsconfig.json**
+**Step 2: Create Redis connection helper**
 
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "types": ["@cloudflare/workers-types"]
-  },
-  "include": ["src/**/*"]
-}
-```
-
-**Step 3: Create CORS middleware**
-
-File: `packages/worker-lib/src/middleware/cors.ts`
+File: `packages/process-lib/src/redis/connection.ts`
 
 ```typescript
-import { createMiddleware } from 'hono/factory';
+import Redis from 'ioredis';
 
-export const corsMiddleware = (allowedOrigins: string[]) =>
-  createMiddleware(async (c, next) => {
-    const origin = c.req.header('Origin');
-    if (origin && allowedOrigins.includes(origin)) {
-      c.header('Access-Control-Allow-Origin', origin);
-      c.header('Access-Control-Allow-Credentials', 'true');
-      c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-      c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    }
-    if (c.req.method === 'OPTIONS') {
-      return c.text('', 204);
-    }
-    await next();
-  });
-```
+let redisInstance: Redis | null = null;
 
-**Step 4: Create error handler middleware**
-
-File: `packages/worker-lib/src/middleware/error-handler.ts`
-
-```typescript
-import type { Context } from 'hono';
-
-export const errorHandler = (err: Error, c: Context) => {
-  console.error(`[${c.get('requestId') ?? 'unknown'}] Unhandled error:`, err.message, err.stack);
-  return c.json({ error: 'Internal Server Error', message: err.message }, 500);
-};
-```
-
-**Step 5: Create request tracing middleware**
-
-File: `packages/worker-lib/src/middleware/request-tracing.ts`
-
-```typescript
-import { createMiddleware } from 'hono/factory';
-
-export const requestTracingMiddleware = createMiddleware(async (c, next) => {
-  const requestId = c.req.header('X-Request-ID') ?? crypto.randomUUID();
-  c.set('requestId', requestId);
-  c.header('X-Request-ID', requestId);
-  const start = Date.now();
-  await next();
-  const duration = Date.now() - start;
-  console.log(`[${requestId}] ${c.req.method} ${c.req.path} ${c.res.status} ${duration}ms`);
-});
-```
-
-**Step 6: Create event publisher**
-
-File: `packages/worker-lib/src/queue/event-publisher.ts`
-
-```typescript
-import type { DomainEvent, DomainEventMetadata } from '@mauntic/domain-kernel/events';
-
-export class EventPublisher {
-  constructor(
-    private queue: Queue,
-    private sourceContext: string,
-  ) {}
-
-  async publish<T extends DomainEvent>(
-    type: T['type'],
-    data: T['data'],
-    correlationId: string,
-    causationId?: string,
-  ): Promise<void> {
-    const event: DomainEvent = {
-      type,
-      data,
-      metadata: {
-        sourceContext: this.sourceContext,
-        timestamp: new Date().toISOString(),
-        correlationId,
-        causationId,
-      },
-    };
-    await this.queue.send(event);
-  }
-}
-```
-
-**Step 7: Create Drizzle client helper**
-
-File: `packages/worker-lib/src/hyperdrive/drizzle-client.ts`
-
-```typescript
-import { neon } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-
-export function createDrizzleClient(connectionString: string, schema?: Record<string, unknown>) {
-  const sql = neon(connectionString);
-  return drizzle(sql, { schema: schema as any });
-}
-```
-
-**Step 8: Create index files**
-
-File: `packages/worker-lib/src/middleware/index.ts`
-```typescript
-export { corsMiddleware } from './cors';
-export { errorHandler } from './error-handler';
-export { requestTracingMiddleware } from './request-tracing';
-```
-
-File: `packages/worker-lib/src/queue/index.ts`
-```typescript
-export { EventPublisher } from './event-publisher';
-```
-
-File: `packages/worker-lib/src/hyperdrive/index.ts`
-```typescript
-export { createDrizzleClient } from './drizzle-client';
-```
-
-File: `packages/worker-lib/src/index.ts`
-```typescript
-export * from './middleware';
-export * from './queue';
-export * from './hyperdrive';
-```
-
-**Step 9: Install deps, build, commit**
-
-```bash
-cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/worker-lib build
-git add packages/worker-lib/
-git commit -m "feat: add worker-lib package with shared middleware, queue, and DB utilities"
-```
-
----
-
-### Task 5: Create ui-kit Package
-
-**Files:**
-- Create: `packages/ui-kit/package.json`
-- Create: `packages/ui-kit/tsconfig.json`
-- Create: `packages/ui-kit/src/index.ts`
-- Create: `packages/ui-kit/src/layouts/base-layout.tsx`
-- Create: `packages/ui-kit/src/layouts/app-layout.tsx`
-- Create: `packages/ui-kit/src/components/data-table.tsx`
-- Create: `packages/ui-kit/src/components/pagination.tsx`
-- Create: `packages/ui-kit/src/components/index.ts`
-- Create: `packages/ui-kit/src/layouts/index.ts`
-
-**Step 1: Create package.json**
-
-```json
-{
-  "name": "@mauntic/ui-kit",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./layouts": { "import": "./dist/layouts/index.js", "types": "./dist/layouts/index.d.ts" },
-    "./components": { "import": "./dist/components/index.js", "types": "./dist/components/index.d.ts" }
-  },
-  "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "hono": "^4.6.0"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0"
-  }
-}
-```
-
-**Step 2: Create tsconfig.json**
-
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
-  },
-  "include": ["src/**/*"]
-}
-```
-
-**Step 3: Create BaseLayout**
-
-File: `packages/ui-kit/src/layouts/base-layout.tsx`
-
-```tsx
-import type { FC, PropsWithChildren } from 'hono/jsx';
-
-interface BaseLayoutProps {
-  title: string;
-}
-
-export const BaseLayout: FC<PropsWithChildren<BaseLayoutProps>> = ({ title, children }) => (
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>{title} - Mauntic</title>
-      <script src="https://unpkg.com/htmx.org@2.0.4" />
-      <script src="https://cdn.tailwindcss.com" />
-    </head>
-    <body class="bg-gray-50 text-gray-900">
-      {children}
-    </body>
-  </html>
-);
-```
-
-**Step 4: Create AppLayout with sidebar**
-
-File: `packages/ui-kit/src/layouts/app-layout.tsx`
-
-```tsx
-import type { FC, PropsWithChildren } from 'hono/jsx';
-import { BaseLayout } from './base-layout';
-
-interface AppLayoutProps {
-  title: string;
-  activePage?: string;
-}
-
-const navItems = [
-  { href: '/app/dashboard', label: 'Dashboard', icon: 'home' },
-  { href: '/app/contacts', label: 'Contacts', icon: 'users' },
-  { href: '/app/companies', label: 'Companies', icon: 'building' },
-  { href: '/app/segments', label: 'Segments', icon: 'filter' },
-  { href: '/app/campaigns', label: 'Campaigns', icon: 'zap' },
-  { href: '/app/emails', label: 'Emails', icon: 'mail' },
-  { href: '/app/forms', label: 'Forms', icon: 'clipboard' },
-  { href: '/app/pages', label: 'Pages', icon: 'file-text' },
-  { href: '/app/reports', label: 'Reports', icon: 'bar-chart' },
-];
-
-export const AppLayout: FC<PropsWithChildren<AppLayoutProps>> = ({ title, activePage, children }) => (
-  <BaseLayout title={title}>
-    <div class="flex h-screen">
-      <nav class="w-64 bg-gray-900 text-white p-4 flex-shrink-0">
-        <div class="text-xl font-bold mb-8 px-2">Mauntic</div>
-        <ul class="space-y-1">
-          {navItems.map((item) => (
-            <li>
-              <a
-                href={item.href}
-                hx-get={`/ui${item.href.replace('/app', '')}`}
-                hx-target="#content"
-                hx-push-url={item.href}
-                class={`block px-3 py-2 rounded-md text-sm ${
-                  activePage === item.label.toLowerCase()
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                }`}
-              >
-                {item.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <main class="flex-1 overflow-auto">
-        <div class="p-8" id="content">
-          {children}
-        </div>
-      </main>
-    </div>
-  </BaseLayout>
-);
-```
-
-**Step 5: Create DataTable component**
-
-File: `packages/ui-kit/src/components/data-table.tsx`
-
-```tsx
-import type { FC } from 'hono/jsx';
-
-interface Column<T> {
-  key: string;
-  label: string;
-  render?: (item: T) => string | number | null;
-}
-
-interface DataTableProps<T> {
-  columns: Column<T>[];
-  items: T[];
-  baseUrl: string;
-}
-
-export const DataTable: FC<DataTableProps<any>> = ({ columns, items, baseUrl }) => (
-  <div class="overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          {columns.map((col) => (
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              {col.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        {items.map((item: any) => (
-          <tr class="hover:bg-gray-50 cursor-pointer"
-              hx-get={`${baseUrl}/${item.id}`}
-              hx-target="#content"
-              hx-push-url="true">
-            {columns.map((col) => (
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {col.render ? col.render(item) : item[col.key]}
-              </td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
-```
-
-**Step 6: Create index files, build, commit**
-
-File: `packages/ui-kit/src/components/pagination.tsx`
-```tsx
-import type { FC } from 'hono/jsx';
-
-interface PaginationProps {
-  page: number;
-  totalPages: number;
-  baseUrl: string;
-}
-
-export const Pagination: FC<PaginationProps> = ({ page, totalPages, baseUrl }) => (
-  <div class="flex items-center justify-between py-4">
-    <span class="text-sm text-gray-700">Page {page} of {totalPages}</span>
-    <div class="flex space-x-2">
-      {page > 1 && (
-        <button hx-get={`${baseUrl}?page=${page - 1}`} hx-target="#content" class="px-3 py-1 border rounded text-sm hover:bg-gray-100">
-          Previous
-        </button>
-      )}
-      {page < totalPages && (
-        <button hx-get={`${baseUrl}?page=${page + 1}`} hx-target="#content" class="px-3 py-1 border rounded text-sm hover:bg-gray-100">
-          Next
-        </button>
-      )}
-    </div>
-  </div>
-);
-```
-
-File: `packages/ui-kit/src/components/index.ts`
-```typescript
-export { DataTable } from './data-table';
-export { Pagination } from './pagination';
-```
-
-File: `packages/ui-kit/src/layouts/index.ts`
-```typescript
-export { BaseLayout } from './base-layout';
-export { AppLayout } from './app-layout';
-```
-
-File: `packages/ui-kit/src/index.ts`
-```typescript
-export * from './layouts';
-export * from './components';
-```
-
-```bash
-cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/ui-kit build
-git add packages/ui-kit/
-git commit -m "feat: add ui-kit package with layouts and HTMX components"
-```
-
----
-
-### Task 6: Create Gateway Worker
-
-**Files:**
-- Create: `workers/gateway/package.json`
-- Create: `workers/gateway/tsconfig.json`
-- Create: `workers/gateway/wrangler.toml`
-- Create: `workers/gateway/src/app.ts`
-- Create: `workers/gateway/src/index.ts`
-- Create: `workers/gateway/src/pages/dashboard.tsx`
-
-**Step 1: Create package.json**
-
-```json
-{
-  "name": "@mauntic/gateway",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "wrangler dev",
-    "build": "wrangler deploy --dry-run --outdir=dist",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "hono": "^4.6.0",
-    "@mauntic/worker-lib": "workspace:*",
-    "@mauntic/ui-kit": "workspace:*",
-    "@mauntic/contracts": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0",
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "wrangler": "^3.100.0"
-  }
-}
-```
-
-**Step 2: Create wrangler.toml**
-
-```toml
-name = "mauntic-gateway"
-main = "src/index.ts"
-compatibility_date = "2025-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-# Service Bindings to domain Workers
-# Uncomment as Workers are deployed:
-# [[services]]
-# binding = "IDENTITY_WORKER"
-# service = "mauntic-identity"
-#
-# [[services]]
-# binding = "CRM_WORKER"
-# service = "mauntic-crm"
-#
-# [[services]]
-# binding = "CAMPAIGN_WORKER"
-# service = "mauntic-campaign"
-#
-# [[services]]
-# binding = "MESSAGING_WORKER"
-# service = "mauntic-messaging"
-#
-# [[services]]
-# binding = "CONTENT_WORKER"
-# service = "mauntic-content"
-#
-# [[services]]
-# binding = "ANALYTICS_WORKER"
-# service = "mauntic-analytics"
-#
-# [[services]]
-# binding = "INTEGRATIONS_WORKER"
-# service = "mauntic-integrations"
-```
-
-**Step 3: Create tsconfig.json**
-
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["@cloudflare/workers-types"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
-  },
-  "include": ["src/**/*"]
-}
-```
-
-**Step 4: Create app.ts**
-
-File: `workers/gateway/src/app.ts`
-
-```typescript
-import { Hono } from 'hono';
-import { requestTracingMiddleware, errorHandler } from '@mauntic/worker-lib/middleware';
-import { AppLayout } from '@mauntic/ui-kit/layouts';
-import { dashboardPage } from './pages/dashboard';
-
-type Bindings = {
-  // IDENTITY_WORKER: Fetcher;
-  // CRM_WORKER: Fetcher;
-  // CAMPAIGN_WORKER: Fetcher;
-  // MESSAGING_WORKER: Fetcher;
-  // CONTENT_WORKER: Fetcher;
-  // ANALYTICS_WORKER: Fetcher;
-  // INTEGRATIONS_WORKER: Fetcher;
-};
-
-type Variables = {
-  requestId: string;
-};
-
-export const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-
-app.onError(errorHandler);
-app.use('*', requestTracingMiddleware);
-
-// Health check
-app.get('/health', (c) => c.json({ status: 'ok' }));
-
-// App pages (HTMX full page loads)
-app.get('/app', (c) => c.redirect('/app/dashboard'));
-app.get('/app/dashboard', dashboardPage);
-
-// TODO: Add Service Binding proxies as domain Workers are deployed
-// app.all('/api/crm/*', async (c) => c.env.CRM_WORKER.fetch(c.req.raw));
-// app.all('/ui/crm/*', async (c) => c.env.CRM_WORKER.fetch(c.req.raw));
-```
-
-**Step 5: Create dashboard page**
-
-File: `workers/gateway/src/pages/dashboard.tsx`
-
-```typescript
-import type { Context } from 'hono';
-import { AppLayout } from '@mauntic/ui-kit/layouts';
-
-export const dashboardPage = (c: Context) => {
-  return c.html(
-    <AppLayout title="Dashboard" activePage="dashboard">
-      <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="text-sm text-gray-500">Total Contacts</div>
-          <div class="text-3xl font-bold mt-2" hx-get="/ui/analytics/widgets/contact-count" hx-trigger="load">--</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="text-sm text-gray-500">Active Campaigns</div>
-          <div class="text-3xl font-bold mt-2">--</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="text-sm text-gray-500">Emails Sent (30d)</div>
-          <div class="text-3xl font-bold mt-2">--</div>
-        </div>
-        <div class="bg-white rounded-lg shadow p-6">
-          <div class="text-sm text-gray-500">Form Submissions (30d)</div>
-          <div class="text-3xl font-bold mt-2">--</div>
-        </div>
-      </div>
-    </AppLayout>
-  );
-};
-```
-
-**Step 6: Create index.ts (Worker entry)**
-
-File: `workers/gateway/src/index.ts`
-
-```typescript
-import { app } from './app';
-
-export default app;
-```
-
-**Step 7: Install deps, typecheck, commit**
-
-```bash
-cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/gateway typecheck
-git add workers/gateway/
-git commit -m "feat: add Gateway Worker with HTMX dashboard shell"
-```
-
----
-
-### Task 7: Create Identity Worker (Port auth from KMT)
-
-**Reference:** `/Users/lsendel/Projects/knowledge-management-tool/server/infrastructure/better-auth.ts`
-
-**Files:**
-- Create: `workers/identity/package.json`
-- Create: `workers/identity/tsconfig.json`
-- Create: `workers/identity/wrangler.toml`
-- Create: `workers/identity/src/app.ts`
-- Create: `workers/identity/src/index.ts`
-- Create: `workers/identity/src/infrastructure/better-auth.ts`
-- Create: `workers/identity/src/infrastructure/auth-middleware.ts`
-- Create: `workers/identity/src/interface/api/auth.handlers.ts`
-- Create: `workers/identity/drizzle/schema.ts`
-
-**Step 1: Create package.json**
-
-```json
-{
-  "name": "@mauntic/identity",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "wrangler dev",
-    "build": "wrangler deploy --dry-run --outdir=dist",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
-  },
-  "dependencies": {
-    "hono": "^4.6.0",
-    "better-auth": "^1.4.18",
-    "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
-    "@mauntic/worker-lib": "workspace:*",
-    "@mauntic/contracts": "workspace:*",
-    "@mauntic/domain-kernel": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.0",
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "wrangler": "^3.100.0",
-    "drizzle-kit": "^0.30.0"
-  }
-}
-```
-
-**Step 2: Create wrangler.toml**
-
-```toml
-name = "mauntic-identity"
-main = "src/index.ts"
-compatibility_date = "2025-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-[vars]
-BETTER_AUTH_URL = "http://localhost:8787"
-
-# [[hyperdrive]]
-# binding = "HYPERDRIVE"
-# id = "<your-hyperdrive-id>"
-```
-
-**Step 3: Create Drizzle schema**
-
-File: `workers/identity/drizzle/schema.ts`
-
-Port from KMT's `/Users/lsendel/Projects/knowledge-management-tool/drizzle/schema.ts` — the users, sessions, accounts, verification, organizations, and org_members tables. Update table names to use the `identity` Postgres schema.
-
-```typescript
-import { pgSchema, serial, text, varchar, boolean, timestamp, integer } from 'drizzle-orm/pg-core';
-
-export const identitySchema = pgSchema('identity');
-
-export const userRoleEnum = identitySchema.enum('user_role', ['user', 'admin', 'superadmin']);
-
-export const users = identitySchema.table('users', {
-  id: serial('id').primaryKey(),
-  name: text('name').notNull(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  emailVerified: boolean('email_verified').notNull().default(false),
-  image: text('image'),
-  role: userRoleEnum('role').notNull().default('user'),
-  isBlocked: boolean('is_blocked').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const sessions = identitySchema.table('sessions', {
-  id: text('id').primaryKey(),
-  expiresAt: timestamp('expires_at').notNull(),
-  token: text('token').notNull().unique(),
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const accounts = identitySchema.table('accounts', {
-  id: text('id').primaryKey(),
-  accountId: text('account_id').notNull(),
-  providerId: text('provider_id').notNull(),
-  userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  accessToken: text('access_token'),
-  refreshToken: text('refresh_token'),
-  idToken: text('id_token'),
-  accessTokenExpiresAt: timestamp('access_token_expires_at'),
-  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
-  scope: text('scope'),
-  password: text('password'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const verification = identitySchema.table('verification', {
-  id: text('id').primaryKey(),
-  identifier: text('identifier').notNull(),
-  value: text('value').notNull(),
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-```
-
-**Step 4: Create Better Auth config**
-
-File: `workers/identity/src/infrastructure/better-auth.ts`
-
-Port from KMT's `server/infrastructure/better-auth.ts`. Create per-request instance for Workers' stateless environment.
-
-```typescript
-import { betterAuth } from 'better-auth';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import * as schema from '../../drizzle/schema';
-
-interface AuthConfig {
-  db: NeonHttpDatabase<typeof schema>;
-  secret: string;
-  baseURL: string;
-  googleClientId?: string;
-  googleClientSecret?: string;
-  githubClientId?: string;
-  githubClientSecret?: string;
-}
-
-export function createAuth(config: AuthConfig) {
-  const socialProviders: any[] = [];
-
-  if (config.googleClientId && config.googleClientSecret) {
-    socialProviders.push({
-      id: 'google',
-      clientId: config.googleClientId,
-      clientSecret: config.googleClientSecret,
+export function getRedis(url?: string): Redis {
+  if (!redisInstance) {
+    redisInstance = new Redis(url ?? process.env.REDIS_URL ?? 'redis://localhost:6379', {
+      maxRetriesPerRequest: null,
     });
   }
+  return redisInstance;
+}
 
-  if (config.githubClientId && config.githubClientSecret) {
-    socialProviders.push({
-      id: 'github',
-      clientId: config.githubClientId,
-      clientSecret: config.githubClientSecret,
-    });
+export async function closeRedis(): Promise<void> {
+  if (redisInstance) {
+    await redisInstance.quit();
+    redisInstance = null;
   }
+}
+```
 
-  return betterAuth({
-    database: drizzleAdapter(config.db, {
-      provider: 'pg',
-      schema: {
-        user: schema.users,
-        session: schema.sessions,
-        account: schema.accounts,
-        verification: schema.verification,
-      },
-    }),
-    secret: config.secret,
-    baseURL: config.baseURL,
-    socialProviders,
-    emailAndPassword: {
-      enabled: true,
+**Step 3: Create BullMQ job processor base**
+
+File: `packages/process-lib/src/bullmq/job-processor.ts`
+
+```typescript
+import { Worker, Queue, type Job } from 'bullmq';
+import { getRedis } from '../redis/connection';
+
+export interface JobHandler<TData = unknown, TResult = void> {
+  name: string;
+  process(job: Job<TData>): Promise<TResult>;
+  concurrency?: number;
+}
+
+export function createQueue(name: string): Queue {
+  return new Queue(name, { connection: getRedis() });
+}
+
+export function createWorker<TData>(
+  queueName: string,
+  handler: JobHandler<TData>,
+): Worker<TData> {
+  return new Worker<TData>(
+    queueName,
+    async (job) => handler.process(job),
+    {
+      connection: getRedis(),
+      concurrency: handler.concurrency ?? 5,
     },
-  });
+  );
 }
 ```
 
-**Step 5: Create auth middleware**
+**Step 4: Create health check server**
 
-File: `workers/identity/src/infrastructure/auth-middleware.ts`
+File: `packages/process-lib/src/health/server.ts`
 
 ```typescript
-import { createMiddleware } from 'hono/factory';
-import { createAuth } from './better-auth';
-import { createDrizzleClient } from '@mauntic/worker-lib/hyperdrive';
-import * as schema from '../../drizzle/schema';
+import { createServer } from 'node:http';
 
-export const authMiddleware = createMiddleware(async (c, next) => {
-  const db = createDrizzleClient(c.env.DATABASE_URL, schema);
-  const auth = createAuth({
-    db: db as any,
-    secret: c.env.BETTER_AUTH_SECRET,
-    baseURL: c.env.BETTER_AUTH_URL,
-    googleClientId: c.env.GOOGLE_CLIENT_ID,
-    googleClientSecret: c.env.GOOGLE_CLIENT_SECRET,
-    githubClientId: c.env.GITHUB_CLIENT_ID,
-    githubClientSecret: c.env.GITHUB_CLIENT_SECRET,
+export function startHealthServer(port = 8080): void {
+  const server = createServer((req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
+    } else {
+      res.writeHead(404);
+      res.end();
+    }
   });
-
-  const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  c.set('user', session?.user ?? null);
-  c.set('session', session?.session ?? null);
-  c.set('db', db);
-  c.set('auth', auth);
-
-  await next();
-});
-```
-
-**Step 6: Create auth handlers**
-
-File: `workers/identity/src/interface/api/auth.handlers.ts`
-
-```typescript
-import { Hono } from 'hono';
-
-const authRoutes = new Hono();
-
-// Proxy all /api/auth/* to Better Auth handler
-authRoutes.all('/*', async (c) => {
-  const auth = c.get('auth');
-  return auth.handler(c.req.raw);
-});
-
-// Custom: Get current user
-authRoutes.get('/me', async (c) => {
-  const user = c.get('user');
-  if (!user) return c.json({ error: 'Not authenticated' }, 401);
-  return c.json(user);
-});
-
-export { authRoutes };
-```
-
-**Step 7: Create app.ts and index.ts**
-
-File: `workers/identity/src/app.ts`
-
-```typescript
-import { Hono } from 'hono';
-import { requestTracingMiddleware, errorHandler } from '@mauntic/worker-lib/middleware';
-import { authMiddleware } from './infrastructure/auth-middleware';
-import { authRoutes } from './interface/api/auth.handlers';
-
-const app = new Hono();
-
-app.onError(errorHandler);
-app.use('*', requestTracingMiddleware);
-app.use('*', authMiddleware);
-
-app.route('/api/auth', authRoutes);
-
-app.get('/health', (c) => c.json({ status: 'ok', context: 'identity' }));
-
-export { app };
-```
-
-File: `workers/identity/src/index.ts`
-
-```typescript
-import { app } from './app';
-export default app;
-```
-
-**Step 8: Create tsconfig.json**
-
-```json
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["@cloudflare/workers-types"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
-  },
-  "include": ["src/**/*", "drizzle/**/*"]
+  server.listen(port, () => console.log(`Health server on :${port}`));
 }
 ```
 
-**Step 9: Install deps, typecheck, commit**
+**Step 5: Create index, build, commit**
+
+```typescript
+// packages/process-lib/src/index.ts
+export { createQueue, createWorker, type JobHandler } from './bullmq/job-processor';
+export { getRedis, closeRedis } from './redis/connection';
+export { startHealthServer } from './health/server';
+```
 
 ```bash
-cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/identity typecheck
-git add workers/identity/
-git commit -m "feat: add Identity Worker with Better Auth, Drizzle schema, auth middleware"
+pnpm install && pnpm --filter @mauntic/process-lib build
+git add packages/process-lib/ && git commit -m "feat: add process-lib with BullMQ, Redis, and health check utilities for Fly.io"
 ```
 
 ---
 
-### Task 8: Create CRM Worker Skeleton
+### Task 6: Create ui-kit Package
 
-**Files:**
-- Create: `workers/crm/package.json`
-- Create: `workers/crm/tsconfig.json`
-- Create: `workers/crm/wrangler.toml`
-- Create: `workers/crm/src/app.ts`
-- Create: `workers/crm/src/index.ts`
-- Create: `workers/crm/src/domain/entities/contact.ts`
-- Create: `workers/crm/src/domain/repositories/contact.repository.ts`
-- Create: `workers/crm/src/application/commands/create-contact.command.ts`
-- Create: `workers/crm/src/application/queries/list-contacts.query.ts`
-- Create: `workers/crm/src/infrastructure/repositories/drizzle-contact.repository.ts`
-- Create: `workers/crm/src/interface/api/contacts.handlers.ts`
-- Create: `workers/crm/drizzle/schema.ts`
+Same as original plan Task 5. No changes.
 
-This follows the DDD structure exactly. See design doc Section 4 for the layer rules.
+---
 
-**Step 1: Create package.json**
+### Task 7: Create Domain Packages Structure (NEW)
+
+Create the empty domain package scaffolding for all 8 domain contexts.
+
+**Files:** Create package.json, tsconfig.json, and src/ directory for each:
+- `packages/domains/identity-domain/`
+- `packages/domains/crm-domain/`
+- `packages/domains/journey-domain/`
+- `packages/domains/campaign-domain/`
+- `packages/domains/delivery-domain/`
+- `packages/domains/content-domain/`
+- `packages/domains/analytics-domain/`
+- `packages/domains/integrations-domain/`
+
+**Step 1: Create a template package.json** (repeat for each domain)
 
 ```json
 {
-  "name": "@mauntic/crm",
+  "name": "@mauntic/crm-domain",
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "wrangler dev",
-    "build": "wrangler deploy --dry-run --outdir=dist",
-    "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
-  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest" },
   "dependencies": {
-    "hono": "^4.6.0",
-    "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
-    "@mauntic/worker-lib": "workspace:*",
-    "@mauntic/contracts": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
-    "@mauntic/ui-kit": "workspace:*"
+    "zod": "^3.23.0"
   },
-  "devDependencies": {
-    "typescript": "^5.7.0",
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "wrangler": "^3.100.0",
-    "drizzle-kit": "^0.30.0"
-  }
+  "devDependencies": { "typescript": "^5.7.0", "vitest": "^3.0.0" }
 }
 ```
 
-**Step 2: Create wrangler.toml**
+**Step 2: Create directory structure for each** (using crm-domain as example)
 
-```toml
-name = "mauntic-crm"
-main = "src/index.ts"
-compatibility_date = "2025-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-# [[hyperdrive]]
-# binding = "HYPERDRIVE"
-# id = "<your-hyperdrive-id>"
-
-# [[queues.producers]]
-# binding = "CRM_EVENTS"
-# queue = "mauntic-crm-events"
+```
+packages/domains/crm-domain/src/
+├── entities/         # .gitkeep
+├── value-objects/    # .gitkeep
+├── events/           # .gitkeep
+├── repositories/     # .gitkeep
+├── services/         # .gitkeep
+├── commands/         # .gitkeep
+├── queries/          # .gitkeep
+├── event-handlers/   # .gitkeep
+└── index.ts          # export {}
 ```
 
-**Step 3: Create Drizzle schema**
+**Step 3: Commit**
 
-File: `workers/crm/drizzle/schema.ts`
-
-```typescript
-import { pgSchema, serial, varchar, text, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
-
-export const crmSchema = pgSchema('crm');
-
-export const contacts = crmSchema.table('contacts', {
-  id: serial('id').primaryKey(),
-  firstname: varchar('firstname', { length: 255 }),
-  lastname: varchar('lastname', { length: 255 }),
-  email: varchar('email', { length: 255 }),
-  phone: varchar('phone', { length: 50 }),
-  company: varchar('company', { length: 255 }),
-  position: varchar('position', { length: 255 }),
-  points: integer('points').notNull().default(0),
-  stage: varchar('stage', { length: 100 }),
-  ownerId: integer('owner_id'),
-  isPublished: boolean('is_published').notNull().default(true),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const companies = crmSchema.table('companies', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }),
-  phone: varchar('phone', { length: 50 }),
-  website: varchar('website', { length: 255 }),
-  city: varchar('city', { length: 255 }),
-  country: varchar('country', { length: 255 }),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
-
-export const tags = crmSchema.table('tags', {
-  id: serial('id').primaryKey(),
-  tag: varchar('tag', { length: 255 }).notNull().unique(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-});
-
-export const contactTags = crmSchema.table('contact_tags', {
-  contactId: integer('contact_id').notNull().references(() => contacts.id, { onDelete: 'cascade' }),
-  tagId: integer('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
-});
-
-export const segments = crmSchema.table('segments', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 255 }).notNull(),
-  description: text('description'),
-  isPublished: boolean('is_published').notNull().default(true),
-  filters: text('filters'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+```bash
+git add packages/domains/ && git commit -m "feat: scaffold 8 domain packages with DDD directory structure"
 ```
 
-**Step 4: Create Contact domain entity**
+---
 
-File: `workers/crm/src/domain/entities/contact.ts`
+### Task 8: Create Gateway Worker
 
-```typescript
-import type { ContactId } from '@mauntic/domain-kernel/value-objects';
+Same as original plan Task 6, with updated Service Binding stubs for Journey and Delivery Workers.
 
-export interface Contact {
-  id: ContactId;
-  firstname: string | null;
-  lastname: string | null;
-  email: string | null;
-  phone: string | null;
-  company: string | null;
-  position: string | null;
-  points: number;
-  stage: string | null;
-  ownerId: number | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+---
 
-export interface CreateContactInput {
-  firstname?: string;
-  lastname?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  position?: string;
-}
+### Task 9: Create Identity Worker
 
-export interface UpdateContactInput {
-  firstname?: string;
-  lastname?: string;
-  email?: string;
-  phone?: string;
-  company?: string;
-  position?: string;
-}
+Same as original plan Task 7. Port Better Auth from KMT.
+
+---
+
+### Task 10: Create CRM Worker Skeleton
+
+Same as original plan Task 8, but domain logic goes in `packages/domains/crm-domain/` and Workers only contain infrastructure + interface.
+
+**Key difference from original plan:** The domain entities, repositories, and commands/queries live in `packages/domains/crm-domain/src/`. The Worker at `workers/crm/src/` only has `infrastructure/` (Drizzle repos, queue publishers) and `interface/` (Hono routes, HTMX partials).
+
+---
+
+### Task 11: Create Journey Worker Skeleton (NEW)
+
+**Files:**
+- Create: `workers/journey/package.json`
+- Create: `workers/journey/tsconfig.json`
+- Create: `workers/journey/wrangler.toml`
+- Create: `workers/journey/src/app.ts`
+- Create: `workers/journey/src/index.ts`
+- Create: `workers/journey/drizzle/schema.ts`
+
+**Step 1:** Follow same pattern as CRM Worker skeleton. Drizzle schema uses `pgSchema('journey')` with tables: journeys, journey_versions, journey_steps, journey_triggers, journey_executions, step_executions, execution_logs.
+
+**Step 2: Commit**
+
+```bash
+git add workers/journey/ && git commit -m "feat: add Journey Worker skeleton with DDD structure"
 ```
 
-**Step 5: Create repository interface (port)**
+---
 
-File: `workers/crm/src/domain/repositories/contact.repository.ts`
+### Task 12: Create Delivery Worker Skeleton (NEW)
 
-```typescript
-import type { Contact, CreateContactInput, UpdateContactInput } from '../entities/contact';
+**Files:**
+- Create: `workers/delivery/package.json`
+- Create: `workers/delivery/tsconfig.json`
+- Create: `workers/delivery/wrangler.toml`
+- Create: `workers/delivery/src/app.ts`
+- Create: `workers/delivery/src/index.ts`
+- Create: `workers/delivery/drizzle/schema.ts`
 
-export interface ContactRepository {
-  findById(id: number): Promise<Contact | null>;
-  list(params: { page: number; limit: number; search?: string }): Promise<{ items: Contact[]; total: number }>;
-  create(input: CreateContactInput): Promise<Contact>;
-  update(id: number, input: UpdateContactInput): Promise<Contact | null>;
-  delete(id: number): Promise<boolean>;
-}
+Drizzle schema uses `pgSchema('delivery')` with tables: delivery_jobs, delivery_attempts, provider_configs, email_templates, sms_templates, push_templates, tracking_events, suppression_list, warmup_schedules, warmup_days, sending_ips.
+
+```bash
+git add workers/delivery/ && git commit -m "feat: add Delivery Worker skeleton with provider config and suppression schemas"
 ```
 
-**Step 6: Create Drizzle repository implementation**
+---
 
-File: `workers/crm/src/infrastructure/repositories/drizzle-contact.repository.ts`
+### Task 13: Create Remaining Worker Skeletons
 
-```typescript
-import { eq, ilike, or, sql, count } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { contacts } from '../../../drizzle/schema';
-import type { ContactRepository } from '../../domain/repositories/contact.repository';
-import type { Contact, CreateContactInput, UpdateContactInput } from '../../domain/entities/contact';
+Create Campaign, Content, Analytics, and Integrations Workers following the same pattern.
 
-export class DrizzleContactRepository implements ContactRepository {
-  constructor(private db: NeonHttpDatabase) {}
+---
 
-  async findById(id: number): Promise<Contact | null> {
-    const result = await this.db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
-    return (result[0] as Contact) ?? null;
-  }
+### Task 14: Create Fly.io Service Skeletons (NEW)
 
-  async list(params: { page: number; limit: number; search?: string }): Promise<{ items: Contact[]; total: number }> {
-    const offset = (params.page - 1) * params.limit;
-    let query = this.db.select().from(contacts);
+**Files:**
+- Create: `services/journey-executor/package.json`
+- Create: `services/journey-executor/tsconfig.json`
+- Create: `services/journey-executor/Dockerfile`
+- Create: `services/journey-executor/fly.toml`
+- Create: `services/journey-executor/src/worker.ts`
+- Create: `services/delivery-engine/` (same structure)
+- Create: `services/analytics-aggregator/` (same structure)
 
-    if (params.search) {
-      query = query.where(
-        or(
-          ilike(contacts.firstname, `%${params.search}%`),
-          ilike(contacts.lastname, `%${params.search}%`),
-          ilike(contacts.email, `%${params.search}%`),
-        )
-      ) as typeof query;
-    }
-
-    const [items, totalResult] = await Promise.all([
-      query.limit(params.limit).offset(offset),
-      this.db.select({ count: count() }).from(contacts),
-    ]);
-
-    return { items: items as Contact[], total: totalResult[0].count };
-  }
-
-  async create(input: CreateContactInput): Promise<Contact> {
-    const result = await this.db.insert(contacts).values(input).returning();
-    return result[0] as Contact;
-  }
-
-  async update(id: number, input: UpdateContactInput): Promise<Contact | null> {
-    const result = await this.db
-      .update(contacts)
-      .set({ ...input, updatedAt: new Date() })
-      .where(eq(contacts.id, id))
-      .returning();
-    return (result[0] as Contact) ?? null;
-  }
-
-  async delete(id: number): Promise<boolean> {
-    const result = await this.db.delete(contacts).where(eq(contacts.id, id)).returning();
-    return result.length > 0;
-  }
-}
-```
-
-**Step 7: Create application commands and queries**
-
-File: `workers/crm/src/application/commands/create-contact.command.ts`
-
-```typescript
-import type { ContactRepository } from '../../domain/repositories/contact.repository';
-import type { CreateContactInput, Contact } from '../../domain/entities/contact';
-
-export class CreateContactCommand {
-  constructor(private contactRepo: ContactRepository) {}
-
-  async execute(input: CreateContactInput): Promise<Contact> {
-    return this.contactRepo.create(input);
-  }
-}
-```
-
-File: `workers/crm/src/application/queries/list-contacts.query.ts`
-
-```typescript
-import type { ContactRepository } from '../../domain/repositories/contact.repository';
-import type { Contact } from '../../domain/entities/contact';
-
-interface ListContactsParams {
-  page: number;
-  limit: number;
-  search?: string;
-}
-
-interface ListContactsResult {
-  items: Contact[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export class ListContactsQuery {
-  constructor(private contactRepo: ContactRepository) {}
-
-  async execute(params: ListContactsParams): Promise<ListContactsResult> {
-    const { items, total } = await this.contactRepo.list(params);
-    return {
-      items,
-      total,
-      page: params.page,
-      limit: params.limit,
-      totalPages: Math.ceil(total / params.limit),
-    };
-  }
-}
-```
-
-**Step 8: Create API handlers**
-
-File: `workers/crm/src/interface/api/contacts.handlers.ts`
-
-```typescript
-import { Hono } from 'hono';
-import { DrizzleContactRepository } from '../../infrastructure/repositories/drizzle-contact.repository';
-import { CreateContactCommand } from '../../application/commands/create-contact.command';
-import { ListContactsQuery } from '../../application/queries/list-contacts.query';
-
-const contactRoutes = new Hono();
-
-contactRoutes.get('/', async (c) => {
-  const db = c.get('db');
-  const repo = new DrizzleContactRepository(db);
-  const query = new ListContactsQuery(repo);
-  const page = Number(c.req.query('page') ?? 1);
-  const limit = Number(c.req.query('limit') ?? 20);
-  const search = c.req.query('search');
-  const result = await query.execute({ page, limit, search });
-  return c.json(result);
-});
-
-contactRoutes.get('/:id', async (c) => {
-  const db = c.get('db');
-  const repo = new DrizzleContactRepository(db);
-  const contact = await repo.findById(Number(c.req.param('id')));
-  if (!contact) return c.json({ error: 'Contact not found' }, 404);
-  return c.json(contact);
-});
-
-contactRoutes.post('/', async (c) => {
-  const db = c.get('db');
-  const repo = new DrizzleContactRepository(db);
-  const cmd = new CreateContactCommand(repo);
-  const body = await c.req.json();
-  const contact = await cmd.execute(body);
-  return c.json(contact, 201);
-});
-
-contactRoutes.patch('/:id', async (c) => {
-  const db = c.get('db');
-  const repo = new DrizzleContactRepository(db);
-  const body = await c.req.json();
-  const contact = await repo.update(Number(c.req.param('id')), body);
-  if (!contact) return c.json({ error: 'Contact not found' }, 404);
-  return c.json(contact);
-});
-
-contactRoutes.delete('/:id', async (c) => {
-  const db = c.get('db');
-  const repo = new DrizzleContactRepository(db);
-  const deleted = await repo.delete(Number(c.req.param('id')));
-  if (!deleted) return c.json({ error: 'Contact not found' }, 404);
-  return c.body(null, 204);
-});
-
-export { contactRoutes };
-```
-
-**Step 9: Create app.ts and index.ts**
-
-File: `workers/crm/src/app.ts`
-
-```typescript
-import { Hono } from 'hono';
-import { requestTracingMiddleware, errorHandler } from '@mauntic/worker-lib/middleware';
-import { createMiddleware } from 'hono/factory';
-import { createDrizzleClient } from '@mauntic/worker-lib/hyperdrive';
-import { contactRoutes } from './interface/api/contacts.handlers';
-import * as schema from '../drizzle/schema';
-
-const app = new Hono();
-
-app.onError(errorHandler);
-app.use('*', requestTracingMiddleware);
-
-// DB middleware
-app.use('*', createMiddleware(async (c, next) => {
-  const db = createDrizzleClient(c.env.DATABASE_URL, schema);
-  c.set('db', db);
-  await next();
-}));
-
-// API routes (JSON)
-app.route('/api/crm/contacts', contactRoutes);
-
-// UI routes (HTMX partials) — TODO in Phase 3
-// app.route('/ui/contacts', contactPages);
-
-app.get('/health', (c) => c.json({ status: 'ok', context: 'crm' }));
-
-export { app };
-```
-
-File: `workers/crm/src/index.ts`
-
-```typescript
-import { app } from './app';
-export default app;
-```
-
-**Step 10: Create tsconfig.json, install deps, commit**
+**Step 1: Create journey-executor package.json**
 
 ```json
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["@cloudflare/workers-types"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx"
+  "name": "@mauntic/journey-executor",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node dist/worker.js", "build": "tsc", "dev": "tsx watch src/worker.ts" },
+  "dependencies": {
+    "@mauntic/process-lib": "workspace:*",
+    "@mauntic/journey-domain": "workspace:*",
+    "@mauntic/domain-kernel": "workspace:*",
+    "drizzle-orm": "^0.38.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.0"
   },
-  "include": ["src/**/*", "drizzle/**/*"]
+  "devDependencies": { "typescript": "^5.7.0", "tsx": "^4.0.0" }
 }
 ```
 
+**Step 2: Create Dockerfile**
+
+```dockerfile
+FROM node:22-slim AS base
+RUN corepack enable
+
+FROM base AS build
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/ packages/
+COPY services/journey-executor/ services/journey-executor/
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @mauntic/journey-executor build
+
+FROM base AS runtime
+WORKDIR /app
+COPY --from=build /app/node_modules node_modules
+COPY --from=build /app/services/journey-executor/dist dist
+COPY --from=build /app/services/journey-executor/package.json .
+EXPOSE 8080
+CMD ["node", "dist/worker.js"]
+```
+
+**Step 3: Create fly.toml**
+
+```toml
+app = "mauntic-journey-executor"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+```
+
+**Step 4: Create worker.ts stub**
+
+File: `services/journey-executor/src/worker.ts`
+
+```typescript
+import { createWorker, startHealthServer, getRedis } from '@mauntic/process-lib';
+
+console.log('Starting Journey Executor...');
+startHealthServer(8080);
+
+// TODO: Implement journey step execution workers in Phase 5
+// const stepWorker = createWorker('journey-steps', { ... });
+
+process.on('SIGTERM', async () => {
+  console.log('Shutting down...');
+  // await stepWorker.close();
+  process.exit(0);
+});
+```
+
+**Step 5: Repeat for delivery-engine and analytics-aggregator, then commit**
+
 ```bash
-cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/crm typecheck
-git add workers/crm/
-git commit -m "feat: add CRM Worker with DDD contact management (domain, application, infrastructure, interface layers)"
+git add services/ && git commit -m "feat: add Fly.io service skeletons (journey-executor, delivery-engine, analytics-aggregator)"
 ```
 
 ---
 
-### Task 9-12: Create Remaining Worker Skeletons
+### Task 15: Set Up CI/CD Pipeline
 
-Follow the same pattern as Task 8 for each remaining Worker. Each gets:
-- `package.json`, `tsconfig.json`, `wrangler.toml`
-- DDD directory structure: `domain/`, `application/`, `infrastructure/`, `interface/`
-- Drizzle schema in `drizzle/schema.ts`
-- Health check endpoint
-- `app.ts` and `index.ts`
+**Files:**
+- Create: `.github/workflows/ci.yml`
+- Create: `.github/workflows/deploy.yml`
 
-**Task 9:** Campaign Worker (`workers/campaign/`) — `campaign` schema with campaigns, events, actions, decisions, event_log, points tables
+CI: typecheck, lint, test on PRs. Deploy: wrangler deploy for Workers, fly deploy for services. Triggered on push to main.
 
-**Task 10:** Messaging Worker (`workers/messaging/`) — `messaging` schema with emails, email_stats, send_jobs, sms, notifications tables
-
-**Task 11:** Content Worker (`workers/content/`) — `content` schema with forms, form_fields, form_submissions, pages, assets tables
-
-**Task 12:** Analytics + Integrations Workers (`workers/analytics/`, `workers/integrations/`) — `analytics` schema with reports, widgets; `integrations` schema with webhooks, sync_jobs tables
-
-Each commit: `feat: add <Context> Worker skeleton with DDD structure and Drizzle schema`
+```bash
+git add .github/ && git commit -m "feat: add CI/CD pipelines for CF Workers and Fly.io services"
+```
 
 ---
 
-## Phase 1: Define All Contracts (Tasks 13-19)
+## Phase 1: Define All Contracts (Tasks 16-22)
 
-Map every Mautic API endpoint to ts-rest contracts. Reference the original Mautic API at `/Users/lsendel/Projects/mauntic/app/bundles/*/Controller/Api/*Controller.php`.
+Map every Mautic API endpoint to ts-rest contracts. Reference: `/Users/lsendel/Projects/mauntic/app/bundles/*/Controller/Api/*Controller.php`
 
-### Task 13: Complete CRM Contracts
-- Add segments, companies, fields, tags, stages, categories endpoints
-- Add filter/sort schemas for each
+### Task 16: Complete CRM Contracts
+- Add segments, companies, fields, tags, stages, categories endpoints to `packages/contracts/src/crm.contract.ts`
 
-### Task 14: Campaign Contracts
-- Campaigns CRUD, campaign events, actions, decisions
-- Campaign execution triggers, point triggers
+### Task 17: Complete Journey Contracts
+- Add journey CRUD, step management, trigger configuration, execution monitoring
+- Add journey analytics endpoints (conversion rates, drop-off points)
 
-### Task 15: Messaging Contracts
-- Email CRUD, email send, email stats
-- SMS CRUD, notification CRUD
-- Tracking endpoints (opens, clicks, bounces)
+### Task 18: Complete Delivery Contracts
+- Add template CRUD, send API, tracking endpoints, suppression management, warmup management, provider management
 
-### Task 16: Content Contracts
-- Forms CRUD, form submissions, form fields
-- Pages CRUD, page hits
-- Assets CRUD, asset downloads
-- Dynamic content CRUD
+### Task 19: Campaign Contracts
+- Campaign CRUD, blast send, scheduling, point system
 
-### Task 17: Analytics Contracts
-- Reports CRUD, report execution, report scheduling
-- Dashboard widgets CRUD, widget data
+### Task 20: Content Contracts
+- Forms, pages, assets, dynamic content CRUD + submission/tracking endpoints
 
-### Task 18: Integrations Contracts
-- Integrations CRUD, integration config
-- Webhooks CRUD, webhook logs
-- Sync jobs CRUD, sync mappings
+### Task 21: Analytics + Integrations Contracts
+- Reports, widgets, webhooks, sync jobs, integration configs
 
-### Task 19: Identity Contracts (expand)
-- Users CRUD, roles, permissions
-- Organizations CRUD, org members
-- Expand beyond basic auth/me
+### Task 22: Identity Contracts (expand)
+- Users CRUD, roles, permissions, organizations, org members
 
 ---
 
-## Phase 2: Identity Context (Tasks 20-24)
+## Phase 2: Identity Context (Tasks 23-27)
 
-### Task 20: Complete Identity schema and migrations
-### Task 21: Implement user CRUD with DDD layers
-### Task 22: Implement organization management
-### Task 23: Implement role-based permissions
-### Task 24: Wire Gateway <-> Identity Service Binding
-
----
-
-## Phase 3: CRM Context (Tasks 25-35)
-
-### Task 25: Complete Contact aggregate (domain layer)
-### Task 26: Implement Contact CRUD (all layers)
-### Task 27: Implement Company aggregate
-### Task 28: Implement Segment aggregate with filter engine
-### Task 29: Implement custom Fields system
-### Task 30: Implement Tags
-### Task 31: Implement DoNotContact and FrequencyRules
-### Task 32: Implement Stages and Categories
-### Task 33: Wire CRM event publishing to Queues
-### Task 34: Build HTMX UI for contacts (list, detail, create, edit)
-### Task 35: Wire Gateway <-> CRM Service Binding
+### Task 23: Implement identity-domain package
+### Task 24: Complete Identity schema and migrations
+### Task 25: Implement user CRUD with full DDD layers
+### Task 26: Implement organization management
+### Task 27: Wire Gateway <-> Identity Service Binding
 
 ---
 
-## Phase 4: Campaign Context (Tasks 36-42)
+## Phase 3: CRM Context (Tasks 28-38)
 
-### Task 36: Campaign aggregate (domain layer)
-### Task 37: Campaign builder flow (events, actions, decisions)
-### Task 38: Campaign execution engine (Queue consumers)
-### Task 39: Point system
-### Task 40: Campaign event handlers for CRM events
-### Task 41: Build HTMX campaign builder UI
-### Task 42: Wire Gateway <-> Campaign Service Binding
-
----
-
-## Phase 5: Messaging Context (Tasks 43-50)
-
-### Task 43: Email template aggregate
-### Task 44: Bulk email send engine (Queue batching)
-### Task 45: Email tracking (opens, clicks, bounces)
-### Task 46: R2 integration for email assets
-### Task 47: SMS messaging
-### Task 48: Push notifications
-### Task 49: Build HTMX email editor UI
-### Task 50: Wire Gateway <-> Messaging Service Binding
+### Task 28: Implement crm-domain package entities (Contact, Company, Segment)
+### Task 29: Implement crm-domain repository interfaces
+### Task 30: Implement crm-domain commands and queries
+### Task 31: Implement Drizzle repositories in workers/crm/
+### Task 32: Implement Contact CRUD API handlers
+### Task 33: Implement Company aggregate
+### Task 34: Implement Segment aggregate with filter engine
+### Task 35: Implement custom Fields system
+### Task 36: Implement Tags, DoNotContact, Stages
+### Task 37: Wire CRM event publishing to Queues
+### Task 38: Build HTMX UI for contacts (list, detail, create, edit)
 
 ---
 
-## Phase 6: Content Context (Tasks 51-57)
+## Phase 4: Delivery Context (Tasks 39-52)
 
-### Task 51: Form builder aggregate
-### Task 52: Form submission processing
-### Task 53: Landing page builder
-### Task 54: Asset management with R2
-### Task 55: Dynamic content engine
-### Task 56: Build HTMX form/page builder UI
-### Task 57: Wire Gateway <-> Content Service Binding
+### Task 39: Implement delivery-domain entities
+
+**Files:**
+- Create: `packages/domains/delivery-domain/src/entities/delivery-job.ts`
+- Create: `packages/domains/delivery-domain/src/entities/provider-config.ts`
+- Create: `packages/domains/delivery-domain/src/entities/template.ts`
+- Create: `packages/domains/delivery-domain/src/entities/suppression-entry.ts`
+- Create: `packages/domains/delivery-domain/src/entities/warmup-schedule.ts`
+- Create: `packages/domains/delivery-domain/src/entities/sending-ip.ts`
+
+### Task 40: Implement delivery-domain repository interfaces
+
+**Files:**
+- Create: `packages/domains/delivery-domain/src/repositories/delivery-job.repository.ts`
+- Create: `packages/domains/delivery-domain/src/repositories/provider-config.repository.ts`
+- Create: `packages/domains/delivery-domain/src/repositories/suppression.repository.ts`
+- Create: `packages/domains/delivery-domain/src/repositories/warmup.repository.ts`
+
+### Task 41: Implement delivery-domain commands
+
+**Files:**
+- Create: `packages/domains/delivery-domain/src/commands/send-message.command.ts`
+- Create: `packages/domains/delivery-domain/src/commands/configure-provider.command.ts`
+- Create: `packages/domains/delivery-domain/src/commands/add-suppression.command.ts`
+- Create: `packages/domains/delivery-domain/src/commands/process-tracking-event.command.ts`
+
+The `send-message.command.ts` is the critical path:
+1. Check suppression list
+2. Check warmup limits
+3. Resolve provider from config
+4. Render template with contact data
+5. Call `provider.send()`
+6. Record DeliveryAttempt
+7. Publish delivery event
+
+### Task 42: Implement SES email provider adapter
+
+**Files:**
+- Create: `services/delivery-engine/src/providers/ses.provider.ts`
+
+### Task 43: Implement Twilio SMS provider adapter
+
+**Files:**
+- Create: `services/delivery-engine/src/providers/twilio.provider.ts`
+
+### Task 44: Implement Firebase push provider adapter
+
+**Files:**
+- Create: `services/delivery-engine/src/providers/fcm.provider.ts`
+
+### Task 45: Implement generic SMTP provider adapter
+
+**Files:**
+- Create: `services/delivery-engine/src/providers/smtp.provider.ts`
+
+### Task 46: Implement template rendering engine
+
+**Files:**
+- Create: `packages/domains/delivery-domain/src/services/template-renderer.ts`
+
+Handlebars or Liquid template rendering with contact data interpolation.
+
+### Task 47: Implement suppression list management
+
+### Task 48: Implement warmup schedule management
+
+### Task 49: Implement Drizzle repositories in workers/delivery/
+
+### Task 50: Implement Delivery API handlers (workers/delivery/)
+
+### Task 51: Implement Delivery Engine BullMQ worker (services/delivery-engine/)
+
+The bulk send engine on Fly.io:
+- Consumes SendMessage jobs from BullMQ
+- Splits batches, checks suppression, checks warmup
+- Routes to provider adapter
+- Handles retries with exponential backoff
+
+### Task 52: Implement tracking webhook handlers
+
+Handle inbound webhooks from SES, SendGrid, Twilio, etc. Parse into TrackingEvents, update DeliveryJob status, publish domain events.
 
 ---
 
-## Phase 7: Analytics & Integrations (Tasks 58-65)
+## Phase 5: Journey Context (Tasks 53-65)
 
-### Task 58: Report engine aggregate
-### Task 59: Dashboard widgets with data aggregation
-### Task 60: Queue consumer for all domain events (analytics materialization)
-### Task 61: Webhook dispatch engine
-### Task 62: Third-party CRM sync
-### Task 63: Integration configuration UI
-### Task 64: Wire Gateway <-> Analytics + Integrations Service Bindings
-### Task 65: Build HTMX reporting UI
+### Task 53: Implement journey-domain entities
+
+**Files:**
+- Create: `packages/domains/journey-domain/src/entities/journey.ts`
+- Create: `packages/domains/journey-domain/src/entities/journey-version.ts`
+- Create: `packages/domains/journey-domain/src/entities/journey-step.ts`
+- Create: `packages/domains/journey-domain/src/entities/journey-trigger.ts`
+- Create: `packages/domains/journey-domain/src/entities/journey-execution.ts`
+- Create: `packages/domains/journey-domain/src/entities/step-execution.ts`
+
+### Task 54: Implement journey-domain value objects
+
+**Files:**
+- Create: `packages/domains/journey-domain/src/value-objects/step-config.ts`
+- Create: `packages/domains/journey-domain/src/value-objects/trigger-config.ts`
+
+Define typed configs for each step type (ActionEmailConfig, DelayDurationConfig, SplitRandomConfig, etc.)
+
+### Task 55: Implement journey-domain repository interfaces
+
+### Task 56: Implement journey-domain commands
+- CreateJourney, UpdateJourney, PublishJourney, PauseJourney
+- StartExecution, ExecuteStep
+
+### Task 57: Implement journey versioning
+- Publishing creates immutable JourneyVersion
+- In-flight executions pinned to their version
+
+### Task 58: Implement step executor domain service
+
+**Files:**
+- Create: `packages/domains/journey-domain/src/services/step-executor.ts`
+
+Core logic: given a step and execution context, determine what to do:
+- ActionStep -> publish SendMessage to Delivery
+- DelayStep -> schedule delayed job
+- SplitStep -> evaluate condition, pick branch
+- GateStep -> register event listener
+- ExitStep -> complete execution
+
+### Task 59: Implement split evaluator
+
+**Files:**
+- Create: `packages/domains/journey-domain/src/services/split-evaluator.ts`
+
+Evaluates conditional splits against contact data (field comparisons, segment membership, etc.)
+
+### Task 60: Implement Drizzle schema and repositories in workers/journey/
+
+### Task 61: Implement Journey API handlers (workers/journey/)
+
+### Task 62: Implement Journey HTMX UI
+
+Journey builder with drag-and-drop steps, visual flow editor.
+
+### Task 63: Implement Journey Executor BullMQ workers (services/journey-executor/)
+
+**Files:**
+- Modify: `services/journey-executor/src/worker.ts`
+
+Create BullMQ workers for:
+- `journey-execute-step` queue: process individual steps
+- `journey-delayed-steps` queue: handle delay wake-ups
+- `journey-gate-listeners` queue: handle gate event matching
+
+### Task 64: Implement journey event handlers
+
+Handle events from other contexts:
+- `ContactCreated` -> check if any journeys have segment triggers
+- `FormSubmitted` -> check for event triggers
+- `EmailOpened` -> check for gate conditions
+
+### Task 65: Wire Journey <-> Delivery via events
+
+Test end-to-end: trigger journey -> execute email step -> Delivery sends -> tracking event flows back.
 
 ---
 
-## Phase 8: Polish & Migration (Tasks 66-70)
+## Phase 6: Campaign Context (Tasks 66-69)
 
-### Task 66: Data migration scripts (MySQL -> Neon Postgres)
-### Task 67: End-to-end testing
-### Task 68: Performance optimization (caching, query tuning)
-### Task 69: CI/CD pipeline finalization
-### Task 70: Documentation and deployment guide
+### Task 66: Implement campaign-domain package
+### Task 67: Implement Campaign CRUD and blast sends
+### Task 68: Implement point system
+### Task 69: Wire Campaign -> Delivery for sending
+
+---
+
+## Phase 7: Content Context (Tasks 70-75)
+
+### Task 70: Implement content-domain package
+### Task 71: Implement Form builder + submission processing
+### Task 72: Implement Landing page builder
+### Task 73: Implement Asset management with R2
+### Task 74: Implement Dynamic content engine
+### Task 75: Build HTMX form/page builder UI
+
+---
+
+## Phase 8: Analytics & Integrations (Tasks 76-83)
+
+### Task 76: Implement analytics-domain package
+### Task 77: Implement Report engine
+### Task 78: Implement Dashboard widgets
+### Task 79: Implement Analytics Aggregator on Fly.io (services/analytics-aggregator/)
+### Task 80: Implement integrations-domain package
+### Task 81: Implement Webhook dispatch engine
+### Task 82: Implement third-party CRM sync (Salesforce/HubSpot patterns)
+### Task 83: Implement Segment/PostHog integration
+
+---
+
+## Phase 9: Mail Infrastructure (Tasks 84-90)
+
+### Task 84: Set up Postfix Docker container
+
+**Files:**
+- Create: `services/mail-infra/docker/postfix/main.cf`
+- Create: `services/mail-infra/docker/postfix/master.cf`
+- Create: `services/mail-infra/docker-compose.yml`
+
+Configure Postfix with DKIM signing, SPF, TLS, rate limiting.
+
+### Task 85: Set up Dovecot for bounce processing
+
+### Task 86: Set up Rspamd for spam scoring
+
+### Task 87: Implement sidecar API
+
+**Files:**
+- Create: `services/mail-infra/src/api.ts`
+
+Node.js Express/Hono API on Fly.io internal network:
+- `POST /api/send` — accept email payload, inject into Postfix queue
+- `GET /api/domains` — list configured sending domains
+- `POST /api/domains/verify` — initiate DNS verification
+- `GET /api/ips` — list sending IPs
+- `GET /api/health` — health check
+
+### Task 88: Implement domain verification and DNS management
+
+### Task 89: Implement multi-IP management
+
+- Multiple IPs per domain
+- Round-robin / weighted rotation
+- Per-IP warmup tracking
+- Per-IP reputation monitoring
+- Auto-failover on delivery issues
+
+### Task 90: Implement PostfixEmailProvider adapter
+
+**Files:**
+- Create: `services/delivery-engine/src/providers/postfix.provider.ts`
+
+Connect the Delivery Engine to Mail Infra via Fly.io internal network.
+
+---
+
+## Phase 10: Polish & Migration (Tasks 91-95)
+
+### Task 91: Data migration scripts (Mautic MySQL -> Neon Postgres)
+### Task 92: End-to-end testing (journey -> delivery -> tracking flow)
+### Task 93: Performance optimization (caching, query tuning, connection pooling)
+### Task 94: CI/CD pipeline finalization (staging -> production)
+### Task 95: Documentation and deployment guide
