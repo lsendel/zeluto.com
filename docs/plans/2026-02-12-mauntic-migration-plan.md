@@ -1,14 +1,14 @@
-# Mauntic3 Migration Implementation Plan (v2)
+# Mauntic3 Migration Implementation Plan (v3)
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Rewrite Mautic + Parcelvoy + BillionMail as a unified TypeScript marketing platform on Cloudflare Workers + Fly.io with DDD architecture.
+**Goal:** Rewrite Mautic + Parcelvoy + BillionMail as a unified multi-tenant SaaS marketing platform on Cloudflare Workers + Fly.io with DDD architecture.
 
-**Architecture:** Dual-tier deployment — Cloudflare Workers at the edge for API/UI/light processing, Fly.io machines for heavy compute (journey execution, bulk sends, analytics, mail server). Domain logic lives in shared packages (`packages/domains/*`), deployed to either tier via different entry points. 10 bounded contexts, contract-first with ts-rest.
+**Architecture:** Dual-tier deployment — Cloudflare Workers at the edge for API/UI/light processing, Fly.io machines for heavy compute (journey execution, bulk sends, analytics, mail server). Domain logic lives in shared packages (`packages/domains/*`), deployed to either tier via different entry points. 11 bounded contexts (including Billing), contract-first with ts-rest. Full SaaS multi-tenancy with per-org isolation, Stripe billing, and quota enforcement.
 
-**Tech Stack:** Hono, ts-rest, Zod, Drizzle ORM, Better Auth, Cloudflare Workers/R2/Queues/KV/Hyperdrive, Fly.io, BullMQ, Redis, Postfix/Dovecot/Rspamd, Turborepo, pnpm, HTMX, Hono JSX, Tailwind CSS
+**Tech Stack:** Hono, ts-rest, Zod, Drizzle ORM, Better Auth, Stripe, Cloudflare Workers/R2/Queues/KV/Hyperdrive, Fly.io, BullMQ, Redis, Postfix/Dovecot/Rspamd, Turborepo, pnpm, HTMX, Hono JSX, Tailwind CSS, pino (logging)
 
-**Design Doc:** `docs/plans/2026-02-12-mauntic-migration-design.md` (v2)
+**Design Doc:** `docs/plans/2026-02-12-mauntic-migration-design.md` (v3)
 
 **Auth Reference:** `/Users/lsendel/Projects/knowledge-management-tool`
 
@@ -18,7 +18,7 @@
 
 ---
 
-## Phase 0: Foundation (Tasks 1-15)
+## Phase 0: Foundation (Tasks 1-20)
 
 ### Task 1: Initialize Monorepo
 
@@ -147,6 +147,10 @@ git add -A && git commit -m "feat: initialize monorepo with Turborepo and pnpm w
 - Create: `packages/domain-kernel/src/events/index.ts`
 - Create: `packages/domain-kernel/src/delivery/provider.ts`
 - Create: `packages/domain-kernel/src/delivery/index.ts`
+- Create: `packages/domain-kernel/src/errors/domain-error.ts`
+- Create: `packages/domain-kernel/src/errors/index.ts`
+- Create: `packages/domain-kernel/src/tenant/tenant-context.ts`
+- Create: `packages/domain-kernel/src/tenant/index.ts`
 - Create: `packages/domain-kernel/src/types/index.ts`
 
 **Step 1: Create package.json**
@@ -164,6 +168,8 @@ git add -A && git commit -m "feat: initialize monorepo with Turborepo and pnpm w
     "./value-objects": { "import": "./dist/value-objects/index.js", "types": "./dist/value-objects/index.d.ts" },
     "./events": { "import": "./dist/events/index.js", "types": "./dist/events/index.d.ts" },
     "./delivery": { "import": "./dist/delivery/index.js", "types": "./dist/delivery/index.d.ts" },
+    "./errors": { "import": "./dist/errors/index.js", "types": "./dist/errors/index.d.ts" },
+    "./tenant": { "import": "./dist/tenant/index.js", "types": "./dist/tenant/index.d.ts" },
     "./types": { "import": "./dist/types/index.js", "types": "./dist/types/index.d.ts" }
   },
   "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
@@ -172,7 +178,90 @@ git add -A && git commit -m "feat: initialize monorepo with Turborepo and pnpm w
 }
 ```
 
-**Step 2: Create branded IDs**
+**Step 2: Create DomainError hierarchy**
+
+File: `packages/domain-kernel/src/errors/domain-error.ts`
+
+```typescript
+export class DomainError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly statusCode: number = 400,
+    readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'DomainError';
+  }
+}
+
+export class NotFoundError extends DomainError {
+  constructor(entity: string, id: string | number) {
+    super('NOT_FOUND', `${entity} ${id} not found`, 404);
+  }
+}
+
+export class ValidationError extends DomainError {
+  constructor(message: string, details?: Record<string, unknown>) {
+    super('VALIDATION_ERROR', message, 400, details);
+  }
+}
+
+export class InvariantViolation extends DomainError {
+  constructor(message: string) {
+    super('INVARIANT_VIOLATION', message, 422);
+  }
+}
+
+export class UnauthorizedError extends DomainError {
+  constructor(message = 'Authentication required') {
+    super('UNAUTHORIZED', message, 401);
+  }
+}
+
+export class ForbiddenError extends DomainError {
+  constructor(message = 'Insufficient permissions') {
+    super('FORBIDDEN', message, 403);
+  }
+}
+
+export class QuotaExceededError extends DomainError {
+  constructor(resource: string, limit: number) {
+    super('QUOTA_EXCEEDED', `${resource} quota exceeded (limit: ${limit})`, 402);
+  }
+}
+
+export class ConflictError extends DomainError {
+  constructor(message: string) {
+    super('CONFLICT', message, 409);
+  }
+}
+```
+
+**Step 3: Create TenantContext**
+
+File: `packages/domain-kernel/src/tenant/tenant-context.ts`
+
+```typescript
+export interface TenantContext {
+  organizationId: number;
+  userId: number;
+  userRole: 'owner' | 'admin' | 'member' | 'viewer';
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+}
+
+export type QuotaResource =
+  | 'contacts'
+  | 'emails_per_month'
+  | 'sms_per_month'
+  | 'push_per_month'
+  | 'journeys'
+  | 'team_members'
+  | 'custom_domains'
+  | 'api_requests_per_day';
+```
+
+**Step 4: Create branded IDs**
 
 File: `packages/domain-kernel/src/value-objects/branded-id.ts`
 
@@ -200,25 +289,32 @@ export type JourneyVersionId = Brand<number, 'JourneyVersionId'>;
 export type JourneyStepId = Brand<string, 'JourneyStepId'>;
 export type DeliveryJobId = Brand<string, 'DeliveryJobId'>;
 export type TemplateId = Brand<number, 'TemplateId'>;
+export type SubscriptionId = Brand<string, 'SubscriptionId'>;
+export type PlanId = Brand<number, 'PlanId'>;
 
 export const ContactIdSchema = z.number().int().positive() as z.ZodType<ContactId>;
 export const CompanyIdSchema = z.number().int().positive() as z.ZodType<CompanyId>;
 export const CampaignIdSchema = z.number().int().positive() as z.ZodType<CampaignId>;
 export const JourneyIdSchema = z.number().int().positive() as z.ZodType<JourneyId>;
 export const DeliveryJobIdSchema = z.string().uuid() as z.ZodType<DeliveryJobId>;
+export const OrganizationIdSchema = z.number().int().positive() as z.ZodType<OrganizationId>;
 // ... remaining schemas follow same pattern
 ```
 
-**Step 3: Create domain events including journey + delivery events**
+**Step 5: Create domain events with versioned metadata and tenant context**
 
 File: `packages/domain-kernel/src/events/domain-event.ts`
 
 ```typescript
 export interface DomainEventMetadata {
+  version: number;
   sourceContext: string;
   timestamp: string;
   correlationId: string;
   causationId?: string;
+  tenantContext: {
+    organizationId: number;
+  };
 }
 
 export interface DomainEvent<TType extends string = string, TData = unknown> {
@@ -228,37 +324,45 @@ export interface DomainEvent<TType extends string = string, TData = unknown> {
 }
 
 // CRM Events
-export interface ContactCreatedEvent extends DomainEvent<'ContactCreated', { contactId: number }> {}
-export interface ContactUpdatedEvent extends DomainEvent<'ContactUpdated', { contactId: number; fields: string[] }> {}
-export interface ContactMergedEvent extends DomainEvent<'ContactMerged', { winnerId: number; loserId: number }> {}
-export interface SegmentRebuiltEvent extends DomainEvent<'SegmentRebuilt', { segmentId: number; contactCount: number }> {}
+export interface ContactCreatedEvent extends DomainEvent<'ContactCreated', { contactId: number; organizationId: number }> {}
+export interface ContactUpdatedEvent extends DomainEvent<'ContactUpdated', { contactId: number; organizationId: number; fields: string[] }> {}
+export interface ContactMergedEvent extends DomainEvent<'ContactMerged', { winnerId: number; loserId: number; organizationId: number }> {}
+export interface SegmentRebuiltEvent extends DomainEvent<'SegmentRebuilt', { segmentId: number; organizationId: number; contactCount: number }> {}
 
 // Journey Events (from Parcelvoy)
-export interface JourneyPublishedEvent extends DomainEvent<'JourneyPublished', { journeyId: number; versionId: number }> {}
-export interface JourneyStepExecutedEvent extends DomainEvent<'JourneyStepExecuted', { journeyId: number; stepId: string; contactId: number; stepType: string }> {}
-export interface JourneyCompletedEvent extends DomainEvent<'JourneyCompleted', { journeyId: number; executionId: string; contactId: number }> {}
-export interface ExecuteNextStepEvent extends DomainEvent<'ExecuteNextStep', { executionId: string; stepId: string }> {}
+export interface JourneyPublishedEvent extends DomainEvent<'JourneyPublished', { journeyId: number; versionId: number; organizationId: number }> {}
+export interface JourneyStepExecutedEvent extends DomainEvent<'JourneyStepExecuted', { journeyId: number; stepId: string; contactId: number; stepType: string; organizationId: number }> {}
+export interface JourneyCompletedEvent extends DomainEvent<'JourneyCompleted', { journeyId: number; executionId: string; contactId: number; organizationId: number }> {}
+export interface ExecuteNextStepEvent extends DomainEvent<'ExecuteNextStep', { executionId: string; stepId: string; organizationId: number }> {}
 
 // Delivery Events (from BillionMail + Parcelvoy)
-export interface SendMessageEvent extends DomainEvent<'SendMessage', { channel: Channel; contactId: number; templateId: number; journeyExecutionId?: string; campaignId?: number }> {}
-export interface EmailSentEvent extends DomainEvent<'EmailSent', { deliveryJobId: string; contactId: number; provider: string }> {}
-export interface EmailOpenedEvent extends DomainEvent<'EmailOpened', { deliveryJobId: string; contactId: number }> {}
-export interface EmailClickedEvent extends DomainEvent<'EmailClicked', { deliveryJobId: string; contactId: number; url: string }> {}
-export interface EmailBouncedEvent extends DomainEvent<'EmailBounced', { deliveryJobId: string; contactId: number; bounceType: 'hard' | 'soft'; reason: string }> {}
-export interface SmsSentEvent extends DomainEvent<'SmsSent', { deliveryJobId: string; contactId: number; provider: string }> {}
-export interface PushSentEvent extends DomainEvent<'PushSent', { deliveryJobId: string; contactId: number; provider: string }> {}
+export interface SendMessageEvent extends DomainEvent<'SendMessage', { channel: Channel; contactId: number; templateId: number; organizationId: number; journeyExecutionId?: string; campaignId?: number; idempotencyKey: string }> {}
+export interface EmailSentEvent extends DomainEvent<'EmailSent', { deliveryJobId: string; contactId: number; organizationId: number; provider: string }> {}
+export interface EmailOpenedEvent extends DomainEvent<'EmailOpened', { deliveryJobId: string; contactId: number; organizationId: number }> {}
+export interface EmailClickedEvent extends DomainEvent<'EmailClicked', { deliveryJobId: string; contactId: number; organizationId: number; url: string }> {}
+export interface EmailBouncedEvent extends DomainEvent<'EmailBounced', { deliveryJobId: string; contactId: number; organizationId: number; bounceType: 'hard' | 'soft'; reason: string }> {}
+export interface SmsSentEvent extends DomainEvent<'SmsSent', { deliveryJobId: string; contactId: number; organizationId: number; provider: string }> {}
+export interface PushSentEvent extends DomainEvent<'PushSent', { deliveryJobId: string; contactId: number; organizationId: number; provider: string }> {}
 
 // Campaign Events
-export interface CampaignSentEvent extends DomainEvent<'CampaignSent', { campaignId: number; contactCount: number }> {}
-export interface PointsAwardedEvent extends DomainEvent<'PointsAwarded', { contactId: number; points: number }> {}
+export interface CampaignSentEvent extends DomainEvent<'CampaignSent', { campaignId: number; organizationId: number; contactCount: number }> {}
+export interface PointsAwardedEvent extends DomainEvent<'PointsAwarded', { contactId: number; organizationId: number; points: number }> {}
 
 // Content Events
-export interface FormSubmittedEvent extends DomainEvent<'FormSubmitted', { formId: number; submissionId: number; contactId?: number }> {}
-export interface PageVisitedEvent extends DomainEvent<'PageVisited', { pageId: number; contactId?: number }> {}
-export interface AssetDownloadedEvent extends DomainEvent<'AssetDownloaded', { assetId: number; contactId?: number }> {}
+export interface FormSubmittedEvent extends DomainEvent<'FormSubmitted', { formId: number; submissionId: number; organizationId: number; contactId?: number }> {}
+export interface PageVisitedEvent extends DomainEvent<'PageVisited', { pageId: number; organizationId: number; contactId?: number }> {}
+export interface AssetDownloadedEvent extends DomainEvent<'AssetDownloaded', { assetId: number; organizationId: number; contactId?: number }> {}
 
 // Identity Events
 export interface UserCreatedEvent extends DomainEvent<'UserCreated', { userId: number }> {}
+export interface OrgCreatedEvent extends DomainEvent<'OrgCreated', { organizationId: number; ownerId: number }> {}
+export interface MemberJoinedEvent extends DomainEvent<'MemberJoined', { organizationId: number; userId: number; role: string }> {}
+
+// Billing Events
+export interface SubscriptionCreatedEvent extends DomainEvent<'SubscriptionCreated', { organizationId: number; plan: string; stripeSubscriptionId: string }> {}
+export interface PlanUpgradedEvent extends DomainEvent<'PlanUpgraded', { organizationId: number; fromPlan: string; toPlan: string }> {}
+export interface QuotaExceededEvent extends DomainEvent<'QuotaExceeded', { organizationId: number; resource: string; limit: number; current: number }> {}
+export interface PaymentFailedEvent extends DomainEvent<'PaymentFailed', { organizationId: number; invoiceId: string }> {}
 
 export type Channel = 'email' | 'sms' | 'push' | 'webhook';
 
@@ -268,12 +372,15 @@ export type AnyDomainEvent =
   | SendMessageEvent | EmailSentEvent | EmailOpenedEvent | EmailClickedEvent | EmailBouncedEvent | SmsSentEvent | PushSentEvent
   | CampaignSentEvent | PointsAwardedEvent
   | FormSubmittedEvent | PageVisitedEvent | AssetDownloadedEvent
-  | UserCreatedEvent;
+  | UserCreatedEvent | OrgCreatedEvent | MemberJoinedEvent
+  | SubscriptionCreatedEvent | PlanUpgradedEvent | QuotaExceededEvent | PaymentFailedEvent;
 ```
 
-**Step 4: Create DeliveryProvider interface**
+**Step 6: Create DeliveryProvider interface**
 
 File: `packages/domain-kernel/src/delivery/provider.ts`
+
+(Same as v2, unchanged)
 
 ```typescript
 import type { Channel } from '../events/domain-event';
@@ -342,250 +449,141 @@ export interface DeliveryProvider<TChannel extends Channel> {
 }
 ```
 
-**Step 5: Create index files, build, commit**
+**Step 7: Create index files, build, commit**
 
 ```bash
 cd /Users/lsendel/Projects/mauntic3 && pnpm install && pnpm --filter @mauntic/domain-kernel build
-git add packages/domain-kernel/ && git commit -m "feat: add domain-kernel with value objects, events, and delivery provider interface"
+git add packages/domain-kernel/ && git commit -m "feat: add domain-kernel with errors, tenant context, versioned events, value objects, and delivery provider interface"
 ```
 
 ---
 
 ### Task 3: Create contracts Package
 
-Same as original plan Task 3, but add journey and delivery contract stubs:
-
-**Additional files:**
+**Files:**
+- Create: `packages/contracts/package.json`
+- Create: `packages/contracts/tsconfig.json`
+- Create: `packages/contracts/src/common.ts`
+- Create: `packages/contracts/src/identity.contract.ts`
+- Create: `packages/contracts/src/billing.contract.ts`
+- Create: `packages/contracts/src/crm.contract.ts`
 - Create: `packages/contracts/src/journey.contract.ts`
 - Create: `packages/contracts/src/delivery.contract.ts`
+- Create: `packages/contracts/src/index.ts`
 
-**Step 1-5:** Same as original plan (package.json, tsconfig, common schemas, identity contract, CRM contract)
+**Step 1: Create package.json**
 
-**Step 6: Create journey contract stub**
-
-File: `packages/contracts/src/journey.contract.ts`
-
-```typescript
-import { initContract } from '@ts-rest/core';
-import { z } from 'zod';
-import { PaginationQuerySchema, PaginatedResponseSchema, ErrorSchema, IdParamSchema } from './common';
-
-const c = initContract();
-
-export const JourneyStepTypeSchema = z.enum([
-  'action_email', 'action_sms', 'action_push', 'action_webhook', 'action_update_contact',
-  'delay_duration', 'delay_until', 'delay_event',
-  'split_random', 'split_conditional', 'gate', 'exit',
-]);
-
-export const JourneySchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  description: z.string().nullable(),
-  status: z.enum(['draft', 'published', 'paused', 'archived']),
-  currentVersionId: z.number().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-
-export const JourneyStepSchema = z.object({
-  id: z.string(),
-  type: JourneyStepTypeSchema,
-  name: z.string(),
-  config: z.record(z.unknown()),
-  nextStepIds: z.array(z.string()),
-  position: z.object({ x: z.number(), y: z.number() }),
-});
-
-export const JourneyVersionSchema = z.object({
-  id: z.number(),
-  journeyId: z.number(),
-  version: z.number(),
-  steps: z.array(JourneyStepSchema),
-  triggers: z.array(z.record(z.unknown())),
-  publishedAt: z.string(),
-});
-
-export const CreateJourneySchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-});
-
-export const journeyContract = c.router({
-  list: {
-    method: 'GET',
-    path: '/api/journey/journeys',
-    query: PaginationQuerySchema,
-    responses: { 200: PaginatedResponseSchema(JourneySchema) },
+```json
+{
+  "name": "@mauntic/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "@ts-rest/core": "^3.51.0",
+    "zod": "^3.23.0",
+    "@mauntic/domain-kernel": "workspace:*"
   },
-  get: {
-    method: 'GET',
-    path: '/api/journey/journeys/:id',
-    pathParams: IdParamSchema,
-    responses: { 200: JourneySchema.extend({ versions: z.array(JourneyVersionSchema) }), 404: ErrorSchema },
-  },
-  create: {
-    method: 'POST',
-    path: '/api/journey/journeys',
-    body: CreateJourneySchema,
-    responses: { 201: JourneySchema, 400: ErrorSchema },
-  },
-  publish: {
-    method: 'POST',
-    path: '/api/journey/journeys/:id/publish',
-    pathParams: IdParamSchema,
-    body: z.object({ steps: z.array(JourneyStepSchema), triggers: z.array(z.record(z.unknown())) }),
-    responses: { 200: JourneyVersionSchema, 400: ErrorSchema, 404: ErrorSchema },
-  },
-  pause: {
-    method: 'POST',
-    path: '/api/journey/journeys/:id/pause',
-    pathParams: IdParamSchema,
-    body: z.object({}).optional(),
-    responses: { 200: JourneySchema, 404: ErrorSchema },
-  },
-  executions: {
-    method: 'GET',
-    path: '/api/journey/journeys/:id/executions',
-    pathParams: IdParamSchema,
-    query: PaginationQuerySchema,
-    responses: { 200: PaginatedResponseSchema(z.object({
-      id: z.string(),
-      contactId: z.number(),
-      currentStepId: z.string().nullable(),
-      status: z.enum(['running', 'completed', 'failed', 'exited']),
-      startedAt: z.string(),
-      completedAt: z.string().nullable(),
-    })) },
-  },
-});
+  "devDependencies": { "typescript": "^5.7.0" }
+}
 ```
 
-**Step 7: Create delivery contract stub**
+**Step 2: Create common schemas** (PaginationQuery, PaginatedResponse, Error, IdParam)
 
-File: `packages/contracts/src/delivery.contract.ts`
+**Step 3: Create identity contract** (users, orgs, org members, invites, auth)
+
+**Step 4: Create billing contract stub**
+
+File: `packages/contracts/src/billing.contract.ts`
 
 ```typescript
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
-import { PaginationQuerySchema, PaginatedResponseSchema, ErrorSchema, IdParamSchema } from './common';
+import { ErrorSchema, IdParamSchema } from './common';
 
 const c = initContract();
 
-export const ProviderConfigSchema = z.object({
+export const PlanSchema = z.object({
   id: z.number(),
-  channel: z.enum(['email', 'sms', 'push']),
-  providerName: z.string(),
-  isActive: z.boolean(),
-  isDefault: z.boolean(),
-  config: z.record(z.unknown()),
-  createdAt: z.string(),
+  name: z.enum(['free', 'starter', 'pro', 'enterprise']),
+  displayName: z.string(),
+  priceMonthly: z.number(),
+  priceYearly: z.number(),
+  limits: z.record(z.number()),
 });
 
-export const DeliveryJobSchema = z.object({
+export const SubscriptionSchema = z.object({
   id: z.string(),
-  channel: z.enum(['email', 'sms', 'push']),
-  contactId: z.number(),
-  templateId: z.number(),
-  providerName: z.string().nullable(),
-  status: z.enum(['queued', 'sent', 'delivered', 'bounced', 'failed']),
-  externalId: z.string().nullable(),
-  attempts: z.number(),
-  createdAt: z.string(),
-  sentAt: z.string().nullable(),
+  organizationId: z.number(),
+  plan: z.enum(['free', 'starter', 'pro', 'enterprise']),
+  status: z.enum(['active', 'canceled', 'past_due', 'trialing']),
+  currentPeriodEnd: z.string(),
+  stripeCustomerId: z.string().nullable(),
+  stripeSubscriptionId: z.string().nullable(),
 });
 
-export const SuppressionEntrySchema = z.object({
-  id: z.number(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  channel: z.enum(['email', 'sms', 'push']),
-  reason: z.enum(['hard_bounce', 'complaint', 'unsubscribe', 'manual']),
-  createdAt: z.string(),
+export const UsageSchema = z.object({
+  resource: z.string(),
+  current: z.number(),
+  limit: z.number(),
+  resetAt: z.string().nullable(),
 });
 
-export const WarmupScheduleSchema = z.object({
-  id: z.number(),
-  domain: z.string(),
-  ipAddress: z.string().nullable(),
-  currentDay: z.number(),
-  dailyLimit: z.number(),
-  sentToday: z.number(),
-  isActive: z.boolean(),
-});
-
-export const deliveryContract = c.router({
-  providers: {
+export const billingContract = c.router({
+  plans: {
     list: {
       method: 'GET',
-      path: '/api/delivery/providers',
-      responses: { 200: z.array(ProviderConfigSchema) },
+      path: '/api/v1/billing/plans',
+      responses: { 200: z.array(PlanSchema) },
+    },
+  },
+  subscription: {
+    get: {
+      method: 'GET',
+      path: '/api/v1/billing/subscription',
+      responses: { 200: SubscriptionSchema },
     },
     create: {
       method: 'POST',
-      path: '/api/delivery/providers',
-      body: z.object({
-        channel: z.enum(['email', 'sms', 'push']),
-        providerName: z.string(),
-        config: z.record(z.unknown()),
-        isDefault: z.boolean().optional(),
-      }),
-      responses: { 201: ProviderConfigSchema, 400: ErrorSchema },
+      path: '/api/v1/billing/subscription',
+      body: z.object({ plan: z.enum(['starter', 'pro', 'enterprise']), paymentMethodId: z.string().optional() }),
+      responses: { 201: SubscriptionSchema, 400: ErrorSchema },
     },
     update: {
       method: 'PATCH',
-      path: '/api/delivery/providers/:id',
-      pathParams: IdParamSchema,
-      body: z.object({ config: z.record(z.unknown()), isActive: z.boolean().optional(), isDefault: z.boolean().optional() }),
-      responses: { 200: ProviderConfigSchema, 404: ErrorSchema },
+      path: '/api/v1/billing/subscription',
+      body: z.object({ plan: z.enum(['free', 'starter', 'pro', 'enterprise']) }),
+      responses: { 200: SubscriptionSchema, 400: ErrorSchema },
     },
-  },
-  jobs: {
-    list: {
-      method: 'GET',
-      path: '/api/delivery/jobs',
-      query: PaginationQuerySchema.extend({ channel: z.enum(['email', 'sms', 'push']).optional(), status: z.string().optional() }),
-      responses: { 200: PaginatedResponseSchema(DeliveryJobSchema) },
-    },
-  },
-  suppressions: {
-    list: {
-      method: 'GET',
-      path: '/api/delivery/suppressions',
-      query: PaginationQuerySchema.extend({ channel: z.enum(['email', 'sms', 'push']).optional() }),
-      responses: { 200: PaginatedResponseSchema(SuppressionEntrySchema) },
-    },
-    add: {
-      method: 'POST',
-      path: '/api/delivery/suppressions',
-      body: z.object({ email: z.string().optional(), phone: z.string().optional(), channel: z.enum(['email', 'sms', 'push']), reason: z.enum(['manual']) }),
-      responses: { 201: SuppressionEntrySchema },
-    },
-    remove: {
+    cancel: {
       method: 'DELETE',
-      path: '/api/delivery/suppressions/:id',
-      pathParams: IdParamSchema,
+      path: '/api/v1/billing/subscription',
       body: z.any().optional(),
-      responses: { 204: z.void() },
+      responses: { 200: SubscriptionSchema },
     },
   },
-  warmup: {
-    list: {
+  usage: {
+    get: {
       method: 'GET',
-      path: '/api/delivery/warmup',
-      responses: { 200: z.array(WarmupScheduleSchema) },
+      path: '/api/v1/billing/usage',
+      responses: { 200: z.array(UsageSchema) },
     },
+  },
+  portal: {
     create: {
       method: 'POST',
-      path: '/api/delivery/warmup',
-      body: z.object({ domain: z.string(), ipAddress: z.string().optional() }),
-      responses: { 201: WarmupScheduleSchema },
+      path: '/api/v1/billing/portal',
+      body: z.object({}).optional(),
+      responses: { 200: z.object({ url: z.string() }) },
     },
   },
-  tracking: {
-    webhook: {
+  webhook: {
+    handle: {
       method: 'POST',
-      path: '/api/delivery/tracking/:provider',
+      path: '/api/v1/billing/webhook',
       body: z.any(),
       responses: { 200: z.object({ received: z.boolean() }) },
     },
@@ -593,32 +591,235 @@ export const deliveryContract = c.router({
 });
 ```
 
+**Step 5: Create CRM contract** with /api/v1/ prefix
+
+**Step 6: Create journey contract** with /api/v1/ prefix (same schemas as v2 but with versioned paths)
+
+**Step 7: Create delivery contract** with /api/v1/ prefix (same schemas as v2 but with versioned paths)
+
 **Step 8: Update root index, build, commit**
-
-File: `packages/contracts/src/index.ts`
-
-```typescript
-export { identityContract, UserSchema } from './identity.contract';
-export { crmContract, ContactSchema, CreateContactSchema, UpdateContactSchema } from './crm.contract';
-export { journeyContract, JourneySchema, JourneyStepSchema, JourneyVersionSchema } from './journey.contract';
-export { deliveryContract, ProviderConfigSchema, DeliveryJobSchema, SuppressionEntrySchema, WarmupScheduleSchema } from './delivery.contract';
-export { PaginationQuerySchema, PaginatedResponseSchema, ErrorSchema, IdParamSchema } from './common';
-```
 
 ```bash
 pnpm install && pnpm --filter @mauntic/contracts build
-git add packages/contracts/ && git commit -m "feat: add contracts with journey, delivery, CRM, and identity ts-rest contracts"
+git add packages/contracts/ && git commit -m "feat: add contracts with billing, journey, delivery, CRM, and identity ts-rest contracts (v1 API)"
 ```
 
 ---
 
 ### Task 4: Create worker-lib Package
 
-Same as original plan Task 4. No changes needed.
+**Files:**
+- Create: `packages/worker-lib/package.json`
+- Create: `packages/worker-lib/tsconfig.json`
+- Create: `packages/worker-lib/src/index.ts`
+- Create: `packages/worker-lib/src/middleware/error-handler.ts`
+- Create: `packages/worker-lib/src/middleware/logging.ts`
+- Create: `packages/worker-lib/src/middleware/tenant.ts`
+- Create: `packages/worker-lib/src/middleware/csrf.ts`
+- Create: `packages/worker-lib/src/middleware/circuit-breaker.ts`
+- Create: `packages/worker-lib/src/middleware/cors.ts`
+- Create: `packages/worker-lib/src/hyperdrive/database.ts`
+- Create: `packages/worker-lib/src/queue/publisher.ts`
+- Create: `packages/worker-lib/src/queue/consumer.ts`
+- Create: `packages/worker-lib/src/transaction/unit-of-work.ts`
+
+**Step 1: Create package.json**
+
+```json
+{
+  "name": "@mauntic/worker-lib",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "drizzle-orm": "^0.38.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "@mauntic/domain-kernel": "workspace:*",
+    "pino": "^9.0.0"
+  },
+  "devDependencies": { "typescript": "^5.7.0", "@cloudflare/workers-types": "^4.0.0" }
+}
+```
+
+**Step 2: Create error handler middleware**
+
+```typescript
+// packages/worker-lib/src/middleware/error-handler.ts
+import { DomainError } from '@mauntic/domain-kernel/errors';
+
+export function errorHandler() {
+  return async (c, next) => {
+    try {
+      await next();
+    } catch (err) {
+      const requestId = c.get('requestId') ?? 'unknown';
+      if (err instanceof DomainError) {
+        return c.json({ error: err.code, message: err.message, details: err.details, requestId }, err.statusCode);
+      }
+      c.get('logger')?.error({ err, requestId }, 'Unhandled error');
+      return c.json({ error: 'INTERNAL_ERROR', message: 'An unexpected error occurred', requestId }, 500);
+    }
+  };
+}
+```
+
+**Step 3: Create tenant context middleware**
+
+```typescript
+// packages/worker-lib/src/middleware/tenant.ts
+import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+
+export function tenantMiddleware() {
+  return async (c, next) => {
+    const header = c.req.header('X-Tenant-Context');
+    if (!header) return c.json({ error: 'MISSING_TENANT' }, 400);
+    const tenant: TenantContext = JSON.parse(header);
+    c.set('tenant', tenant);
+    await next();
+  };
+}
+```
+
+**Step 4: Create CSRF middleware**
+
+```typescript
+// packages/worker-lib/src/middleware/csrf.ts
+export function csrfMiddleware(kv: KVNamespace) {
+  return async (c, next) => {
+    const method = c.req.method;
+    if (['GET', 'HEAD', 'OPTIONS'].includes(method)) return next();
+    // API key auth is exempt from CSRF
+    if (c.req.header('Authorization')?.startsWith('Bearer ')) return next();
+    const token = c.req.header('X-CSRF-Token');
+    const sessionId = c.get('sessionId');
+    if (!token || !sessionId) return c.json({ error: 'CSRF_TOKEN_REQUIRED' }, 403);
+    const stored = await kv.get(`csrf:${sessionId}`);
+    if (stored !== token) return c.json({ error: 'CSRF_TOKEN_INVALID' }, 403);
+    await next();
+  };
+}
+```
+
+**Step 5: Create circuit breaker**
+
+```typescript
+// packages/worker-lib/src/middleware/circuit-breaker.ts
+// States: CLOSED → OPEN → HALF_OPEN
+// Tracked in KV per service endpoint
+// Threshold: 5 failures in 60s → OPEN for 30s
+export class CircuitBreaker {
+  constructor(private kv: KVNamespace, private service: string) {}
+
+  async call<T>(fn: () => Promise<T>): Promise<T> {
+    const state = await this.kv.get(`cb:${this.service}`);
+    if (state === 'open') {
+      const openedAt = await this.kv.get(`cb:${this.service}:opened`);
+      if (openedAt && Date.now() - Number(openedAt) < 30_000) {
+        throw new DomainError('SERVICE_UNAVAILABLE', `${this.service} is temporarily unavailable`, 503);
+      }
+      // Half-open: try one request
+    }
+    try {
+      const result = await fn();
+      await this.kv.delete(`cb:${this.service}`);
+      return result;
+    } catch (err) {
+      await this.recordFailure();
+      throw err;
+    }
+  }
+
+  private async recordFailure() {
+    const key = `cb:${this.service}:failures`;
+    const count = Number(await this.kv.get(key) ?? 0) + 1;
+    await this.kv.put(key, String(count), { expirationTtl: 60 });
+    if (count >= 5) {
+      await this.kv.put(`cb:${this.service}`, 'open', { expirationTtl: 60 });
+      await this.kv.put(`cb:${this.service}:opened`, String(Date.now()), { expirationTtl: 60 });
+    }
+  }
+}
+```
+
+**Step 6: Create transaction wrapper (unit of work with RLS)**
+
+```typescript
+// packages/worker-lib/src/transaction/unit-of-work.ts
+import { sql } from 'drizzle-orm';
+import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+
+export async function withTransaction<T>(
+  db: DrizzleInstance,
+  tenantContext: TenantContext,
+  fn: (tx: DrizzleTransaction) => Promise<T>,
+): Promise<T> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SET LOCAL app.organization_id = ${tenantContext.organizationId}`);
+    return fn(tx);
+  });
+}
+```
+
+**Step 7: Create queue consumer with idempotency**
+
+```typescript
+// packages/worker-lib/src/queue/consumer.ts
+export function createIdempotentConsumer<T>(
+  handler: (message: T, ctx: TenantContext) => Promise<void>,
+  kv: KVNamespace,
+) {
+  return async (batch: MessageBatch<T>) => {
+    for (const msg of batch.messages) {
+      const idempotencyKey = `idem:${msg.id}`;
+      const existing = await kv.get(idempotencyKey);
+      if (existing) { msg.ack(); continue; }
+      try {
+        const data = msg.body as any;
+        await handler(data, data.metadata?.tenantContext ?? data.tenantContext);
+        await kv.put(idempotencyKey, '1', { expirationTtl: 86400 }); // 24h TTL
+        msg.ack();
+      } catch (err) {
+        msg.retry();
+      }
+    }
+  };
+}
+```
+
+**Step 8: Create logging middleware**
+
+```typescript
+// packages/worker-lib/src/middleware/logging.ts
+import pino from 'pino';
+
+export function loggingMiddleware(serviceName: string) {
+  return async (c, next) => {
+    const requestId = c.req.header('X-Request-Id') ?? crypto.randomUUID();
+    const logger = pino({ level: 'info', base: { service: serviceName, requestId } });
+    c.set('requestId', requestId);
+    c.set('logger', logger);
+    c.header('X-Request-Id', requestId);
+    const start = Date.now();
+    await next();
+    logger.info({ method: c.req.method, path: c.req.path, status: c.res.status, duration: Date.now() - start }, 'request');
+  };
+}
+```
+
+**Step 9: Build, commit**
+
+```bash
+pnpm install && pnpm --filter @mauntic/worker-lib build
+git add packages/worker-lib/ && git commit -m "feat: add worker-lib with error handling, tenant context, CSRF, circuit breaker, idempotent consumers, and logging"
+```
 
 ---
 
-### Task 5: Create process-lib Package (NEW)
+### Task 5: Create process-lib Package
 
 **Files:**
 - Create: `packages/process-lib/package.json`
@@ -628,6 +829,8 @@ Same as original plan Task 4. No changes needed.
 - Create: `packages/process-lib/src/redis/connection.ts`
 - Create: `packages/process-lib/src/scheduler/cron.ts`
 - Create: `packages/process-lib/src/health/server.ts`
+- Create: `packages/process-lib/src/database/connection.ts`
+- Create: `packages/process-lib/src/database/transaction.ts`
 
 **Step 1: Create package.json**
 
@@ -643,49 +846,29 @@ Same as original plan Task 4. No changes needed.
     ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
     "./bullmq": { "import": "./dist/bullmq/job-processor.js", "types": "./dist/bullmq/job-processor.d.ts" },
     "./redis": { "import": "./dist/redis/connection.js", "types": "./dist/redis/connection.d.ts" },
-    "./health": { "import": "./dist/health/server.js", "types": "./dist/health/server.d.ts" }
+    "./health": { "import": "./dist/health/server.js", "types": "./dist/health/server.d.ts" },
+    "./database": { "import": "./dist/database/connection.js", "types": "./dist/database/connection.d.ts" },
+    "./scheduler": { "import": "./dist/scheduler/cron.js", "types": "./dist/scheduler/cron.d.ts" }
   },
   "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
   "dependencies": {
     "bullmq": "^5.0.0",
     "ioredis": "^5.4.0",
+    "drizzle-orm": "^0.38.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "pino": "^9.0.0",
     "@mauntic/domain-kernel": "workspace:*"
   },
   "devDependencies": { "typescript": "^5.7.0" }
 }
 ```
 
-**Step 2: Create Redis connection helper**
+**Step 2: Create Redis connection helper** (same as v2)
 
-File: `packages/process-lib/src/redis/connection.ts`
-
-```typescript
-import Redis from 'ioredis';
-
-let redisInstance: Redis | null = null;
-
-export function getRedis(url?: string): Redis {
-  if (!redisInstance) {
-    redisInstance = new Redis(url ?? process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: null,
-    });
-  }
-  return redisInstance;
-}
-
-export async function closeRedis(): Promise<void> {
-  if (redisInstance) {
-    await redisInstance.quit();
-    redisInstance = null;
-  }
-}
-```
-
-**Step 3: Create BullMQ job processor base**
-
-File: `packages/process-lib/src/bullmq/job-processor.ts`
+**Step 3: Create BullMQ job processor with idempotency**
 
 ```typescript
+// packages/process-lib/src/bullmq/job-processor.ts
 import { Worker, Queue, type Job } from 'bullmq';
 import { getRedis } from '../redis/connection';
 
@@ -705,7 +888,16 @@ export function createWorker<TData>(
 ): Worker<TData> {
   return new Worker<TData>(
     queueName,
-    async (job) => handler.process(job),
+    async (job) => {
+      // Idempotency: check if job was already processed
+      const redis = getRedis();
+      const idempotencyKey = `idem:${queueName}:${job.id}`;
+      const existing = await redis.get(idempotencyKey);
+      if (existing) return; // Already processed
+      const result = await handler.process(job);
+      await redis.setex(idempotencyKey, 86400, '1'); // 24h TTL
+      return result;
+    },
     {
       connection: getRedis(),
       concurrency: handler.concurrency ?? 5,
@@ -714,55 +906,89 @@ export function createWorker<TData>(
 }
 ```
 
-**Step 4: Create health check server**
-
-File: `packages/process-lib/src/health/server.ts`
+**Step 4: Create Neon pooler connection for Fly.io**
 
 ```typescript
-import { createServer } from 'node:http';
+// packages/process-lib/src/database/connection.ts
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 
-export function startHealthServer(port = 8080): void {
-  const server = createServer((req, res) => {
-    if (req.url === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
-    } else {
-      res.writeHead(404);
-      res.end();
-    }
-  });
-  server.listen(port, () => console.log(`Health server on :${port}`));
+let dbInstance: ReturnType<typeof drizzle> | null = null;
+
+export function getDb(poolerUrl?: string) {
+  if (!dbInstance) {
+    const sql = neon(poolerUrl ?? process.env.DATABASE_POOLER_URL!);
+    dbInstance = drizzle(sql);
+  }
+  return dbInstance;
 }
 ```
 
-**Step 5: Create index, build, commit**
+**Step 5: Create transaction wrapper for Fly.io (with RLS)**
 
 ```typescript
-// packages/process-lib/src/index.ts
-export { createQueue, createWorker, type JobHandler } from './bullmq/job-processor';
-export { getRedis, closeRedis } from './redis/connection';
-export { startHealthServer } from './health/server';
+// packages/process-lib/src/database/transaction.ts
+import { sql } from 'drizzle-orm';
+import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+
+export async function withTransaction<T>(
+  db: any,
+  tenantContext: TenantContext,
+  fn: (tx: any) => Promise<T>,
+): Promise<T> {
+  return db.transaction(async (tx: any) => {
+    await tx.execute(sql`SET LOCAL app.organization_id = ${tenantContext.organizationId}`);
+    return fn(tx);
+  });
+}
 ```
+
+**Step 6: Create cron scheduler**
+
+```typescript
+// packages/process-lib/src/scheduler/cron.ts
+import { Queue } from 'bullmq';
+import { getRedis } from '../redis/connection';
+
+export interface ScheduledJob {
+  name: string;
+  pattern: string; // cron pattern
+  data?: Record<string, unknown>;
+}
+
+export async function registerScheduledJobs(queueName: string, jobs: ScheduledJob[]): Promise<Queue> {
+  const queue = new Queue(queueName, { connection: getRedis() });
+  for (const job of jobs) {
+    await queue.upsertJobScheduler(job.name, { pattern: job.pattern }, { data: job.data ?? {} });
+  }
+  return queue;
+}
+```
+
+**Step 7: Create health check server** (same as v2)
+
+**Step 8: Build, commit**
 
 ```bash
 pnpm install && pnpm --filter @mauntic/process-lib build
-git add packages/process-lib/ && git commit -m "feat: add process-lib with BullMQ, Redis, and health check utilities for Fly.io"
+git add packages/process-lib/ && git commit -m "feat: add process-lib with idempotent BullMQ, Neon pooler connection, RLS transactions, cron scheduler, and health check"
 ```
 
 ---
 
 ### Task 6: Create ui-kit Package
 
-Same as original plan Task 5. No changes.
+Same as v2 plan. Create layouts, components, styles directories. Include Tailwind CSS setup.
 
 ---
 
-### Task 7: Create Domain Packages Structure (NEW)
+### Task 7: Create Domain Packages Structure
 
-Create the empty domain package scaffolding for all 8 domain contexts.
+Create the empty domain package scaffolding for all 9 domain contexts (added billing-domain).
 
-**Files:** Create package.json, tsconfig.json, and src/ directory for each:
+**Packages:**
 - `packages/domains/identity-domain/`
+- `packages/domains/billing-domain/` (NEW)
 - `packages/domains/crm-domain/`
 - `packages/domains/journey-domain/`
 - `packages/domains/campaign-domain/`
@@ -771,533 +997,815 @@ Create the empty domain package scaffolding for all 8 domain contexts.
 - `packages/domains/analytics-domain/`
 - `packages/domains/integrations-domain/`
 
-**Step 1: Create a template package.json** (repeat for each domain)
+Each package contains:
+```
+src/
+├── entities/         # Aggregate roots and entities
+├── value-objects/    # Value objects
+├── events/           # Context-specific event factories
+├── repositories/     # Port interfaces (always accept organizationId)
+├── services/         # Pure domain services (no side effects)
+├── application/      # Application services (orchestration, side effects)
+├── commands/         # Command definitions
+├── queries/          # Query definitions
+├── event-handlers/   # Cross-context event consumers
+├── acl/              # Anti-Corruption Layer translators
+└── index.ts
+drizzle/
+├── schema.ts         # Single source of truth for this context's schema
+└── migrations/
+```
+
+Template package.json for each:
 
 ```json
 {
-  "name": "@mauntic/crm-domain",
+  "name": "@mauntic/<context>-domain",
   "version": "0.0.1",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest" },
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./drizzle": { "import": "./drizzle/schema.js", "types": "./drizzle/schema.d.ts" }
+  },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit", "test": "vitest", "db:generate": "drizzle-kit generate" },
   "dependencies": {
     "@mauntic/domain-kernel": "workspace:*",
+    "drizzle-orm": "^0.38.0",
     "zod": "^3.23.0"
   },
-  "devDependencies": { "typescript": "^5.7.0", "vitest": "^3.0.0" }
+  "devDependencies": { "typescript": "^5.7.0", "vitest": "^3.0.0", "drizzle-kit": "^0.30.0" }
 }
 ```
 
-**Step 2: Create directory structure for each** (using crm-domain as example)
-
-```
-packages/domains/crm-domain/src/
-├── entities/         # .gitkeep
-├── value-objects/    # .gitkeep
-├── events/           # .gitkeep
-├── repositories/     # .gitkeep
-├── services/         # .gitkeep
-├── commands/         # .gitkeep
-├── queries/          # .gitkeep
-├── event-handlers/   # .gitkeep
-└── index.ts          # export {}
-```
-
-**Step 3: Commit**
-
+**Commit:**
 ```bash
-git add packages/domains/ && git commit -m "feat: scaffold 8 domain packages with DDD directory structure"
+git add packages/domains/ && git commit -m "feat: scaffold 9 domain packages with DDD directory structure including ACL and application layers"
 ```
 
 ---
 
-### Task 8: Create Gateway Worker
-
-Same as original plan Task 6, with updated Service Binding stubs for Journey and Delivery Workers.
-
----
-
-### Task 9: Create Identity Worker
-
-Same as original plan Task 7. Port Better Auth from KMT.
-
----
-
-### Task 10: Create CRM Worker Skeleton
-
-Same as original plan Task 8, but domain logic goes in `packages/domains/crm-domain/` and Workers only contain infrastructure + interface.
-
-**Key difference from original plan:** The domain entities, repositories, and commands/queries live in `packages/domains/crm-domain/src/`. The Worker at `workers/crm/src/` only has `infrastructure/` (Drizzle repos, queue publishers) and `interface/` (Hono routes, HTMX partials).
-
----
-
-### Task 11: Create Journey Worker Skeleton (NEW)
+### Task 8: Set Up Local Development Environment
 
 **Files:**
-- Create: `workers/journey/package.json`
-- Create: `workers/journey/tsconfig.json`
-- Create: `workers/journey/wrangler.toml`
-- Create: `workers/journey/src/app.ts`
-- Create: `workers/journey/src/index.ts`
-- Create: `workers/journey/drizzle/schema.ts`
+- Create: `docker-compose.dev.yml`
+- Create: `scripts/init-schemas.ts`
+- Create: `scripts/migrate-all.ts`
+- Create: `scripts/seed.ts`
 
-**Step 1:** Follow same pattern as CRM Worker skeleton. Drizzle schema uses `pgSchema('journey')` with tables: journeys, journey_versions, journey_steps, journey_triggers, journey_executions, step_executions, execution_logs.
+**Step 1: Create docker-compose.dev.yml**
 
-**Step 2: Commit**
+```yaml
+services:
+  postgres:
+    image: postgres:16
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_DB: mauntic_dev
+      POSTGRES_USER: mauntic
+      POSTGRES_PASSWORD: mauntic
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mauntic"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+  redisdata:
+```
+
+**Step 2: Create schema initialization script**
+
+File: `scripts/init-schemas.ts`
+
+```typescript
+import { neon } from '@neondatabase/serverless';
+
+const schemas = ['identity', 'billing', 'crm', 'journey', 'campaign', 'delivery', 'content', 'analytics', 'integrations'];
+
+async function initSchemas() {
+  const sql = neon(process.env.DATABASE_URL!);
+
+  for (const schema of schemas) {
+    await sql`CREATE SCHEMA IF NOT EXISTS ${sql(schema)}`;
+    console.log(`Created schema: ${schema}`);
+  }
+
+  // RLS policies are created after tables exist (run after migrations)
+  console.log('All schemas created. Run migrations next, then apply RLS.');
+}
+
+initSchemas().catch(console.error);
+```
+
+**Step 3: Create migration orchestrator**
+
+File: `scripts/migrate-all.ts`
+
+```typescript
+// Runs all context migrations in dependency order:
+// 1. identity (no deps)
+// 2. billing (depends on identity.organizations)
+// 3. crm, content, campaign (depend on identity)
+// 4. delivery (depends on crm for contact refs)
+// 5. journey (depends on crm, delivery)
+// 6. analytics, integrations (depend on all above)
+const migrationOrder = [
+  'identity-domain', 'billing-domain', 'crm-domain', 'content-domain',
+  'campaign-domain', 'delivery-domain', 'journey-domain',
+  'analytics-domain', 'integrations-domain',
+];
+
+async function migrateAll() {
+  for (const domain of migrationOrder) {
+    console.log(`Migrating ${domain}...`);
+    // Run drizzle-kit migrate for each domain package
+  }
+}
+```
+
+**Step 4: Create seed script stub**
+
+```typescript
+// scripts/seed.ts
+// Creates: demo org, admin user, sample contacts, sample journey
+```
+
+**Step 5: Commit**
 
 ```bash
-git add workers/journey/ && git commit -m "feat: add Journey Worker skeleton with DDD structure"
+git add docker-compose.dev.yml scripts/ && git commit -m "feat: add local dev setup with docker-compose, schema init, migration orchestrator, and seed script"
 ```
 
 ---
 
-### Task 12: Create Delivery Worker Skeleton (NEW)
+### Task 9: Set Up Neon Postgres with Schemas and RLS
+
+**Step 1: Provision Neon project** (manual or via Neon CLI)
+
+**Step 2: Run schema initialization**
+```bash
+DATABASE_URL=<neon-url> npx tsx scripts/init-schemas.ts
+```
+
+**Step 3: Create RLS policy application script**
+
+File: `scripts/apply-rls.ts`
+
+```typescript
+// Runs after migrations — enables RLS on all tables with organization_id
+// Skips identity.users, identity.sessions, identity.accounts, identity.verification
+// Creates tenant_isolation policy on all other tables
+```
+
+**Step 4: Commit**
+
+```bash
+git add scripts/apply-rls.ts && git commit -m "feat: add RLS policy application script for tenant isolation"
+```
+
+---
+
+### Task 10: Create Gateway Worker
 
 **Files:**
-- Create: `workers/delivery/package.json`
-- Create: `workers/delivery/tsconfig.json`
-- Create: `workers/delivery/wrangler.toml`
-- Create: `workers/delivery/src/app.ts`
-- Create: `workers/delivery/src/index.ts`
-- Create: `workers/delivery/drizzle/schema.ts`
+- Create: `workers/gateway/package.json`
+- Create: `workers/gateway/tsconfig.json`
+- Create: `workers/gateway/wrangler.toml`
+- Create: `workers/gateway/src/app.ts`
+- Create: `workers/gateway/src/index.ts`
+- Create: `workers/gateway/src/middleware/auth.ts`
+- Create: `workers/gateway/src/middleware/tenant.ts`
+- Create: `workers/gateway/src/middleware/rate-limit.ts`
 
-Drizzle schema uses `pgSchema('delivery')` with tables: delivery_jobs, delivery_attempts, provider_configs, email_templates, sms_templates, push_templates, tracking_events, suppression_list, warmup_schedules, warmup_days, sending_ips.
+Gateway Worker responsibilities:
+1. CORS middleware
+2. Logging middleware (generates X-Request-Id)
+3. Auth middleware (calls Identity Worker via Service Binding, extracts user + org)
+4. Tenant context middleware (constructs TenantContext, sets X-Tenant-Context header)
+5. CSRF middleware (validates on mutating requests)
+6. Rate limiting middleware (checks plan-based limits in KV)
+7. Routes to domain Workers via Service Bindings
+8. Serves HTMX page shell for `/app/*`
 
+wrangler.toml includes:
+- Service Bindings to all domain Workers
+- KV namespace for sessions, CSRF, rate limits
+- Hyperdrive binding (not used directly, but available)
+
+**Commit:**
 ```bash
-git add workers/delivery/ && git commit -m "feat: add Delivery Worker skeleton with provider config and suppression schemas"
+git add workers/gateway/ && git commit -m "feat: add Gateway Worker with auth, tenant context, CSRF, rate limiting, and service binding routing"
 ```
 
 ---
 
-### Task 13: Create Remaining Worker Skeletons
+### Task 11: Create Identity Worker (Port from KMT)
+
+Port Better Auth from `/Users/lsendel/Projects/knowledge-management-tool`:
+- Per-request Better Auth instance (required for CF Workers)
+- Google + GitHub OAuth
+- Session-based auth with HTTP-only cookies
+- Custom user fields: role, isBlocked, lastSignedIn, loginMethod
+- Organizations: create, invite, join, switch active
+- Org members: roles (owner, admin, member, viewer)
+- Drizzle schema in `packages/domains/identity-domain/drizzle/schema.ts`
+
+**Key files to reference from KMT:**
+- `server/infrastructure/better-auth.ts` — auth config
+- `server/infrastructure/auth.ts` — middleware
+- `server/infrastructure/hono-adapter.ts` — route handler wrapper (`createRoute`)
+- `drizzle/schema.ts` — tables (users, sessions, accounts, organizations, org_members)
+- `shared/contracts/identity.contract.ts` — contract patterns
+
+**Commit:**
+```bash
+git add packages/domains/identity-domain/ workers/identity/ && git commit -m "feat: add Identity context with Better Auth, organizations, and role-based access control"
+```
+
+---
+
+### Task 12: Create Billing Worker + Domain
+
+**Files:**
+- `packages/domains/billing-domain/drizzle/schema.ts` (subscriptions, usage_records, invoices, plans, plan_limits)
+- `packages/domains/billing-domain/src/entities/subscription.ts`
+- `packages/domains/billing-domain/src/entities/usage-record.ts`
+- `packages/domains/billing-domain/src/entities/plan.ts`
+- `packages/domains/billing-domain/src/services/quota-checker.ts`
+- `packages/domains/billing-domain/src/application/stripe-webhook-handler.ts`
+- `packages/domains/billing-domain/src/application/subscription-manager.ts`
+- `workers/billing/` (wrangler.toml, app.ts, index.ts, infrastructure/, interface/)
+
+Billing schema (all in `billing` Postgres schema):
+- `plans`: id, name, display_name, price_monthly, price_yearly, is_active
+- `plan_limits`: id, plan_id, resource, limit_value (-1 = unlimited)
+- `subscriptions`: id, organization_id, plan_id, status, stripe_customer_id, stripe_subscription_id, current_period_start, current_period_end, trial_end
+- `usage_records`: id, organization_id, resource, period_start, period_end, current_value
+- `invoices`: id, organization_id, stripe_invoice_id, amount, status, period_start, period_end, paid_at
+
+Stripe webhook handler processes: `invoice.paid`, `invoice.payment_failed`, `customer.subscription.created/updated/deleted`, `checkout.session.completed`
+
+QuotaChecker is called by other contexts before resource-consuming operations.
+
+**Commit:**
+```bash
+git add packages/domains/billing-domain/ workers/billing/ && git commit -m "feat: add Billing context with Stripe subscriptions, usage metering, and quota enforcement"
+```
+
+---
+
+### Task 13: Create CRM Worker Skeleton
+
+Domain logic in `packages/domains/crm-domain/`. Worker at `workers/crm/` only has infrastructure + interface.
+
+Schema in `packages/domains/crm-domain/drizzle/schema.ts`:
+- All tables include `organization_id` column
+- Indexes on `(organization_id, email)`, `(organization_id, updated_at)` etc.
+
+**Commit:**
+```bash
+git add packages/domains/crm-domain/ workers/crm/ && git commit -m "feat: add CRM Worker skeleton with org-scoped schema and DDD structure"
+```
+
+---
+
+### Task 14: Create Journey Worker Skeleton
+
+Schema in `packages/domains/journey-domain/drizzle/schema.ts`:
+- `pgSchema('journey')` with tables: journeys, journey_versions, journey_steps, journey_triggers, journey_executions, step_executions, execution_logs
+- All tables include `organization_id`
+- Indexes on `(organization_id, status)`, `(journey_id, contact_id)`
+
+**Commit:**
+```bash
+git add packages/domains/journey-domain/ workers/journey/ && git commit -m "feat: add Journey Worker skeleton with versioning schema and DDD structure"
+```
+
+---
+
+### Task 15: Create Delivery Worker Skeleton
+
+Schema in `packages/domains/delivery-domain/drizzle/schema.ts`:
+- All tables include `organization_id`
+- Unique index on `idempotency_key` for delivery_jobs
+- Indexes on `(organization_id, status)`, `(organization_id, email)` for suppressions
+
+**Commit:**
+```bash
+git add packages/domains/delivery-domain/ workers/delivery/ && git commit -m "feat: add Delivery Worker skeleton with org-scoped provider config and suppression schemas"
+```
+
+---
+
+### Task 16: Create Remaining Worker Skeletons
 
 Create Campaign, Content, Analytics, and Integrations Workers following the same pattern.
 
----
+All schemas in respective `packages/domains/<name>-domain/drizzle/schema.ts`. All tables include `organization_id`. Workers import schemas from domain packages.
 
-### Task 14: Create Fly.io Service Skeletons (NEW)
-
-**Files:**
-- Create: `services/journey-executor/package.json`
-- Create: `services/journey-executor/tsconfig.json`
-- Create: `services/journey-executor/Dockerfile`
-- Create: `services/journey-executor/fly.toml`
-- Create: `services/journey-executor/src/worker.ts`
-- Create: `services/delivery-engine/` (same structure)
-- Create: `services/analytics-aggregator/` (same structure)
-
-**Step 1: Create journey-executor package.json**
-
-```json
-{
-  "name": "@mauntic/journey-executor",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "scripts": { "start": "node dist/worker.js", "build": "tsc", "dev": "tsx watch src/worker.ts" },
-  "dependencies": {
-    "@mauntic/process-lib": "workspace:*",
-    "@mauntic/journey-domain": "workspace:*",
-    "@mauntic/domain-kernel": "workspace:*",
-    "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
-    "bullmq": "^5.0.0",
-    "ioredis": "^5.4.0"
-  },
-  "devDependencies": { "typescript": "^5.7.0", "tsx": "^4.0.0" }
-}
-```
-
-**Step 2: Create Dockerfile**
-
-```dockerfile
-FROM node:22-slim AS base
-RUN corepack enable
-
-FROM base AS build
-WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/ packages/
-COPY services/journey-executor/ services/journey-executor/
-RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @mauntic/journey-executor build
-
-FROM base AS runtime
-WORKDIR /app
-COPY --from=build /app/node_modules node_modules
-COPY --from=build /app/services/journey-executor/dist dist
-COPY --from=build /app/services/journey-executor/package.json .
-EXPOSE 8080
-CMD ["node", "dist/worker.js"]
-```
-
-**Step 3: Create fly.toml**
-
-```toml
-app = "mauntic-journey-executor"
-primary_region = "iad"
-
-[build]
-  dockerfile = "Dockerfile"
-
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = "suspend"
-  auto_start_machines = true
-
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "512mb"
-```
-
-**Step 4: Create worker.ts stub**
-
-File: `services/journey-executor/src/worker.ts`
-
-```typescript
-import { createWorker, startHealthServer, getRedis } from '@mauntic/process-lib';
-
-console.log('Starting Journey Executor...');
-startHealthServer(8080);
-
-// TODO: Implement journey step execution workers in Phase 5
-// const stepWorker = createWorker('journey-steps', { ... });
-
-process.on('SIGTERM', async () => {
-  console.log('Shutting down...');
-  // await stepWorker.close();
-  process.exit(0);
-});
-```
-
-**Step 5: Repeat for delivery-engine and analytics-aggregator, then commit**
-
+**Commit:**
 ```bash
-git add services/ && git commit -m "feat: add Fly.io service skeletons (journey-executor, delivery-engine, analytics-aggregator)"
+git add workers/campaign/ workers/content/ workers/analytics/ workers/integrations/ && git commit -m "feat: add Campaign, Content, Analytics, and Integrations Worker skeletons"
 ```
 
 ---
 
-### Task 15: Set Up CI/CD Pipeline
+### Task 17: Create Fly.io Service Skeletons
+
+Same structure as v2 but with updated deps:
+- `services/journey-executor/` — imports process-lib, journey-domain
+- `services/delivery-engine/` — imports process-lib, delivery-domain
+- `services/analytics-aggregator/` — imports process-lib, analytics-domain
+
+All Dockerfiles use multi-stage Node.js 22 build with pnpm. All include health check endpoints. All fly.toml configs include Neon pooler URL and Redis URL as secrets.
+
+**Commit:**
+```bash
+git add services/ && git commit -m "feat: add Fly.io service skeletons with Neon pooler and Redis connections"
+```
+
+---
+
+### Task 18: Set Up CI/CD Pipeline
 
 **Files:**
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/deploy.yml`
 
-CI: typecheck, lint, test on PRs. Deploy: wrangler deploy for Workers, fly deploy for services. Triggered on push to main.
+CI: typecheck, lint, test on PRs.
+Deploy: wrangler deploy for Workers, fly deploy for services. Triggered on push to main.
 
+**Commit:**
 ```bash
 git add .github/ && git commit -m "feat: add CI/CD pipelines for CF Workers and Fly.io services"
 ```
 
 ---
 
-## Phase 1: Define All Contracts (Tasks 16-22)
+### Task 19: Wire Gateway ↔ Identity ↔ Billing Service Bindings
 
-Map every Mautic API endpoint to ts-rest contracts. Reference: `/Users/lsendel/Projects/mauntic/app/bundles/*/Controller/Api/*Controller.php`
+Configure wrangler.toml service bindings between Gateway, Identity, and Billing Workers. Test auth flow end-to-end:
+1. Gateway receives request
+2. Calls Identity Worker → validates session
+3. Returns user + org + plan
+4. Gateway builds TenantContext
+5. Proxies to appropriate domain Worker with X-Tenant-Context header
 
-### Task 16: Complete CRM Contracts
-- Add segments, companies, fields, tags, stages, categories endpoints to `packages/contracts/src/crm.contract.ts`
+**Commit:**
+```bash
+git add workers/gateway/ workers/identity/ workers/billing/ && git commit -m "feat: wire Gateway, Identity, and Billing service bindings with tenant context propagation"
+```
 
-### Task 17: Complete Journey Contracts
-- Add journey CRUD, step management, trigger configuration, execution monitoring
-- Add journey analytics endpoints (conversion rates, drop-off points)
+---
 
-### Task 18: Complete Delivery Contracts
-- Add template CRUD, send API, tracking endpoints, suppression management, warmup management, provider management
+### Task 20: Onboarding Flow (SaaS)
 
-### Task 19: Campaign Contracts
+Implement the signup → create org → select plan flow:
+1. `/app/signup` — Better Auth signup page (HTMX)
+2. After signup, redirect to `/app/onboarding`
+3. `/app/onboarding/org` — Create organization (name, logo)
+4. `/app/onboarding/plan` — Select plan (Free default, upgrade options)
+5. If paid plan selected → Stripe Checkout → return to `/app/onboarding/setup`
+6. `/app/onboarding/setup` — Add sending domain, configure provider, import contacts
+7. Redirect to `/app/dashboard` on completion
+
+**Commit:**
+```bash
+git add workers/gateway/ workers/identity/ workers/billing/ packages/domains/identity-domain/ && git commit -m "feat: add SaaS onboarding flow (signup → create org → select plan → guided setup)"
+```
+
+---
+
+## Phase 1: Define All Contracts + Events (Tasks 21-28)
+
+### Task 21: Complete CRM Contracts
+- Add segments, companies, fields, tags, stages, categories endpoints
+- All paths use `/api/v1/crm/` prefix
+
+### Task 22: Complete Journey Contracts
+- Journey CRUD, step management, trigger configuration, execution monitoring
+- Journey analytics endpoints (conversion rates, drop-off points)
+- All paths use `/api/v1/journey/` prefix
+
+### Task 23: Complete Delivery Contracts
+- Template CRUD, send API, tracking endpoints, suppression management, warmup management, provider management
+- All paths use `/api/v1/delivery/` prefix
+
+### Task 24: Campaign Contracts
 - Campaign CRUD, blast send, scheduling, point system
+- All paths use `/api/v1/campaign/` prefix
 
-### Task 20: Content Contracts
+### Task 25: Content Contracts
 - Forms, pages, assets, dynamic content CRUD + submission/tracking endpoints
+- All paths use `/api/v1/content/` prefix
 
-### Task 21: Analytics + Integrations Contracts
+### Task 26: Analytics + Integrations Contracts
 - Reports, widgets, webhooks, sync jobs, integration configs
+- All paths use `/api/v1/analytics/` and `/api/v1/integrations/` prefix
 
-### Task 22: Identity Contracts (expand)
-- Users CRUD, roles, permissions, organizations, org members
+### Task 27: Identity + Billing Contracts (expand)
+- Users CRUD, roles, permissions, organizations, org members, invites, org switching
+- Billing: plans, subscriptions, usage, portal, webhook
+- All paths use `/api/v1/` prefix
 
----
-
-## Phase 2: Identity Context (Tasks 23-27)
-
-### Task 23: Implement identity-domain package
-### Task 24: Complete Identity schema and migrations
-### Task 25: Implement user CRUD with full DDD layers
-### Task 26: Implement organization management
-### Task 27: Wire Gateway <-> Identity Service Binding
+### Task 28: Define All Domain Events with Version Field
+- Ensure every event has `version: 1` in metadata
+- Include `tenantContext.organizationId` in all event data
+- Document event evolution rules in contracts package README
 
 ---
 
-## Phase 3: CRM Context (Tasks 28-38)
+## Phase 2: Identity + Billing Context (Tasks 29-35)
 
-### Task 28: Implement crm-domain package entities (Contact, Company, Segment)
-### Task 29: Implement crm-domain repository interfaces
-### Task 30: Implement crm-domain commands and queries
-### Task 31: Implement Drizzle repositories in workers/crm/
-### Task 32: Implement Contact CRUD API handlers
-### Task 33: Implement Company aggregate
-### Task 34: Implement Segment aggregate with filter engine
-### Task 35: Implement custom Fields system
-### Task 36: Implement Tags, DoNotContact, Stages
-### Task 37: Wire CRM event publishing to Queues
-### Task 38: Build HTMX UI for contacts (list, detail, create, edit)
+### Task 29: Implement identity-domain package
+- User entity with aggregate invariants (email required, role validation)
+- Organization entity with invariants (name required, owner required)
+- Repository interfaces (all accept organizationId where applicable)
 
----
+### Task 30: Complete Identity schema and migrations
+- Drizzle schema in `packages/domains/identity-domain/drizzle/schema.ts`
+- Run drizzle-kit generate → migrate
 
-## Phase 4: Delivery Context (Tasks 39-52)
+### Task 31: Implement user CRUD with full DDD layers
+- Commands: CreateUser, UpdateUser, BlockUser
+- Queries: GetUser, ListUsers
+- Application services orchestrate with Better Auth
 
-### Task 39: Implement delivery-domain entities
+### Task 32: Implement organization management
+- Commands: CreateOrg, UpdateOrg, InviteMember, RemoveMember, ChangeRole
+- Org switching: store active org in session
+- Org invite flow with email tokens
 
-**Files:**
-- Create: `packages/domains/delivery-domain/src/entities/delivery-job.ts`
-- Create: `packages/domains/delivery-domain/src/entities/provider-config.ts`
-- Create: `packages/domains/delivery-domain/src/entities/template.ts`
-- Create: `packages/domains/delivery-domain/src/entities/suppression-entry.ts`
-- Create: `packages/domains/delivery-domain/src/entities/warmup-schedule.ts`
-- Create: `packages/domains/delivery-domain/src/entities/sending-ip.ts`
+### Task 33: Implement billing-domain entities and services
+- Subscription aggregate (invariants: can't downgrade during trial, can't create duplicate)
+- QuotaChecker domain service
+- UsageRecord tracking
 
-### Task 40: Implement delivery-domain repository interfaces
+### Task 34: Implement Stripe integration
+- Webhook handler: `invoice.paid`, `payment_failed`, `subscription.updated/deleted`
+- Checkout session creation for upgrades
+- Billing portal link generation
+- Monthly usage reset scheduled job
 
-**Files:**
-- Create: `packages/domains/delivery-domain/src/repositories/delivery-job.repository.ts`
-- Create: `packages/domains/delivery-domain/src/repositories/provider-config.repository.ts`
-- Create: `packages/domains/delivery-domain/src/repositories/suppression.repository.ts`
-- Create: `packages/domains/delivery-domain/src/repositories/warmup.repository.ts`
-
-### Task 41: Implement delivery-domain commands
-
-**Files:**
-- Create: `packages/domains/delivery-domain/src/commands/send-message.command.ts`
-- Create: `packages/domains/delivery-domain/src/commands/configure-provider.command.ts`
-- Create: `packages/domains/delivery-domain/src/commands/add-suppression.command.ts`
-- Create: `packages/domains/delivery-domain/src/commands/process-tracking-event.command.ts`
-
-The `send-message.command.ts` is the critical path:
-1. Check suppression list
-2. Check warmup limits
-3. Resolve provider from config
-4. Render template with contact data
-5. Call `provider.send()`
-6. Record DeliveryAttempt
-7. Publish delivery event
-
-### Task 42: Implement SES email provider adapter
-
-**Files:**
-- Create: `services/delivery-engine/src/providers/ses.provider.ts`
-
-### Task 43: Implement Twilio SMS provider adapter
-
-**Files:**
-- Create: `services/delivery-engine/src/providers/twilio.provider.ts`
-
-### Task 44: Implement Firebase push provider adapter
-
-**Files:**
-- Create: `services/delivery-engine/src/providers/fcm.provider.ts`
-
-### Task 45: Implement generic SMTP provider adapter
-
-**Files:**
-- Create: `services/delivery-engine/src/providers/smtp.provider.ts`
-
-### Task 46: Implement template rendering engine
-
-**Files:**
-- Create: `packages/domains/delivery-domain/src/services/template-renderer.ts`
-
-Handlebars or Liquid template rendering with contact data interpolation.
-
-### Task 47: Implement suppression list management
-
-### Task 48: Implement warmup schedule management
-
-### Task 49: Implement Drizzle repositories in workers/delivery/
-
-### Task 50: Implement Delivery API handlers (workers/delivery/)
-
-### Task 51: Implement Delivery Engine BullMQ worker (services/delivery-engine/)
-
-The bulk send engine on Fly.io:
-- Consumes SendMessage jobs from BullMQ
-- Splits batches, checks suppression, checks warmup
-- Routes to provider adapter
-- Handles retries with exponential backoff
-
-### Task 52: Implement tracking webhook handlers
-
-Handle inbound webhooks from SES, SendGrid, Twilio, etc. Parse into TrackingEvents, update DeliveryJob status, publish domain events.
+### Task 35: Wire Gateway ↔ Identity ↔ Billing with full auth flow
+- End-to-end test: signup → create org → subscribe → authenticated request → quota check
 
 ---
 
-## Phase 5: Journey Context (Tasks 53-65)
+## Phase 3: CRM Context (Tasks 36-46)
 
-### Task 53: Implement journey-domain entities
+### Task 36: Implement crm-domain package entities (Contact, Company, Segment)
+- Contact aggregate with invariants (email format, org-scoped uniqueness)
+- All entities include organizationId
 
-**Files:**
-- Create: `packages/domains/journey-domain/src/entities/journey.ts`
-- Create: `packages/domains/journey-domain/src/entities/journey-version.ts`
-- Create: `packages/domains/journey-domain/src/entities/journey-step.ts`
-- Create: `packages/domains/journey-domain/src/entities/journey-trigger.ts`
-- Create: `packages/domains/journey-domain/src/entities/journey-execution.ts`
-- Create: `packages/domains/journey-domain/src/entities/step-execution.ts`
+### Task 37: Implement crm-domain repository interfaces
+- All queries scoped by organizationId
+- Bulk operations for import (with quota check)
 
-### Task 54: Implement journey-domain value objects
+### Task 38: Implement crm-domain commands and queries
+- CreateContact, UpdateContact, MergeContacts, ImportContacts
+- All commands accept TenantContext
+- ImportContacts calls BillingService.checkQuota('contacts', count) before import
 
-**Files:**
-- Create: `packages/domains/journey-domain/src/value-objects/step-config.ts`
-- Create: `packages/domains/journey-domain/src/value-objects/trigger-config.ts`
+### Task 39: Implement Drizzle repositories in workers/crm/
+- Import schema from `@mauntic/crm-domain/drizzle`
+- All queries include `WHERE organization_id = ?`
 
-Define typed configs for each step type (ActionEmailConfig, DelayDurationConfig, SplitRandomConfig, etc.)
+### Task 40: Implement Contact CRUD API handlers
 
-### Task 55: Implement journey-domain repository interfaces
+### Task 41: Implement Company aggregate
 
-### Task 56: Implement journey-domain commands
+### Task 42: Implement Segment aggregate with filter engine
+
+### Task 43: Implement custom Fields system
+
+### Task 44: Implement Tags, DoNotContact, Stages
+
+### Task 45: Wire CRM event publishing to Queues
+- Publish ContactCreated, ContactUpdated, etc. with tenantContext in metadata
+
+### Task 46: Build HTMX UI for contacts (list, detail, create, edit)
+
+---
+
+## Phase 4: Delivery Context (Tasks 47-62)
+
+### Task 47: Implement delivery-domain entities
+- DeliveryJob (with idempotencyKey)
+- ProviderConfig (with encrypted credentials)
+- Template, SuppressionEntry, WarmupSchedule, SendingIp
+- All entities include organizationId
+
+### Task 48: Implement delivery-domain repository interfaces
+- All queries scoped by organizationId
+- SuppressionRepository.isBlocked(orgId, email/phone, channel)
+
+### Task 49: Implement delivery-domain commands
+- SendMessage command (critical path): check suppression → check warmup → check quota → resolve provider → render template → call provider.send() → record attempt → publish event
+- ConfigureProvider, AddSuppression, ProcessTrackingEvent commands
+
+### Task 50: Implement SES email provider adapter
+
+File: `packages/domains/delivery-domain/src/providers/ses.provider.ts`
+
+HTTP-based — runs on both CF Workers and Fly.io.
+
+### Task 51: Implement SendGrid email provider adapter
+
+File: `packages/domains/delivery-domain/src/providers/sendgrid.provider.ts`
+
+### Task 52: Implement Twilio SMS provider adapter
+
+File: `packages/domains/delivery-domain/src/providers/twilio.provider.ts`
+
+### Task 53: Implement Firebase push provider adapter
+
+File: `packages/domains/delivery-domain/src/providers/fcm.provider.ts`
+
+### Task 54: Implement generic SMTP provider adapter
+
+File: `services/delivery-engine/src/providers/smtp.provider.ts`
+
+TCP-based — Fly.io only.
+
+### Task 55: Implement template rendering engine
+
+File: `packages/domains/delivery-domain/src/services/template-renderer.ts`
+
+Handlebars or Liquid template rendering with contact data interpolation. XSS sanitization on output.
+
+### Task 56: Implement per-org suppression list management
+
+### Task 57: Implement per-org warmup schedule management
+
+### Task 58: Implement secrets encryption for provider configs
+
+File: `packages/domains/delivery-domain/src/value-objects/encrypted-config.ts`
+
+AES-256-GCM encryption for provider API keys stored in DB.
+
+### Task 59: Implement Drizzle repositories in workers/delivery/
+- Import schema from `@mauntic/delivery-domain/drizzle`
+
+### Task 60: Implement Delivery API handlers (workers/delivery/)
+
+### Task 61: Implement Delivery Engine BullMQ worker (services/delivery-engine/)
+- Idempotent message processing
+- Batch splitting, suppression check, warmup check, quota check, provider routing
+- Exponential backoff retries
+
+### Task 62: Implement tracking webhook handlers
+- Parse webhooks from SES, SendGrid, Twilio
+- HMAC signature verification
+- Convert to TrackingEvents, update DeliveryJob status, publish domain events
+
+---
+
+## Phase 5: Journey Context (Tasks 63-77)
+
+### Task 63: Implement journey-domain entities
+- Journey aggregate root with invariant enforcement (cannot publish with 0 steps/triggers)
+- JourneyVersion (immutable)
+- JourneyStep, JourneyTrigger
+- JourneyExecution, StepExecution
+- All entities include organizationId
+
+### Task 64: Implement journey-domain value objects
+- Step-specific configs: ActionEmailConfig, DelayDurationConfig, SplitRandomConfig, etc.
+- Trigger configs: EventTriggerConfig, SegmentTriggerConfig, ApiTriggerConfig
+
+### Task 65: Implement journey-domain repository interfaces
+
+### Task 66: Implement journey-domain commands
 - CreateJourney, UpdateJourney, PublishJourney, PauseJourney
 - StartExecution, ExecuteStep
+- All commands check quotas (journeys limit)
 
-### Task 57: Implement journey versioning
+### Task 67: Implement journey versioning
 - Publishing creates immutable JourneyVersion
 - In-flight executions pinned to their version
 
-### Task 58: Implement step executor domain service
+### Task 68: Implement step executor application service
 
-**Files:**
-- Create: `packages/domains/journey-domain/src/services/step-executor.ts`
+File: `packages/domains/journey-domain/src/application/step-executor.ts`
 
-Core logic: given a step and execution context, determine what to do:
-- ActionStep -> publish SendMessage to Delivery
-- DelayStep -> schedule delayed job
-- SplitStep -> evaluate condition, pick branch
-- GateStep -> register event listener
-- ExitStep -> complete execution
+Core orchestration: given a step and execution context, determine what to do:
+- ActionStep → publish SendMessage to Delivery
+- DelayStep → schedule delayed job
+- SplitStep → evaluate condition via SplitEvaluator (domain service), pick branch
+- GateStep → register event listener
+- ExitStep → complete execution
 
-### Task 59: Implement split evaluator
+### Task 69: Implement split evaluator domain service
 
-**Files:**
-- Create: `packages/domains/journey-domain/src/services/split-evaluator.ts`
+File: `packages/domains/journey-domain/src/services/split-evaluator.ts`
 
-Evaluates conditional splits against contact data (field comparisons, segment membership, etc.)
+Pure domain logic: evaluates conditional splits against contact data snapshot.
 
-### Task 60: Implement Drizzle schema and repositories in workers/journey/
+### Task 70: Implement CRM ACL for Journey context
 
-### Task 61: Implement Journey API handlers (workers/journey/)
+File: `packages/domains/journey-domain/src/acl/crm-translator.ts`
 
-### Task 62: Implement Journey HTMX UI
+Translates CRM events (ContactCreated, SegmentRebuilt) into Journey domain language.
 
-Journey builder with drag-and-drop steps, visual flow editor.
+### Task 71: Implement Drizzle schema and repositories in workers/journey/
+- Import schema from `@mauntic/journey-domain/drizzle`
 
-### Task 63: Implement Journey Executor BullMQ workers (services/journey-executor/)
+### Task 72: Implement Journey API handlers (workers/journey/)
 
-**Files:**
-- Modify: `services/journey-executor/src/worker.ts`
+### Task 73: Implement Journey HTMX UI
+- Journey builder with drag-and-drop steps, visual flow editor
 
-Create BullMQ workers for:
-- `journey-execute-step` queue: process individual steps
+### Task 74: Implement Journey Executor BullMQ workers (services/journey-executor/)
+- `journey-execute-step` queue: process individual steps (idempotent)
 - `journey-delayed-steps` queue: handle delay wake-ups
 - `journey-gate-listeners` queue: handle gate event matching
 
-### Task 64: Implement journey event handlers
+### Task 75: Implement journey event handlers
+- `ContactCreated` → check segment triggers (via ACL)
+- `FormSubmitted` → check event triggers
+- `EmailOpened` → check gate conditions
 
-Handle events from other contexts:
-- `ContactCreated` -> check if any journeys have segment triggers
-- `FormSubmitted` -> check for event triggers
-- `EmailOpened` -> check for gate conditions
+### Task 76: Wire Journey ↔ Delivery via events
+- End-to-end: trigger journey → execute email step → Delivery sends → tracking event flows back
 
-### Task 65: Wire Journey <-> Delivery via events
-
-Test end-to-end: trigger journey -> execute email step -> Delivery sends -> tracking event flows back.
-
----
-
-## Phase 6: Campaign Context (Tasks 66-69)
-
-### Task 66: Implement campaign-domain package
-### Task 67: Implement Campaign CRUD and blast sends
-### Task 68: Implement point system
-### Task 69: Wire Campaign -> Delivery for sending
+### Task 77: Implement scheduled jobs for Journey
+- Segment trigger evaluation (BullMQ repeatable, hourly)
+- Stale execution cleanup (daily)
 
 ---
 
-## Phase 7: Content Context (Tasks 70-75)
+## Phase 6: Campaign Context (Tasks 78-81)
 
-### Task 70: Implement content-domain package
-### Task 71: Implement Form builder + submission processing
-### Task 72: Implement Landing page builder
-### Task 73: Implement Asset management with R2
-### Task 74: Implement Dynamic content engine
-### Task 75: Build HTMX form/page builder UI
+### Task 78: Implement campaign-domain package
+### Task 79: Implement Campaign CRUD and blast sends (with quota check)
+### Task 80: Implement point system
+### Task 81: Wire Campaign → Delivery for sending
 
 ---
 
-## Phase 8: Analytics & Integrations (Tasks 76-83)
+## Phase 7: Content Context (Tasks 82-87)
 
-### Task 76: Implement analytics-domain package
-### Task 77: Implement Report engine
-### Task 78: Implement Dashboard widgets
-### Task 79: Implement Analytics Aggregator on Fly.io (services/analytics-aggregator/)
-### Task 80: Implement integrations-domain package
-### Task 81: Implement Webhook dispatch engine
-### Task 82: Implement third-party CRM sync (Salesforce/HubSpot patterns)
-### Task 83: Implement Segment/PostHog integration
+### Task 82: Implement content-domain package
+### Task 83: Implement Form builder + submission processing
+### Task 84: Implement Landing page builder (with XSS sanitization)
+### Task 85: Implement Asset management with R2 (org-scoped buckets/prefixes)
+### Task 86: Implement Dynamic content engine
+### Task 87: Build HTMX form/page builder UI
 
 ---
 
-## Phase 9: Mail Infrastructure (Tasks 84-90)
+## Phase 8: Analytics & Integrations (Tasks 88-97)
 
-### Task 84: Set up Postfix Docker container
+### Task 88: Implement analytics-domain package
+### Task 89: Implement Report engine
+### Task 90: Implement Dashboard widgets
+### Task 91: Implement Analytics Aggregator on Fly.io (services/analytics-aggregator/)
+- Pre-aggregation hourly job (materialized summaries per org)
+- Heavy query execution with connection pooling
+### Task 92: Implement integrations-domain package
+### Task 93: Implement Webhook dispatch engine
+- Exponential backoff retry: 1min, 5min, 30min, 2hr, 12hr
+- Disable webhook after 5 consecutive failures, notify org admin
+### Task 94: Implement third-party CRM sync (Salesforce/HubSpot patterns)
+### Task 95: Implement Segment/PostHog integration
+### Task 96: Implement scheduled analytics jobs
+- Hourly event aggregation (BullMQ repeatable)
+- Daily report generation
+- Monthly usage summary per org
+### Task 97: Implement warmup daily reset scheduled job
+- BullMQ repeatable job: reset daily send counters per warmup schedule
 
-**Files:**
-- Create: `services/mail-infra/docker/postfix/main.cf`
-- Create: `services/mail-infra/docker/postfix/master.cf`
-- Create: `services/mail-infra/docker-compose.yml`
+---
 
-Configure Postfix with DKIM signing, SPF, TLS, rate limiting.
+## Phase 9: Mail Infrastructure (Tasks 98-104)
 
-### Task 85: Set up Dovecot for bounce processing
+### Task 98: Set up Postfix Docker container
+- Postfix config with DKIM, SPF, TLS, per-IP rate limiting
 
-### Task 86: Set up Rspamd for spam scoring
+### Task 99: Set up Dovecot for bounce processing
 
-### Task 87: Implement sidecar API
+### Task 100: Set up Rspamd for spam scoring
 
-**Files:**
-- Create: `services/mail-infra/src/api.ts`
-
-Node.js Express/Hono API on Fly.io internal network:
+### Task 101: Implement sidecar API
 - `POST /api/send` — accept email payload, inject into Postfix queue
-- `GET /api/domains` — list configured sending domains
+- `GET /api/domains` — list configured sending domains (per-org)
 - `POST /api/domains/verify` — initiate DNS verification
 - `GET /api/ips` — list sending IPs
-- `GET /api/health` — health check
+- `GET /api/health`
 
-### Task 88: Implement domain verification and DNS management
+### Task 102: Implement domain verification and DNS management (per-org)
 
-### Task 89: Implement multi-IP management
-
-- Multiple IPs per domain
+### Task 103: Implement multi-IP management
+- Multiple IPs per org/domain
 - Round-robin / weighted rotation
 - Per-IP warmup tracking
-- Per-IP reputation monitoring
 - Auto-failover on delivery issues
 
-### Task 90: Implement PostfixEmailProvider adapter
+### Task 104: Implement PostfixEmailProvider adapter
 
-**Files:**
-- Create: `services/delivery-engine/src/providers/postfix.provider.ts`
+File: `services/delivery-engine/src/providers/postfix.provider.ts`
 
-Connect the Delivery Engine to Mail Infra via Fly.io internal network.
+Connect Delivery Engine to Mail Infra via Fly.io internal network.
 
 ---
 
-## Phase 10: Polish & Migration (Tasks 91-95)
+## Phase 10: Observability & Security Hardening (Tasks 105-112)
 
-### Task 91: Data migration scripts (Mautic MySQL -> Neon Postgres)
-### Task 92: End-to-end testing (journey -> delivery -> tracking flow)
-### Task 93: Performance optimization (caching, query tuning, connection pooling)
-### Task 94: CI/CD pipeline finalization (staging -> production)
-### Task 95: Documentation and deployment guide
+### Task 105: Implement structured logging across all Workers and services
+- pino logger in every Worker (via worker-lib middleware)
+- pino logger in every Fly.io service
+- Include requestId, organizationId, userId in every log line
+
+### Task 106: Implement distributed tracing
+- Gateway generates X-Request-Id
+- Propagated to Service Bindings, Queue messages, Fly.io HTTP calls, BullMQ jobs
+- correlationId in all domain events
+
+### Task 107: Implement DLQ monitoring
+- Dashboard showing DLQ depth per queue
+- Alert on DLQ > 0 (Slack webhook or email)
+- DLQ replay tool (manual)
+
+### Task 108: Implement circuit breaker for Fly.io calls
+- Circuit breaker in worker-lib used for all CF Worker → Fly.io HTTP calls
+- KV-backed state tracking
+
+### Task 109: Implement tenant isolation audit
+- Automated test suite that:
+  1. Creates two test organizations
+  2. Creates data in both
+  3. Verifies Org A cannot see Org B's data
+  4. Verifies RLS blocks direct SQL cross-tenant access
+
+### Task 110: Implement CSRF protection
+- Gateway generates per-session CSRF token in KV
+- HTMX configured with `hx-headers='{"X-CSRF-Token": "..."}'`
+- Middleware validates on all mutating requests
+
+### Task 111: Implement Content-Security-Policy headers
+- CSP headers on all responses from Gateway
+- Prevent inline scripts, restrict frame ancestors
+
+### Task 112: Implement API key auth for Enterprise plans
+- API keys stored hashed in Identity schema
+- Rate-limited separately from session auth
+- Exempt from CSRF (stateless)
+
+---
+
+## Phase 11: Polish & Migration (Tasks 113-118)
+
+### Task 113: Data migration scripts (Mautic MySQL → Neon Postgres)
+- Map Mautic tables to new schema (with org_id assignment)
+- Create default organization for migrated data
+- Migrate users, contacts, campaigns, emails, forms, pages, assets
+- Validate row counts post-migration
+
+### Task 114: End-to-end testing
+- Full journey flow: create contact → trigger journey → execute email step → delivery → tracking
+- Multi-tenant isolation tests
+- Quota enforcement tests
+- Onboarding flow test
+
+### Task 115: Performance optimization
+- Query profiling with EXPLAIN ANALYZE
+- Index verification
+- KV cache hit rates
+- Connection pool tuning
+- R2 CDN cache headers for static assets
+
+### Task 116: Scheduled job verification
+- Verify all BullMQ repeatable jobs are registered:
+  - Hourly: event aggregation, segment trigger evaluation
+  - Daily: warmup reset, stale execution cleanup, report generation
+  - Monthly: usage reset, usage summary
+
+### Task 117: CI/CD pipeline finalization
+- Staging environment (separate Neon branch, separate CF Workers)
+- Production deployment with zero-downtime (Wrangler gradual rollout)
+- Fly.io blue-green deployment
+
+### Task 118: Documentation and deployment guide
+- Architecture overview
+- Local dev setup instructions
+- Deployment checklist
+- Environment variables reference
+- API documentation (auto-generated from ts-rest contracts)
