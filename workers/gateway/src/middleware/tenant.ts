@@ -38,15 +38,8 @@ export function tenantMiddleware(): MiddlewareHandler<Env> {
       plan: organization.plan,
     };
 
-    // Encode as base64 JSON for downstream workers
-    const contextJson = JSON.stringify(tenantContext);
-    const contextB64 = btoa(contextJson);
-
-    // Set context in Hono context for use in this worker
+    // Set context in Hono context for use in service binding forwarding
     c.set('tenantContext', tenantContext);
-
-    // Set header for downstream service binding calls
-    c.header('X-Tenant-Context', contextB64);
 
     await next();
   };

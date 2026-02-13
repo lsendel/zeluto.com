@@ -3,12 +3,12 @@ import type { Env } from '../index.js';
 
 export interface SessionData {
   user: {
-    id: number;
+    id: string; // UUID
     email: string;
     name: string;
   };
   organization: {
-    id: number;
+    id: string; // UUID
     name: string;
     role: 'owner' | 'admin' | 'member' | 'viewer';
     plan: 'free' | 'starter' | 'pro' | 'enterprise';

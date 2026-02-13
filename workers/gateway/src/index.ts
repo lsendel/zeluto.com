@@ -12,8 +12,8 @@ export interface Env {
     logger: Logger;
     user?: SessionData['user'];
     organization?: SessionData['organization'];
-    userId?: number;
-    organizationId?: number;
+    userId?: string; // UUID
+    organizationId?: string; // UUID
     tenantContext?: TenantContext;
   };
   Bindings: {

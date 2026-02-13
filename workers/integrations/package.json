@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "hono": "^4.7.0",
-    "drizzle-orm": "^0.39.0",
+    "drizzle-orm": "catalog:",
     "@neondatabase/serverless": "catalog:",
     "@mauntic/integrations-domain": "workspace:*",
     "@mauntic/worker-lib": "workspace:*",

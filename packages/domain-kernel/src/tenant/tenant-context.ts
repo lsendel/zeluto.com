@@ -1,6 +1,6 @@
 export interface TenantContext {
-  organizationId: number;
-  userId: number;
+  organizationId: string; // UUID
+  userId: string; // UUID
   userRole: 'owner' | 'admin' | 'member' | 'viewer';
   plan: 'free' | 'starter' | 'pro' | 'enterprise';
 }

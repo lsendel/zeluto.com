@@ -5,6 +5,7 @@ import type { Env } from './index.js';
 import { authMiddleware } from './middleware/auth.js';
 import { tenantMiddleware } from './middleware/tenant.js';
 import { rateLimitMiddleware } from './middleware/rate-limit.js';
+import { createOnboardingRoutes } from './routes/onboarding.js';
 
 export function createApp() {
   const app = new Hono<Env>();
@@ -36,64 +37,89 @@ export function createApp() {
   // Service Binding Routes (API)
   // ========================================
 
+  /**
+   * Helper to forward request to service binding with X-Tenant-Context header
+   */
+  const forwardToService = async (c: any, service: Fetcher) => {
+    const tenantContext = c.get('tenantContext');
+
+    // Clone headers and add X-Tenant-Context if available
+    const headers = new Headers(c.req.raw.headers);
+    if (tenantContext) {
+      const contextJson = JSON.stringify(tenantContext);
+      const contextB64 = btoa(contextJson);
+      headers.set('X-Tenant-Context', contextB64);
+    }
+
+    // Create new request with updated headers
+    const request = new Request(c.req.raw.url, {
+      method: c.req.raw.method,
+      headers,
+      body: c.req.raw.body,
+      // @ts-ignore - duplex is needed for streaming
+      duplex: 'half',
+    });
+
+    return service.fetch(request);
+  };
+
   // Identity routes
   app.all('/api/auth/*', async (c) => {
+    // Auth routes don't need tenant context
     const response = await c.env.IDENTITY.fetch(c.req.raw);
     return response;
   });
 
   app.all('/api/v1/identity/*', async (c) => {
-    const response = await c.env.IDENTITY.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.IDENTITY);
   });
 
   // Billing routes
   app.all('/api/v1/billing/*', async (c) => {
-    const response = await c.env.BILLING.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.BILLING);
   });
 
   // CRM routes
   app.all('/api/v1/crm/*', async (c) => {
-    const response = await c.env.CRM.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.CRM);
   });
 
   // Journey routes
   app.all('/api/v1/journey/*', async (c) => {
-    const response = await c.env.JOURNEY.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.JOURNEY);
   });
 
   // Delivery routes
   app.all('/api/v1/delivery/*', async (c) => {
-    const response = await c.env.DELIVERY.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.DELIVERY);
   });
 
   // Campaign routes
   app.all('/api/v1/campaign/*', async (c) => {
-    const response = await c.env.CAMPAIGN.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.CAMPAIGN);
   });
 
   // Content routes
   app.all('/api/v1/content/*', async (c) => {
-    const response = await c.env.CONTENT.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.CONTENT);
   });
 
   // Analytics routes
   app.all('/api/v1/analytics/*', async (c) => {
-    const response = await c.env.ANALYTICS.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.ANALYTICS);
   });
 
   // Integrations routes
   app.all('/api/v1/integrations/*', async (c) => {
-    const response = await c.env.INTEGRATIONS.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.INTEGRATIONS);
   });
+
+  // ========================================
+  // Onboarding Routes
+  // ========================================
+  const onboardingRoutes = createOnboardingRoutes();
+  app.route('/app', onboardingRoutes);
+  app.route('/api/v1/onboarding', onboardingRoutes);
 
   // ========================================
   // HTMX Application Shell Routes
@@ -135,6 +161,11 @@ export function createApp() {
   app.get('/login', (c) => {
     const user = c.get('user');
     if (user) {
+      const organization = c.get('organization');
+      // If user has no organization, send to onboarding
+      if (!organization) {
+        return c.redirect('/app/onboarding/org');
+      }
       return c.redirect('/app/dashboard');
     }
     // Redirect to Identity worker's login page
@@ -145,6 +176,11 @@ export function createApp() {
   app.get('/', (c) => {
     const user = c.get('user');
     if (user) {
+      const organization = c.get('organization');
+      // If user has no organization, send to onboarding
+      if (!organization) {
+        return c.redirect('/app/onboarding/org');
+      }
       return c.redirect('/app/dashboard');
     }
     return c.redirect('/login');
