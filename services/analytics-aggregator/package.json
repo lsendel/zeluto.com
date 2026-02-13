@@ -13,6 +13,7 @@
     "@mauntic/process-lib": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
     "@mauntic/analytics-domain": "workspace:*",
+    "@mauntic/delivery-domain": "workspace:*",
     "bullmq": "^5.34.0",
     "ioredis": "^5.4.0",
     "drizzle-orm": "catalog:",

@@ -1,3 +1,13 @@
 // Campaign Domain
-// Entities, services, and repositories will be added in later tasks
-export {};
+
+// Entities
+export * from './entities/index.js';
+
+// Repository Interfaces
+export * from './repositories/index.js';
+
+// Commands
+export * from './commands/index.js';
+
+// Services
+export * from './services/index.js';

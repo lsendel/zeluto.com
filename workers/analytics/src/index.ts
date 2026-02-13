@@ -1,24 +1,5 @@
-import type { TenantContext } from '@mauntic/domain-kernel';
-import type { Logger } from '@mauntic/worker-lib';
-import { createApp } from './app.js';
+import app from './app.js';
 
-/**
- * Cloudflare Workers environment bindings
- */
-export interface Env {
-  Variables: {
-    requestId: string;
-    logger: Logger;
-    tenantContext?: TenantContext;
-  };
-  Bindings: {
-    KV: KVNamespace;
-    DB: Hyperdrive;
-  };
-}
+export type { Env } from './app.js';
 
-const app = createApp();
-
-export default {
-  fetch: app.fetch,
-};
+export default app;
