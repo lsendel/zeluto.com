@@ -1,15 +1,84 @@
-import { Hono } from "hono";
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import type { TenantContext } from '@mauntic/domain-kernel';
+import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-lib';
+import { deliveryRoutes } from './interface/delivery-routes.js';
+import { providerRoutes } from './interface/provider-routes.js';
+import { suppressionRoutes } from './interface/suppression-routes.js';
+import { domainRoutes } from './interface/domain-routes.js';
+import { warmupRoutes } from './interface/warmup-routes.js';
+import { trackingRoutes } from './interface/tracking-routes.js';
 
-type Env = {
+export interface Env {
   Bindings: {
-    DB: Hyperdrive;
+    HYPERDRIVE: Hyperdrive;
     KV: KVNamespace;
+    EVENTS: Queue;
+    ENCRYPTION_KEY: string;
   };
-};
+  Variables: {
+    tenant: TenantContext;
+    db: NeonHttpDatabase;
+  };
+}
 
-const app = new Hono<Env>();
+export function createApp() {
+  const app = new Hono<Env>();
 
-// TODO: Add routes from contracts
-app.get("/health", (c) => c.json({ status: "ok" }));
+  // Global middleware
+  app.use('*', logger());
+  app.use('*', cors());
+  app.use('*', errorHandler());
 
+  // Health check (no auth required)
+  app.get('/health', (c) => c.json({ status: 'ok', service: 'delivery' }));
+
+  // Database middleware for all API routes
+  app.use('/api/*', async (c, next) => {
+    const db = createDatabase(c.env.HYPERDRIVE);
+    c.set('db', db as NeonHttpDatabase);
+    await next();
+  });
+
+  // Tracking webhooks do NOT require tenant context - they come from external providers.
+  // The tenant is resolved from the provider_message_id in the delivery_events table.
+  app.use('/api/v1/delivery/tracking/*', async (c, next) => {
+    // Set a dummy tenant for tracking routes since they resolve org from stored events.
+    c.set('tenant', {
+      organizationId: '',
+      userId: '',
+      userRole: 'admin',
+      plan: 'pro',
+    } as TenantContext);
+    await next();
+  });
+
+  // Tenant context required for all other delivery API routes
+  app.use('/api/v1/delivery/send', tenantMiddleware());
+  app.use('/api/v1/delivery/send/*', tenantMiddleware());
+  app.use('/api/v1/delivery/jobs', tenantMiddleware());
+  app.use('/api/v1/delivery/jobs/*', tenantMiddleware());
+  app.use('/api/v1/delivery/providers', tenantMiddleware());
+  app.use('/api/v1/delivery/providers/*', tenantMiddleware());
+  app.use('/api/v1/delivery/suppressions', tenantMiddleware());
+  app.use('/api/v1/delivery/suppressions/*', tenantMiddleware());
+  app.use('/api/v1/delivery/sending-domains', tenantMiddleware());
+  app.use('/api/v1/delivery/sending-domains/*', tenantMiddleware());
+  app.use('/api/v1/delivery/warmup', tenantMiddleware());
+  app.use('/api/v1/delivery/warmup/*', tenantMiddleware());
+
+  // Mount route handlers
+  app.route('/', deliveryRoutes);
+  app.route('/', providerRoutes);
+  app.route('/', suppressionRoutes);
+  app.route('/', domainRoutes);
+  app.route('/', warmupRoutes);
+  app.route('/', trackingRoutes);
+
+  return app;
+}
+
+const app = createApp();
 export default app;

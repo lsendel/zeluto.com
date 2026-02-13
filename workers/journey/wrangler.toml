@@ -4,9 +4,20 @@ compatibility_flags = ["nodejs_compat"]
 main = "src/index.ts"
 
 [[hyperdrive]]
-binding = "DB"
+binding = "HYPERDRIVE"
 id = "placeholder"
 
 [[kv_namespaces]]
 binding = "KV"
 id = "placeholder"
+
+[[queues.producers]]
+binding = "EVENTS"
+queue = "mauntic-journey-events"
+
+[[queues.consumers]]
+queue = "mauntic-journey-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "mauntic-journey-events-dlq"
