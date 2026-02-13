@@ -1,0 +1,73 @@
+# Mauntic3 Postfix Main Configuration
+# -----------------------------------
+
+# Basic settings (overridden by env vars at startup)
+myhostname = mail.example.com
+mydomain = example.com
+myorigin = $mydomain
+mydestination = $myhostname, localhost.$mydomain, localhost
+mynetworks = 127.0.0.0/8 172.16.0.0/12 10.0.0.0/8 [::1]/128
+
+# Relay settings - accept mail from local networks only
+inet_interfaces = all
+inet_protocols = ipv4
+
+# TLS configuration for outbound
+smtp_tls_security_level = may
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+smtp_tls_loglevel = 1
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+# TLS configuration for inbound (submission)
+smtpd_tls_security_level = may
+smtpd_tls_cert_file = /etc/ssl/certs/ssl-cert-snakeoil.pem
+smtpd_tls_key_file = /etc/ssl/private/ssl-cert-snakeoil.key
+smtpd_tls_loglevel = 1
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+
+# SASL authentication
+smtpd_sasl_auth_enable = yes
+smtpd_sasl_type = dovecot
+smtpd_sasl_path = private/auth
+smtpd_sasl_security_options = noanonymous
+smtpd_sasl_local_domain = $myhostname
+
+# Recipient restrictions
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination
+
+# DKIM signing via OpenDKIM milter
+milter_protocol = 6
+milter_default_action = accept
+smtpd_milters = inet:localhost:8891
+non_smtpd_milters = inet:localhost:8891
+
+# Rspamd milter for spam filtering
+smtpd_milters = inet:localhost:8891, inet:rspamd:11333
+non_smtpd_milters = inet:localhost:8891, inet:rspamd:11333
+
+# SPF policy check
+smtpd_recipient_restrictions =
+    permit_mynetworks,
+    permit_sasl_authenticated,
+    reject_unauth_destination,
+    check_policy_service unix:private/policyd-spf
+
+# Queue settings
+maximal_queue_lifetime = 3d
+bounce_queue_lifetime = 1d
+queue_run_delay = 300s
+minimal_backoff_time = 300s
+maximal_backoff_time = 4000s
+
+# Bounce processing - forward to Dovecot via LMTP
+lmtp_destination_recipient_limit = 1
+virtual_transport = lmtp:inet:dovecot:24
+
+# Message size limit (25MB)
+message_size_limit = 26214400
+
+# Logging
+maillog_file = /dev/stdout

@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+  postfix:
+    build: ./postfix
+    ports:
+      - "25:25"
+      - "587:587"
+    volumes:
+      - ./postfix/config:/etc/postfix
+      - ./dkim:/etc/opendkim
+    environment:
+      - HOSTNAME
+      - DOMAIN
+    restart: unless-stopped
+    networks:
+      - mail-net
+    healthcheck:
+      test: ["CMD", "postfix", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dovecot:
+    build: ./dovecot
+    ports:
+      - "993:993"
+      - "143:143"
+    volumes:
+      - ./dovecot/config:/etc/dovecot
+    restart: unless-stopped
+    networks:
+      - mail-net
+    healthcheck:
+      test: ["CMD", "doveadm", "service", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rspamd:
+    build: ./rspamd
+    ports:
+      - "11333:11333"
+      - "11334:11334"
+    volumes:
+      - ./rspamd/config:/etc/rspamd/local.d
+    restart: unless-stopped
+    networks:
+      - mail-net
+    healthcheck:
+      test: ["CMD", "rspamadm", "control", "stat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mail-api:
+    build: ../../services/mail-api
+    ports:
+      - "8090:8090"
+    environment:
+      - POSTFIX_HOST=postfix
+      - DOVECOT_HOST=dovecot
+      - RSPAMD_HOST=rspamd
+      - POSTFIX_PORT=587
+      - PORT=8090
+    restart: unless-stopped
+    networks:
+      - mail-net
+    depends_on:
+      postfix:
+        condition: service_healthy
+      dovecot:
+        condition: service_healthy
+      rspamd:
+        condition: service_healthy
+
+networks:
+  mail-net:
+    driver: bridge

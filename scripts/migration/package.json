@@ -1,0 +1,19 @@
+{
+  "name": "@mauntic/migration-scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate": "tsx migrate-mautic-to-mauntic.ts",
+    "migrate:dry-run": "tsx migrate-mautic-to-mauntic.ts --dry-run",
+    "validate": "tsx validate-migration.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "^4.19.0",
+    "typescript": "catalog:"
+  }
+}
