@@ -10,13 +10,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.7.0",
-    "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
+    "hono": "catalog:",
+    "drizzle-orm": "catalog:",
+    "@neondatabase/serverless": "catalog:",
     "@mauntic/domain-kernel": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "@cloudflare/workers-types": "^4.0.0"
+    "typescript": "catalog:",
+    "@cloudflare/workers-types": "catalog:"
   }
 }

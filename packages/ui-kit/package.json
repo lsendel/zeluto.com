@@ -1,0 +1,22 @@
+{
+  "name": "@mauntic/ui-kit",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./layouts": { "import": "./dist/layouts/index.js", "types": "./dist/layouts/index.d.ts" },
+    "./components": { "import": "./dist/components/index.js", "types": "./dist/components/index.d.ts" },
+    "./styles": "./src/styles/tailwind.css"
+  },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "tailwindcss": "catalog:"
+  }
+}

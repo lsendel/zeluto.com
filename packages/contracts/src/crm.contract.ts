@@ -21,7 +21,7 @@ export const ContactSchema = z.object({
   phone: z.string().nullable(),
   companyId: z.number().nullable(),
   tags: z.array(z.string()),
-  customFields: z.record(z.unknown()),
+  customFields: z.record(z.string(), z.unknown()),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -40,7 +40,7 @@ export const SegmentSchema = z.object({
   id: z.number(),
   name: z.string(),
   type: z.enum(['static', 'dynamic']),
-  filters: z.record(z.unknown()),
+  filters: z.record(z.string(), z.unknown()),
   contactCount: z.number(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -57,7 +57,7 @@ const CreateContactBodySchema = z.object({
   phone: z.string().optional(),
   companyId: z.number().optional(),
   tags: z.array(z.string()).optional(),
-  customFields: z.record(z.unknown()).optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
 });
 
 const UpdateContactBodySchema = CreateContactBodySchema.partial();
@@ -74,7 +74,7 @@ const UpdateCompanyBodySchema = CreateCompanyBodySchema.partial();
 const CreateSegmentBodySchema = z.object({
   name: z.string().min(1),
   type: z.enum(['static', 'dynamic']),
-  filters: z.record(z.unknown()).optional(),
+  filters: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ---------------------------------------------------------------------------

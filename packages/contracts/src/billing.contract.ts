@@ -10,7 +10,7 @@ export const PlanSchema = z.object({
   displayName: z.string(),
   priceMonthly: z.number(),
   priceYearly: z.number(),
-  limits: z.record(z.number()),
+  limits: z.record(z.string(), z.number()),
 });
 
 export const SubscriptionSchema = z.object({

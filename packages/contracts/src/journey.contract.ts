@@ -17,7 +17,7 @@ export const JourneyStepSchema = z.object({
   id: z.string(),
   type: z.enum(['trigger', 'action', 'condition', 'delay', 'exit']),
   name: z.string(),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   nextSteps: z.array(z.string()),
 });
 

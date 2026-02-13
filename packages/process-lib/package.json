@@ -15,12 +15,12 @@
   },
   "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "bullmq": "^5.0.0",
-    "ioredis": "^5.4.0",
-    "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
-    "pino": "^9.0.0",
+    "bullmq": "catalog:",
+    "ioredis": "catalog:",
+    "drizzle-orm": "catalog:",
+    "@neondatabase/serverless": "catalog:",
+    "pino": "catalog:",
     "@mauntic/domain-kernel": "workspace:*"
   },
-  "devDependencies": { "typescript": "^5.7.0", "@types/node": "^22.0.0" }
+  "devDependencies": { "typescript": "catalog:", "@types/node": "catalog:" }
 }

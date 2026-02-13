@@ -15,8 +15,10 @@
   "license": "ISC",
   "packageManager": "pnpm@10.28.0",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260212.0",
+    "@cloudflare/workers-types": "catalog:",
+    "@neondatabase/serverless": "catalog:",
+    "@types/node": "catalog:",
     "turbo": "^2.8.7",
-    "typescript": "^5.9.3"
+    "typescript": "catalog:"
   }
 }

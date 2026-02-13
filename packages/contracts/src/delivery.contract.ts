@@ -43,7 +43,7 @@ export const ProviderSchema = z.object({
   type: z.enum(['email', 'sms', 'push', 'webhook']),
   provider: z.string(),
   isDefault: z.boolean(),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
   createdAt: z.string(),
 });
 
@@ -51,7 +51,7 @@ export const TrackingEventSchema = z.object({
   messageId: z.string(),
   event: z.enum(['delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed']),
   timestamp: z.string(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -64,7 +64,7 @@ const SendMessageBodySchema = z.object({
   subject: z.string().optional(),
   body: z.string(),
   providerId: z.number().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const CreateProviderBodySchema = z.object({
@@ -72,13 +72,13 @@ const CreateProviderBodySchema = z.object({
   type: z.enum(['email', 'sms', 'push', 'webhook']),
   provider: z.string().min(1),
   isDefault: z.boolean().optional(),
-  config: z.record(z.unknown()),
+  config: z.record(z.string(), z.unknown()),
 });
 
 const UpdateProviderBodySchema = z.object({
   name: z.string().min(1).optional(),
   isDefault: z.boolean().optional(),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
 });
 
 // ---------------------------------------------------------------------------

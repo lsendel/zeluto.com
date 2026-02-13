@@ -1,0 +1,28 @@
+{
+  "name": "@mauntic/campaign-domain",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./drizzle": { "import": "./drizzle/schema.js", "types": "./drizzle/schema.d.ts" }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@mauntic/domain-kernel": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "drizzle-kit": "catalog:"
+  }
+}
