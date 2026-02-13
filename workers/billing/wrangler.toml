@@ -5,7 +5,7 @@ main = "src/index.ts"
 
 [[hyperdrive]]
 binding = "DB"
-id = "placeholder"
+id = "270bd3689e8846e7ae61d3e1674bfba0"
 
 [vars]
 APP_DOMAIN = "17way.com"

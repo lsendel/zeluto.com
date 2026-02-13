@@ -5,8 +5,8 @@ main = "src/index.ts"
 
 [[hyperdrive]]
 binding = "DB"
-id = "placeholder"
+id = "270bd3689e8846e7ae61d3e1674bfba0"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "placeholder"
+id = "107300e1a7004921b6b4fc22d098af9a"

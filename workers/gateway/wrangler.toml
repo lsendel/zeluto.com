@@ -2,14 +2,23 @@ name = "mauntic-gateway"
 compatibility_date = "2026-02-01"
 compatibility_flags = ["nodejs_compat"]
 main = "src/index.ts"
+workers_dev = true
+
+[[routes]]
+pattern = "17way.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.17way.com"
+custom_domain = true
 
 [[kv_namespaces]]
 binding = "KV"
-id = "placeholder"
+id = "107300e1a7004921b6b4fc22d098af9a"
 
 [[hyperdrive]]
 binding = "DB"
-id = "placeholder"
+id = "270bd3689e8846e7ae61d3e1674bfba0"
 
 [vars]
 APP_DOMAIN = "17way.com"
@@ -17,6 +26,10 @@ APP_DOMAIN = "17way.com"
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"
 class_name = "RateLimiter"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RateLimiter"]
 
 # Service Bindings
 [[services]]
