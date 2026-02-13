@@ -14,7 +14,8 @@
     "@mauntic/crm-domain": "workspace:*",
     "@mauntic/worker-lib": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
-    "@mauntic/contracts": "workspace:*"
+    "@mauntic/contracts": "workspace:*",
+    "@mauntic/ui-kit": "workspace:*"
   },
   "devDependencies": {
     "wrangler": "^4.0.0",

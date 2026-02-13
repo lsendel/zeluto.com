@@ -2,7 +2,7 @@ import { pgSchema, uuid, varchar, text, timestamp, jsonb, integer, boolean } fro
 
 export const crmSchema = pgSchema('crm');
 
-// contacts: id, organization_id, email, first_name, last_name, phone, status (active/unsubscribed/bounced), custom_fields (jsonb), last_activity_at, created_at, updated_at
+// contacts: id, organization_id, email, first_name, last_name, phone, status, stage, custom_fields (jsonb), last_activity_at, created_at, updated_at
 export const contacts = crmSchema.table('contacts', {
   id: uuid('id').primaryKey().defaultRandom(),
   organization_id: uuid('organization_id').notNull(),
@@ -10,7 +10,8 @@ export const contacts = crmSchema.table('contacts', {
   first_name: varchar('first_name', { length: 255 }),
   last_name: varchar('last_name', { length: 255 }),
   phone: varchar('phone', { length: 50 }),
-  status: varchar('status', { length: 50 }).notNull().default('active'), // active/unsubscribed/bounced
+  status: varchar('status', { length: 50 }).notNull().default('active'), // active/unsubscribed/bounced/do_not_contact
+  stage: varchar('stage', { length: 50 }).default('subscriber'), // subscriber/lead/mql/sql/opportunity/customer/evangelist/other
   custom_fields: jsonb('custom_fields'),
   last_activity_at: timestamp('last_activity_at'),
   created_at: timestamp('created_at').notNull().defaultNow(),

@@ -10,3 +10,7 @@ id = "placeholder"
 [[kv_namespaces]]
 binding = "KV"
 id = "placeholder"
+
+[[queues.producers]]
+binding = "EVENTS"
+queue = "mauntic-crm-events"
