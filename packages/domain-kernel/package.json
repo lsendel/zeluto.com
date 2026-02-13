@@ -1,0 +1,20 @@
+{
+  "name": "@mauntic/domain-kernel",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./value-objects": { "import": "./dist/value-objects/index.js", "types": "./dist/value-objects/index.d.ts" },
+    "./events": { "import": "./dist/events/index.js", "types": "./dist/events/index.d.ts" },
+    "./delivery": { "import": "./dist/delivery/index.js", "types": "./dist/delivery/index.d.ts" },
+    "./errors": { "import": "./dist/errors/index.js", "types": "./dist/errors/index.d.ts" },
+    "./tenant": { "import": "./dist/tenant/index.js", "types": "./dist/tenant/index.d.ts" },
+    "./types": { "import": "./dist/types/index.js", "types": "./dist/types/index.d.ts" }
+  },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": { "zod": "^3.23.0" },
+  "devDependencies": { "typescript": "^5.7.0" }
+}

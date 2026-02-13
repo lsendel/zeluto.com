@@ -18,6 +18,16 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  packages/domain-kernel:
+    dependencies:
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
 packages:
 
   '@cloudflare/workers-types@4.20260212.0':
@@ -62,6 +72,9 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@cloudflare/workers-types@4.20260212.0': {}
@@ -94,3 +107,5 @@ snapshots:
       turbo-windows-arm64: 2.8.7
 
   typescript@5.9.3: {}
+
+  zod@3.25.76: {}

@@ -1,0 +1,46 @@
+import { z } from 'zod';
+
+declare const brand: unique symbol;
+type Brand<T, B extends string> = T & { readonly [brand]: B };
+
+export type ContactId = Brand<number, 'ContactId'>;
+export type CompanyId = Brand<number, 'CompanyId'>;
+export type CampaignId = Brand<number, 'CampaignId'>;
+export type EmailId = Brand<number, 'EmailId'>;
+export type FormId = Brand<number, 'FormId'>;
+export type PageId = Brand<number, 'PageId'>;
+export type AssetId = Brand<number, 'AssetId'>;
+export type SegmentId = Brand<number, 'SegmentId'>;
+export type UserId = Brand<number, 'UserId'>;
+export type OrganizationId = Brand<number, 'OrganizationId'>;
+export type WebhookId = Brand<number, 'WebhookId'>;
+export type IntegrationId = Brand<number, 'IntegrationId'>;
+export type ReportId = Brand<number, 'ReportId'>;
+export type JourneyId = Brand<number, 'JourneyId'>;
+export type JourneyVersionId = Brand<number, 'JourneyVersionId'>;
+export type JourneyStepId = Brand<string, 'JourneyStepId'>;
+export type DeliveryJobId = Brand<string, 'DeliveryJobId'>;
+export type TemplateId = Brand<number, 'TemplateId'>;
+export type SubscriptionId = Brand<string, 'SubscriptionId'>;
+export type PlanId = Brand<number, 'PlanId'>;
+
+export const ContactIdSchema = z.number().int().positive() as unknown as z.ZodType<ContactId>;
+export const CompanyIdSchema = z.number().int().positive() as unknown as z.ZodType<CompanyId>;
+export const CampaignIdSchema = z.number().int().positive() as unknown as z.ZodType<CampaignId>;
+export const EmailIdSchema = z.number().int().positive() as unknown as z.ZodType<EmailId>;
+export const FormIdSchema = z.number().int().positive() as unknown as z.ZodType<FormId>;
+export const PageIdSchema = z.number().int().positive() as unknown as z.ZodType<PageId>;
+export const AssetIdSchema = z.number().int().positive() as unknown as z.ZodType<AssetId>;
+export const SegmentIdSchema = z.number().int().positive() as unknown as z.ZodType<SegmentId>;
+export const UserIdSchema = z.number().int().positive() as unknown as z.ZodType<UserId>;
+export const OrganizationIdSchema = z.number().int().positive() as unknown as z.ZodType<OrganizationId>;
+export const WebhookIdSchema = z.number().int().positive() as unknown as z.ZodType<WebhookId>;
+export const IntegrationIdSchema = z.number().int().positive() as unknown as z.ZodType<IntegrationId>;
+export const ReportIdSchema = z.number().int().positive() as unknown as z.ZodType<ReportId>;
+export const JourneyIdSchema = z.number().int().positive() as unknown as z.ZodType<JourneyId>;
+export const JourneyVersionIdSchema = z.number().int().positive() as unknown as z.ZodType<JourneyVersionId>;
+export const JourneyStepIdSchema = z.string().uuid() as unknown as z.ZodType<JourneyStepId>;
+export const DeliveryJobIdSchema = z.string().uuid() as unknown as z.ZodType<DeliveryJobId>;
+export const TemplateIdSchema = z.number().int().positive() as unknown as z.ZodType<TemplateId>;
+export const SubscriptionIdSchema = z.string().min(1) as unknown as z.ZodType<SubscriptionId>;
+export const PlanIdSchema = z.number().int().positive() as unknown as z.ZodType<PlanId>;
