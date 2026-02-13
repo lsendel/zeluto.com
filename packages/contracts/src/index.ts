@@ -48,3 +48,47 @@ export {
   ProviderSchema,
   TrackingEventSchema,
 } from './delivery.contract';
+
+// Campaign contract & schemas
+export {
+  campaignContract,
+  CampaignSchema,
+  CampaignVersionSchema,
+  CampaignStatsSchema,
+  AbTestSchema,
+} from './campaign.contract';
+
+// Content contract & schemas
+export {
+  contentContract,
+  TemplateSchema,
+  TemplateVersionSchema,
+  FormSchema,
+  FormSubmissionSchema,
+  LandingPageSchema,
+  AssetSchema,
+} from './content.contract';
+
+// Analytics contract & schemas
+export {
+  analyticsContract,
+  EventAggregateSchema,
+  ContactActivitySchema,
+  CampaignDailyStatsSchema,
+  JourneyDailyStatsSchema,
+  ReportSchema,
+  DashboardWidgetSchema,
+  OverviewStatsSchema,
+  CampaignPerformanceSchema,
+  JourneyPerformanceSchema,
+  ReportResultSchema,
+} from './analytics.contract';
+
+// Integrations contract & schemas
+export {
+  integrationsContract,
+  ConnectionSchema,
+  SyncJobSchema,
+  WebhookSchema,
+  WebhookDeliverySchema,
+} from './integrations.contract';

@@ -46,6 +46,33 @@ export const SegmentSchema = z.object({
   updatedAt: z.string(),
 });
 
+export const TagSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  color: z.string(),
+  createdAt: z.string(),
+});
+
+export const FieldSchema = z.object({
+  id: z.string().uuid(),
+  entityType: z.enum(['contact', 'company']),
+  name: z.string(),
+  label: z.string(),
+  fieldType: z.enum(['text', 'number', 'date', 'select', 'multiselect']),
+  options: z.array(z.string()).nullable(),
+  isRequired: z.boolean(),
+  sortOrder: z.number(),
+});
+
+export const ContactActivitySchema = z.object({
+  id: z.string().uuid(),
+  contactId: z.number(),
+  eventType: z.string(),
+  eventSource: z.string(),
+  eventData: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+});
+
 // ---------------------------------------------------------------------------
 // Request body schemas
 // ---------------------------------------------------------------------------
@@ -75,6 +102,46 @@ const CreateSegmentBodySchema = z.object({
   name: z.string().min(1),
   type: z.enum(['static', 'dynamic']),
   filters: z.record(z.string(), z.unknown()).optional(),
+});
+
+const UpdateSegmentBodySchema = z.object({
+  name: z.string().min(1).optional(),
+  filters: z.record(z.string(), z.unknown()).optional(),
+});
+
+const CreateTagBodySchema = z.object({
+  name: z.string().min(1),
+  color: z.string(),
+});
+
+const CreateFieldBodySchema = z.object({
+  entityType: z.enum(['contact', 'company']),
+  name: z.string().min(1),
+  label: z.string().min(1),
+  fieldType: z.enum(['text', 'number', 'date', 'select', 'multiselect']),
+  options: z.array(z.string()).optional(),
+  isRequired: z.boolean().optional(),
+  sortOrder: z.number().optional(),
+});
+
+const UpdateFieldBodySchema = z.object({
+  label: z.string().min(1).optional(),
+  options: z.array(z.string()).optional(),
+  isRequired: z.boolean().optional(),
+  sortOrder: z.number().optional(),
+});
+
+const ImportContactsBodySchema = z.object({
+  contacts: z.array(CreateContactBodySchema),
+});
+
+const MergeContactsBodySchema = z.object({
+  primaryContactId: z.number(),
+  secondaryContactId: z.number(),
+});
+
+const SegmentContactsBodySchema = z.object({
+  contactIds: z.array(z.number()),
 });
 
 // ---------------------------------------------------------------------------
@@ -130,6 +197,56 @@ export const crmContract = c.router({
         404: ErrorSchema,
       },
     },
+    import: {
+      method: 'POST',
+      path: '/api/v1/crm/contacts/import',
+      body: ImportContactsBodySchema,
+      responses: {
+        201: z.object({
+          imported: z.number(),
+          failed: z.number(),
+          errors: z.array(z.object({
+            index: z.number(),
+            error: z.string(),
+          })).optional(),
+        }),
+        400: ErrorSchema,
+      },
+    },
+    export: {
+      method: 'GET',
+      path: '/api/v1/crm/contacts/export',
+      query: z.object({
+        format: z.enum(['csv', 'json']).default('csv'),
+        segmentId: z.coerce.number().optional(),
+      }),
+      responses: {
+        200: z.object({
+          url: z.string(),
+        }),
+        400: ErrorSchema,
+      },
+    },
+    merge: {
+      method: 'POST',
+      path: '/api/v1/crm/contacts/merge',
+      body: MergeContactsBodySchema,
+      responses: {
+        200: ContactSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+      },
+    },
+    activity: {
+      method: 'GET',
+      path: '/api/v1/crm/contacts/:id/activity',
+      pathParams: IdParamSchema,
+      query: PaginationQuerySchema,
+      responses: {
+        200: PaginatedResponseSchema(ContactActivitySchema),
+        404: ErrorSchema,
+      },
+    },
   },
   companies: {
     list: {
@@ -169,6 +286,16 @@ export const crmContract = c.router({
         404: ErrorSchema,
       },
     },
+    delete: {
+      method: 'DELETE',
+      path: '/api/v1/crm/companies/:id',
+      pathParams: IdParamSchema,
+      body: z.any().optional(),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: ErrorSchema,
+      },
+    },
   },
   segments: {
     list: {
@@ -194,6 +321,119 @@ export const crmContract = c.router({
       pathParams: IdParamSchema,
       responses: {
         200: SegmentSchema,
+        404: ErrorSchema,
+      },
+    },
+    update: {
+      method: 'PATCH',
+      path: '/api/v1/crm/segments/:id',
+      pathParams: IdParamSchema,
+      body: UpdateSegmentBodySchema,
+      responses: {
+        200: SegmentSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+      },
+    },
+    delete: {
+      method: 'DELETE',
+      path: '/api/v1/crm/segments/:id',
+      pathParams: IdParamSchema,
+      body: z.any().optional(),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: ErrorSchema,
+      },
+    },
+    addContacts: {
+      method: 'POST',
+      path: '/api/v1/crm/segments/:id/contacts',
+      pathParams: IdParamSchema,
+      body: SegmentContactsBodySchema,
+      responses: {
+        200: z.object({ added: z.number() }),
+        400: ErrorSchema,
+        404: ErrorSchema,
+      },
+    },
+    removeContacts: {
+      method: 'DELETE',
+      path: '/api/v1/crm/segments/:id/contacts',
+      pathParams: IdParamSchema,
+      body: SegmentContactsBodySchema,
+      responses: {
+        200: z.object({ removed: z.number() }),
+        400: ErrorSchema,
+        404: ErrorSchema,
+      },
+    },
+  },
+  tags: {
+    list: {
+      method: 'GET',
+      path: '/api/v1/crm/tags',
+      responses: {
+        200: z.array(TagSchema),
+      },
+    },
+    create: {
+      method: 'POST',
+      path: '/api/v1/crm/tags',
+      body: CreateTagBodySchema,
+      responses: {
+        201: TagSchema,
+        400: ErrorSchema,
+      },
+    },
+    delete: {
+      method: 'DELETE',
+      path: '/api/v1/crm/tags/:id',
+      pathParams: z.object({ id: z.string().uuid() }),
+      body: z.any().optional(),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: ErrorSchema,
+      },
+    },
+  },
+  fields: {
+    list: {
+      method: 'GET',
+      path: '/api/v1/crm/fields',
+      query: z.object({
+        entityType: z.enum(['contact', 'company']).optional(),
+      }),
+      responses: {
+        200: z.array(FieldSchema),
+      },
+    },
+    create: {
+      method: 'POST',
+      path: '/api/v1/crm/fields',
+      body: CreateFieldBodySchema,
+      responses: {
+        201: FieldSchema,
+        400: ErrorSchema,
+      },
+    },
+    update: {
+      method: 'PATCH',
+      path: '/api/v1/crm/fields/:id',
+      pathParams: z.object({ id: z.string().uuid() }),
+      body: UpdateFieldBodySchema,
+      responses: {
+        200: FieldSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+      },
+    },
+    delete: {
+      method: 'DELETE',
+      path: '/api/v1/crm/fields/:id',
+      pathParams: z.object({ id: z.string().uuid() }),
+      body: z.any().optional(),
+      responses: {
+        200: z.object({ success: z.boolean() }),
         404: ErrorSchema,
       },
     },
