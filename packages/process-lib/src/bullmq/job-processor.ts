@@ -1,7 +1,7 @@
 import { Worker, Queue, type Job } from 'bullmq';
 import { getRedis } from '../redis/connection.js';
 
-export interface JobHandler<TData = unknown, TResult = void> {
+export interface JobHandler<TData = unknown, TResult = unknown> {
   name: string;
   process(job: Job<TData>): Promise<TResult>;
   concurrency?: number;

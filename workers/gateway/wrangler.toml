@@ -1,0 +1,52 @@
+name = "mauntic-gateway"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "src/index.ts"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "placeholder"
+
+[[hyperdrive]]
+binding = "DB"
+id = "placeholder"
+
+[vars]
+APP_DOMAIN = "17way.com"
+
+# Service Bindings
+[[services]]
+binding = "IDENTITY"
+service = "mauntic-identity"
+
+[[services]]
+binding = "BILLING"
+service = "mauntic-billing"
+
+[[services]]
+binding = "CRM"
+service = "mauntic-crm"
+
+[[services]]
+binding = "JOURNEY"
+service = "mauntic-journey"
+
+[[services]]
+binding = "DELIVERY"
+service = "mauntic-delivery"
+
+[[services]]
+binding = "CAMPAIGN"
+service = "mauntic-campaign"
+
+[[services]]
+binding = "CONTENT"
+service = "mauntic-content"
+
+[[services]]
+binding = "ANALYTICS"
+service = "mauntic-analytics"
+
+[[services]]
+binding = "INTEGRATIONS"
+service = "mauntic-integrations"

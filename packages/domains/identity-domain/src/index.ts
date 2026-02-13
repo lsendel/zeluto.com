@@ -1,3 +1,2 @@
-// Identity Domain
-// Entities, services, and repositories will be added in later tasks
-export {};
+// Identity Domain - Better Auth Schema and Types
+export * from '../drizzle/schema.js';

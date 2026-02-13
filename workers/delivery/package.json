@@ -1,0 +1,24 @@
+{
+  "name": "@mauntic/delivery",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "drizzle-orm": "^0.39.0",
+    "@neondatabase/serverless": "catalog:",
+    "@mauntic/delivery-domain": "workspace:*",
+    "@mauntic/worker-lib": "workspace:*",
+    "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0",
+    "typescript": "^5.7.0",
+    "@cloudflare/workers-types": "^4.20250124.0"
+  }
+}

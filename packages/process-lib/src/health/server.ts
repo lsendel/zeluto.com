@@ -3,7 +3,7 @@ import pino from 'pino';
 
 const logger = pino({ name: 'health' });
 
-export function startHealthServer(port = 8080): void {
+export function startHealthServer(port = 8080) {
   const server = createServer((req, res) => {
     if (req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -16,4 +16,5 @@ export function startHealthServer(port = 8080): void {
   server.listen(port, () => {
     logger.info({ port }, 'Health check server started');
   });
+  return server;
 }

@@ -1,0 +1,11 @@
+name = "mauntic-billing"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "src/index.ts"
+
+[[hyperdrive]]
+binding = "DB"
+id = "placeholder"
+
+[vars]
+APP_DOMAIN = "17way.com"

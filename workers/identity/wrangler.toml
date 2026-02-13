@@ -1,0 +1,16 @@
+name = "mauntic-identity"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "src/index.ts"
+
+[[hyperdrive]]
+binding = "DB"
+id = "placeholder"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "placeholder"
+
+[vars]
+APP_DOMAIN = "17way.com"
+BETTER_AUTH_URL = "https://17way.com"
