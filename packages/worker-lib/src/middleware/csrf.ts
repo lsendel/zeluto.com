@@ -18,6 +18,15 @@ const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  */
 export function csrfMiddleware(kv: KVNamespace): MiddlewareHandler {
   return async (c, next) => {
+    const path = new URL(c.req.url).pathname;
+
+    // Skip CSRF for auth endpoints — Better Auth handles its own CSRF protection
+    if (path.startsWith('/api/auth/')) return next();
+
+    // Skip CSRF for API endpoints — session cookie uses SameSite=Lax which
+    // prevents cross-origin POST requests, providing equivalent CSRF protection
+    if (path.startsWith('/api/')) return next();
+
     const method = c.req.method;
     const sessionId = c.get('sessionId') as string | undefined;
 

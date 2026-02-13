@@ -1,7 +1,7 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins';
-import { users, sessions, accounts, verifications } from '@mauntic/identity-domain';
+import { users, sessions, accounts, verifications, organizations, organizationMembers, organizationInvites } from '@mauntic/identity-domain';
 import type { Env, DrizzleDb } from './database.js';
 
 /**
@@ -20,6 +20,9 @@ export function createAuth(env: Env, db: DrizzleDb) {
         session: sessions,
         account: accounts,
         verification: verifications,
+        organization: organizations,
+        member: organizationMembers,
+        invitation: organizationInvites,
       },
     }),
     advanced: {

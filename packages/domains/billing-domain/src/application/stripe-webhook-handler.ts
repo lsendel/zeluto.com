@@ -50,26 +50,28 @@ export class StripeWebhookHandler {
     });
 
     // Update subscription status to active if it was past_due
-    if (invoice.subscription) {
+    const subscriptionId = (invoice as any).subscription as string | undefined || invoice.parent?.subscription_details?.subscription as string | undefined;
+    if (subscriptionId) {
       await this.db
         .update(subscriptions)
         .set({
           status: 'active',
           updatedAt: new Date(),
         })
-        .where(eq(subscriptions.stripeSubscriptionId, invoice.subscription as string));
+        .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
     }
   }
 
   private async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-    if (invoice.subscription) {
+    const subscriptionId = (invoice as any).subscription as string | undefined || invoice.parent?.subscription_details?.subscription as string | undefined;
+    if (subscriptionId) {
       await this.db
         .update(subscriptions)
         .set({
           status: 'past_due',
           updatedAt: new Date(),
         })
-        .where(eq(subscriptions.stripeSubscriptionId, invoice.subscription as string));
+        .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
     }
   }
 
@@ -98,8 +100,8 @@ export class StripeWebhookHandler {
       status: mapStatus(subscription.status),
       stripeCustomerId: subscription.customer as string,
       stripeSubscriptionId: subscription.id,
-      currentPeriodStart: new Date(subscription.current_period_start * 1000),
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodStart: new Date(((subscription as any).current_period_start || 0) * 1000),
+      currentPeriodEnd: new Date(((subscription as any).current_period_end || 0) * 1000),
       trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
     });
   }
@@ -119,8 +121,8 @@ export class StripeWebhookHandler {
       .update(subscriptions)
       .set({
         status: mapStatus(subscription.status),
-        currentPeriodStart: new Date(subscription.current_period_start * 1000),
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodStart: new Date(((subscription as any).current_period_start || 0) * 1000),
+        currentPeriodEnd: new Date(((subscription as any).current_period_end || 0) * 1000),
         trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
         updatedAt: new Date(),
       })

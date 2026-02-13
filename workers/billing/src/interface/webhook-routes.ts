@@ -25,7 +25,7 @@ webhookRoutes.post('/api/v1/billing/webhooks/stripe', async (c) => {
     );
 
     // Handle the event
-    const db = createDatabase(c.env.HYPERDRIVE);
+    const db = createDatabase(c.env.DATABASE_URL);
     const handler = new StripeWebhookHandler(db as any);
     await handler.handleEvent(event);
 

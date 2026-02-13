@@ -1,24 +1,24 @@
 packages:
-  - "packages/*"
-  - "packages/domains/*"
-  - "workers/*"
-  - "services/*"
-  - "tests/*"
-  - "scripts/migration"
+  - packages/*
+  - packages/domains/*
+  - workers/*
+  - services/*
+  - tests/*
+  - scripts/migration
 
 catalogs:
   default:
-    "@cloudflare/workers-types": "^4.20260213.0"
-    "@neondatabase/serverless": "^1.0.2"
-    "@ts-rest/core": "^3.51.0"
-    "@types/node": "^25.2.3"
-    bullmq: "^5.41.0"
-    drizzle-kit: "^0.31.9"
-    drizzle-orm: "^0.45.1"
-    hono: "^4.7.0"
-    ioredis: "^5.6.0"
-    pino: "^10.3.1"
-    tailwindcss: "^4.0.9"
-    typescript: "^5.9.3"
-    vitest: "^4.0.18"
-    zod: "^4.3.6"
+    '@cloudflare/workers-types': ^4.20260213.0
+    '@neondatabase/serverless': ^1.0.2
+    '@ts-rest/core': ^3.52.1
+    '@types/node': ^25.2.3
+    bullmq: ^5.69.1
+    drizzle-kit: ^0.31.9
+    drizzle-orm: ^0.45.1
+    hono: ^4.11.9
+    ioredis: ^5.9.3
+    pino: ^10.3.1
+    tailwindcss: ^4.1.18
+    typescript: ^5.9.3
+    vitest: ^4.0.18
+    zod: ^4.3.6

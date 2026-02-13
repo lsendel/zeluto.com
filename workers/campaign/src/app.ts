@@ -11,7 +11,7 @@ import { handleCampaignQueue } from './events/index.js';
 
 export type Env = {
   Bindings: {
-    HYPERDRIVE: Hyperdrive;
+    DATABASE_URL: string;
     KV: KVNamespace;
     EVENTS: Queue;
   };
@@ -33,7 +33,7 @@ app.get('/health', (c) => c.json({ status: 'ok', service: 'campaign' }));
 
 // Database middleware for API routes
 app.use('/api/*', async (c, next) => {
-  const db = createDatabase(c.env.HYPERDRIVE);
+  const db = createDatabase(c.env.DATABASE_URL);
   c.set('db', db as any);
   await next();
 });

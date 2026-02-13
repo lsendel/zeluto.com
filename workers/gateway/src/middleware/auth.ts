@@ -62,7 +62,30 @@ export function authMiddleware(): MiddlewareHandler<Env> {
       );
 
       if (!identityResponse.ok) {
-        const status = identityResponse.status;
+        // Check if the user is authenticated but has no active organization
+        const errorBody = await identityResponse.json().catch(() => null) as { error?: string } | null;
+
+        if (identityResponse.status === 400 && errorBody?.error === 'NO_ACTIVE_ORGANIZATION') {
+          // User is authenticated but needs onboarding — allow through for specific paths
+          if (
+            path.startsWith('/app/onboarding') ||
+            path.startsWith('/api/v1/onboarding') ||
+            path.startsWith('/api/v1/identity')
+          ) {
+            return next();
+          }
+          if (isApiRequest(path)) {
+            return c.json(
+              {
+                error: 'NO_ORGANIZATION',
+                message: 'No active organization. Complete onboarding first.',
+                redirect: '/app/onboarding/org',
+              },
+              412,
+            );
+          }
+          return c.redirect('/app/onboarding/org');
+        }
 
         // 401 = session expired or invalid
         if (isApiRequest(path)) {

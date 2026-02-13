@@ -7,6 +7,7 @@ import { tenantMiddleware } from './middleware/tenant.js';
 import { rateLimitMiddleware } from './middleware/rate-limit.js';
 import { quotaMiddleware } from './middleware/quota.js';
 import { createOnboardingRoutes } from './routes/onboarding.js';
+import { LoginView } from './views/onboarding/login.js';
 
 export function createApp() {
   const app = new Hono<Env>();
@@ -204,19 +205,17 @@ export function createApp() {
     );
   });
 
-  // Login page (redirect to auth if already authenticated)
+  // Login page - serve HTML login form
   app.get('/login', (c) => {
     const user = c.get('user');
     if (user) {
       const organization = c.get('organization');
-      // If user has no organization, send to onboarding
       if (!organization) {
         return c.redirect('/app/onboarding/org');
       }
       return c.redirect('/app/dashboard');
     }
-    // Redirect to Identity worker's login page
-    return c.redirect('/api/auth/login');
+    return c.html(<LoginView />);
   });
 
   // Root redirect

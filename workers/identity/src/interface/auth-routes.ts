@@ -91,8 +91,6 @@ authRoutes.get('/api/auth/session', async (c) => {
 authRoutes.all('/api/auth/*', async (c) => {
   const db = createDatabase(c.env);
   const auth = createAuth(c.env, db);
-
-  // Better Auth handles the request and returns a Response
   return auth.handler(c.req.raw);
 });
 

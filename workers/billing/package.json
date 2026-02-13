@@ -9,18 +9,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "catalog:",
-    "stripe": "^17.6.0",
-    "drizzle-orm": "catalog:",
-    "@neondatabase/serverless": "catalog:",
     "@mauntic/billing-domain": "workspace:*",
-    "@mauntic/worker-lib": "workspace:*",
+    "@mauntic/contracts": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
-    "@mauntic/contracts": "workspace:*"
+    "@mauntic/worker-lib": "workspace:*",
+    "@neondatabase/serverless": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "stripe": "^20.3.1"
   },
   "devDependencies": {
-    "wrangler": "^3.107.0",
+    "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
-    "@cloudflare/workers-types": "catalog:"
+    "wrangler": "^4.65.0"
   }
 }

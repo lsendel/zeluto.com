@@ -5,10 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     testTimeout: 30_000,
-    hookTimeout: 15_000,
-    setupFiles: ['./setup.ts'],
-    exclude: ['**/*.spec.ts'],
-    // Run tests sequentially since they hit real services
+    hookTimeout: 30_000,
     sequence: {
       concurrent: false,
     },

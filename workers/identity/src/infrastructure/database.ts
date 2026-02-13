@@ -1,9 +1,10 @@
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
 import * as schema from '@mauntic/identity-domain';
 
 export interface Env {
   DB: Hyperdrive;
+  DATABASE_URL: string;
   KV: KVNamespace;
   BETTER_AUTH_SECRET: string;
   BETTER_AUTH_URL: string;
@@ -15,15 +16,11 @@ export interface Env {
 }
 
 /**
- * Create a Drizzle database connection using Hyperdrive
+ * Create a Drizzle database connection using Neon HTTP driver directly
  */
 export function createDatabase(env: Env) {
-  // Configure Neon for Cloudflare Workers
-  neonConfig.fetchConnectionCache = true;
-
-  const pool = new Pool({ connectionString: env.DB.connectionString });
-
-  return drizzle(pool, { schema });
+  const sql = neon(env.DATABASE_URL);
+  return drizzle(sql, { schema });
 }
 
 export type DrizzleDb = ReturnType<typeof createDatabase>;

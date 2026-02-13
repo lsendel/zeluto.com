@@ -6,8 +6,14 @@
   "main": "./dist/src/index.js",
   "types": "./dist/src/index.d.ts",
   "exports": {
-    ".": { "import": "./dist/src/index.js", "types": "./dist/src/index.d.ts" },
-    "./drizzle": { "import": "./dist/drizzle/schema.js", "types": "./dist/drizzle/schema.d.ts" }
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
+    },
+    "./drizzle": {
+      "import": "./dist/drizzle/schema.js",
+      "types": "./dist/drizzle/schema.d.ts"
+    }
   },
   "scripts": {
     "build": "tsc",
@@ -18,12 +24,12 @@
   "dependencies": {
     "@mauntic/domain-kernel": "workspace:*",
     "drizzle-orm": "catalog:",
-    "stripe": "^17.0.0",
+    "stripe": "^20.3.1",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "drizzle-kit": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "drizzle-kit": "catalog:"
+    "vitest": "catalog:"
   }
 }

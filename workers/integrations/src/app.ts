@@ -10,7 +10,7 @@ import { webhookRoutes } from './interface/webhook-routes.js';
 
 export type Env = {
   Bindings: {
-    HYPERDRIVE: Hyperdrive;
+    DATABASE_URL: string;
     KV: KVNamespace;
     EVENTS: Queue;
   };
@@ -32,7 +32,7 @@ app.get('/health', (c) => c.json({ status: 'ok', service: 'integrations' }));
 
 // Database middleware for API routes
 app.use('/api/*', async (c, next) => {
-  const db = createDatabase(c.env.HYPERDRIVE);
+  const db = createDatabase(c.env.DATABASE_URL);
   c.set('db', db as any);
   await next();
 });

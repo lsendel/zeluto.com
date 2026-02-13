@@ -75,6 +75,7 @@ export const organizations = identitySchema.table('organizations', {
 });
 
 // Organization members — links users to orgs with roles
+// Field names match Better Auth's organization plugin expectations
 export const organizationMembers = identitySchema.table('organization_members', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id')
@@ -83,13 +84,12 @@ export const organizationMembers = identitySchema.table('organization_members', 
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  role: varchar('role', { length: 20 }).default('member').notNull(), // owner, admin, member, viewer
-  invitedBy: uuid('invited_by'),
-  joinedAt: timestamp('joined_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  role: varchar('role', { length: 20 }).default('member').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
 // Organization invites
+// Field names match Better Auth's organization plugin expectations
 export const organizationInvites = identitySchema.table('organization_invites', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id')
@@ -97,9 +97,8 @@ export const organizationInvites = identitySchema.table('organization_invites', 
     .references(() => organizations.id, { onDelete: 'cascade' }),
   email: varchar('email', { length: 320 }).notNull(),
   role: varchar('role', { length: 20 }).default('member').notNull(),
-  token: varchar('token', { length: 64 }).notNull().unique(),
-  invitedBy: uuid('invited_by').notNull(),
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  inviterId: uuid('inviter_id').notNull(),
   expiresAt: timestamp('expires_at').notNull(),
-  acceptedAt: timestamp('accepted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

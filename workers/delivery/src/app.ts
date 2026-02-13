@@ -13,7 +13,7 @@ import { trackingRoutes } from './interface/tracking-routes.js';
 
 export interface Env {
   Bindings: {
-    HYPERDRIVE: Hyperdrive;
+    DATABASE_URL: string;
     KV: KVNamespace;
     EVENTS: Queue;
     ENCRYPTION_KEY: string;
@@ -37,7 +37,7 @@ export function createApp() {
 
   // Database middleware for all API routes
   app.use('/api/*', async (c, next) => {
-    const db = createDatabase(c.env.HYPERDRIVE);
+    const db = createDatabase(c.env.DATABASE_URL);
     c.set('db', db as NeonHttpDatabase);
     await next();
   });

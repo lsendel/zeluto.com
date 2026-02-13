@@ -10,12 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "nodemailer": "^6.9.0",
-    "pino": "^9.0.0"
+    "nodemailer": "^8.0.1",
+    "pino": "^10.3.1"
   },
   "devDependencies": {
-    "typescript": "catalog:",
     "@types/node": "catalog:",
-    "@types/nodemailer": "^6.4.0"
+    "@types/nodemailer": "^7.0.9",
+    "typescript": "catalog:"
   }
 }

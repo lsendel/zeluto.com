@@ -14,7 +14,7 @@ import { buildFilterWhere, type FilterCriteria } from '../services/filter-engine
 // ---------------------------------------------------------------------------
 
 type Env = {
-  Bindings: { HYPERDRIVE: Hyperdrive; KV: KVNamespace };
+  Bindings: { DATABASE_URL: string; KV: KVNamespace };
   Variables: { tenant: TenantContext; db: NeonHttpDatabase };
 };
 

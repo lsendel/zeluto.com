@@ -8,18 +8,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.7.0",
-    "drizzle-orm": "catalog:",
-    "@neondatabase/serverless": "catalog:",
-    "@mauntic/crm-domain": "workspace:*",
-    "@mauntic/worker-lib": "workspace:*",
-    "@mauntic/domain-kernel": "workspace:*",
     "@mauntic/contracts": "workspace:*",
-    "@mauntic/ui-kit": "workspace:*"
+    "@mauntic/crm-domain": "workspace:*",
+    "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/ui-kit": "workspace:*",
+    "@mauntic/worker-lib": "workspace:*",
+    "@neondatabase/serverless": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0",
-    "typescript": "^5.7.0",
-    "@cloudflare/workers-types": "^4.20250124.0"
+    "@cloudflare/workers-types": "catalog:",
+    "typescript": "catalog:",
+    "wrangler": "^4.65.0"
   }
 }

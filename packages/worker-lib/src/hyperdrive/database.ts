@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 
-export function createDatabase(hyperdrive: Hyperdrive) {
-  const client = neon(hyperdrive.connectionString);
+export function createDatabase(databaseUrl: string) {
+  const client = neon(databaseUrl);
   return drizzle(client);
 }

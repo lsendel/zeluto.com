@@ -5,7 +5,7 @@ import { calculateAndAwardPoints } from '../services/point-calculator.js';
 import { publishPointsAwarded } from './publisher.js';
 
 interface QueueEnv {
-  HYPERDRIVE: Hyperdrive;
+  DATABASE_URL: string;
   KV: KVNamespace;
   EVENTS: Queue;
 }
@@ -18,7 +18,7 @@ export async function handleCampaignQueue(
   batch: MessageBatch,
   env: QueueEnv,
 ): Promise<void> {
-  const db = createDatabase(env.HYPERDRIVE) as NeonHttpDatabase;
+  const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
 
   for (const msg of batch.messages) {
     const event = msg.body as Record<string, unknown>;

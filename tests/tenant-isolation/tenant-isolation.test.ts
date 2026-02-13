@@ -8,9 +8,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
  *
  * Prerequisites:
  * - A running API environment (local or staging)
- * - Two test organizations created via the API
  *
- * Run with: pnpm vitest tests/tenant-isolation/
+ * Run with:
+ *   API_BASE_URL=https://17way.com pnpm vitest tests/tenant-isolation/
  */
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8787';
@@ -41,13 +41,30 @@ async function apiRequest(
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Cookie: org.sessionCookie,
+    Origin: API_BASE_URL,
   };
 
   return fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    redirect: 'manual',
   });
+}
+
+/**
+ * Extract session cookie from set-cookie header
+ */
+function extractSessionCookie(res: Response): string {
+  const raw = res.headers.get('set-cookie') ?? '';
+  // Match the __Secure-better-auth.session_token cookie
+  const match = raw.match(
+    /(__Secure-better-auth\.session_token=[^;]+)/,
+  );
+  if (match) return match[1];
+  // Fallback: first cookie
+  const first = raw.split(';')[0];
+  return first || '';
 }
 
 /**
@@ -57,10 +74,15 @@ async function createTestOrg(
   email: string,
   orgName: string,
 ): Promise<TestOrg> {
-  // Step 1: Sign up user
-  const signupRes = await fetch(`${API_BASE_URL}/api/auth/signup`, {
+  const slug = orgName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+  // Step 1: Sign up user via Better Auth
+  const signupRes = await fetch(`${API_BASE_URL}/api/auth/sign-up/email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Origin: API_BASE_URL,
+    },
     body: JSON.stringify({
       email,
       password: `TestPassword123!_${Date.now()}`,
@@ -69,28 +91,57 @@ async function createTestOrg(
   });
 
   if (!signupRes.ok) {
-    throw new Error(`Signup failed: ${signupRes.status} ${await signupRes.text()}`);
+    throw new Error(
+      `Signup failed: ${signupRes.status} ${await signupRes.text()}`,
+    );
   }
 
-  // Extract session cookie from response
-  const setCookie = signupRes.headers.get('set-cookie') ?? '';
-  const sessionCookie = setCookie.split(';')[0] ?? '';
+  const sessionCookie = extractSessionCookie(signupRes);
+  if (!sessionCookie) {
+    throw new Error('No session cookie returned from signup');
+  }
 
-  // Step 2: Create organization via onboarding
-  const orgRes = await fetch(`${API_BASE_URL}/api/v1/onboarding/organization`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Cookie: sessionCookie,
+  // Step 2: Create organization via Better Auth organization plugin
+  const orgRes = await fetch(
+    `${API_BASE_URL}/api/auth/organization/create`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+        Origin: API_BASE_URL,
+      },
+      body: JSON.stringify({ name: orgName, slug }),
     },
-    body: JSON.stringify({ name: orgName }),
-  });
+  );
 
   if (!orgRes.ok) {
-    throw new Error(`Org creation failed: ${orgRes.status} ${await orgRes.text()}`);
+    throw new Error(
+      `Org creation failed: ${orgRes.status} ${await orgRes.text()}`,
+    );
   }
 
   const orgData = (await orgRes.json()) as { id: string; name: string };
+
+  // Step 3: Set the newly created org as active
+  const setActiveRes = await fetch(
+    `${API_BASE_URL}/api/auth/organization/set-active`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: sessionCookie,
+        Origin: API_BASE_URL,
+      },
+      body: JSON.stringify({ organizationId: orgData.id }),
+    },
+  );
+
+  if (!setActiveRes.ok) {
+    throw new Error(
+      `Set active org failed: ${setActiveRes.status} ${await setActiveRes.text()}`,
+    );
+  }
 
   return {
     id: orgData.id,
@@ -100,34 +151,32 @@ async function createTestOrg(
 }
 
 describe('Tenant Isolation Audit', () => {
-  // Track created resources for cleanup and cross-org checks
   let orgAContacts: TestContact[] = [];
   let orgBContacts: TestContact[] = [];
 
   beforeAll(async () => {
     try {
-      // Create two distinct test organizations
+      const ts = Date.now();
       orgA = await createTestOrg(
-        `test-orgA-${Date.now()}@mauntic-test.example`,
-        `Test Org A ${Date.now()}`,
+        `test-orgA-${ts}@mauntic-test.example`,
+        `testorga${ts}`,
       );
 
       orgB = await createTestOrg(
-        `test-orgB-${Date.now()}@mauntic-test.example`,
-        `Test Org B ${Date.now()}`,
+        `test-orgB-${ts}@mauntic-test.example`,
+        `testorgb${ts}`,
       );
-    } catch {
-      // If setup fails (no running environment), tests will be skipped
+    } catch (e) {
       console.warn(
-        'Tenant isolation tests require a running API environment. ' +
-          'Set API_BASE_URL env var or run locally.',
+        'Tenant isolation tests require a running API environment.',
+        String(e),
       );
     }
-  });
+  }, 30_000);
 
   describe('Contact isolation', () => {
     it('should create contacts in Org A', async () => {
-      if (!orgA) return; // skip if setup failed
+      if (!orgA) return;
 
       const res = await apiRequest(orgA, 'POST', '/api/v1/crm/contacts', {
         email: 'alice@orgA-test.example',
@@ -165,7 +214,6 @@ describe('Tenant Isolation Audit', () => {
       const data = (await res.json()) as { data: TestContact[] };
       const orgBEmails = orgBContacts.map((c) => c.email);
 
-      // Verify none of Org B's contacts appear in Org A's list
       for (const contact of data.data) {
         expect(orgBEmails).not.toContain(contact.email);
       }
@@ -195,7 +243,6 @@ describe('Tenant Isolation Audit', () => {
         `/api/v1/crm/contacts/${orgBContactId}`,
       );
 
-      // Should return 404 (not found in this org's scope) or 403
       expect([403, 404]).toContain(res.status);
     });
 
@@ -249,7 +296,7 @@ describe('Tenant Isolation Audit', () => {
 
       const res = await apiRequest(orgA, 'POST', '/api/v1/campaign/campaigns', {
         name: 'Org A Campaign',
-        channel: 'email',
+        type: 'email',
       });
 
       expect(res.status).toBe(201);
@@ -262,7 +309,7 @@ describe('Tenant Isolation Audit', () => {
 
       const res = await apiRequest(orgB, 'POST', '/api/v1/campaign/campaigns', {
         name: 'Org B Campaign',
-        channel: 'email',
+        type: 'email',
       });
 
       expect(res.status).toBe(201);
@@ -356,7 +403,7 @@ describe('Tenant Isolation Audit', () => {
 
       const res = await apiRequest(orgA, 'POST', '/api/v1/content/templates', {
         name: 'Org A Template',
-        channel: 'email',
+        type: 'email',
         subject: 'Test Subject',
         body: '<p>Hello</p>',
       });
@@ -389,7 +436,6 @@ describe('Tenant Isolation Audit', () => {
         '/api/v1/analytics/overview',
       );
 
-      // Should succeed and only contain data scoped to Org A
       expect(res.status).toBe(200);
     });
 
@@ -410,7 +456,6 @@ describe('Tenant Isolation Audit', () => {
     it('should reject requests with forged X-Tenant-Context header', async () => {
       if (!orgA || !orgB) return;
 
-      // Try to access API with Org A's session but forged Org B tenant header
       const forgedTenantContext = btoa(
         JSON.stringify({
           organizationId: orgB.id,
@@ -424,12 +469,12 @@ describe('Tenant Isolation Audit', () => {
         headers: {
           'Content-Type': 'application/json',
           Cookie: orgA.sessionCookie,
+          Origin: API_BASE_URL,
           'X-Tenant-Context': forgedTenantContext,
         },
       });
 
       // Gateway should override forged header with actual session data.
-      // Contacts returned should belong to Org A, not Org B.
       if (res.ok) {
         const data = (await res.json()) as { data: TestContact[] };
         const orgBEmails = orgBContacts.map((c) => c.email);
@@ -437,7 +482,6 @@ describe('Tenant Isolation Audit', () => {
           expect(orgBEmails).not.toContain(contact.email);
         }
       }
-      // If gateway rejects the forged header, that is also acceptable
     });
   });
 });

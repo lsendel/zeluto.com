@@ -12,7 +12,7 @@ import { viewRoutes } from './interface/view-routes.js';
 
 export type Env = {
   Bindings: {
-    HYPERDRIVE: Hyperdrive;
+    DATABASE_URL: string;
     KV: KVNamespace;
     EVENTS: Queue;
     ASSETS: R2Bucket;
@@ -35,17 +35,17 @@ app.get('/health', (c) => c.json({ status: 'ok', service: 'content' }));
 
 // Database middleware for API and view routes
 app.use('/api/*', async (c, next) => {
-  const db = createDatabase(c.env.HYPERDRIVE);
+  const db = createDatabase(c.env.DATABASE_URL);
   c.set('db', db as any);
   await next();
 });
 app.use('/app/*', async (c, next) => {
-  const db = createDatabase(c.env.HYPERDRIVE);
+  const db = createDatabase(c.env.DATABASE_URL);
   c.set('db', db as any);
   await next();
 });
 app.use('/p/*', async (c, next) => {
-  const db = createDatabase(c.env.HYPERDRIVE);
+  const db = createDatabase(c.env.DATABASE_URL);
   c.set('db', db as any);
   await next();
 });

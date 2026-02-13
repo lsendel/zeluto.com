@@ -5,7 +5,7 @@ import { handleFormSubmitted } from './form-event-handler.js';
 import { handleDeliveryEvent } from './delivery-event-handler.js';
 
 interface QueueEnv {
-  HYPERDRIVE: Hyperdrive;
+  DATABASE_URL: string;
   KV: KVNamespace;
   EVENTS: Queue;
 }
@@ -18,7 +18,7 @@ export async function handleJourneyQueue(
   batch: MessageBatch,
   env: QueueEnv,
 ): Promise<void> {
-  const db = createDatabase(env.HYPERDRIVE) as NeonHttpDatabase;
+  const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
 
   for (const msg of batch.messages) {
     const event = msg.body as Record<string, unknown>;

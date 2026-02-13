@@ -9,7 +9,7 @@ import { tags, contact_tags, contacts } from '@mauntic/crm-domain/drizzle';
 // ---------------------------------------------------------------------------
 
 type Env = {
-  Bindings: { HYPERDRIVE: Hyperdrive; KV: KVNamespace };
+  Bindings: { DATABASE_URL: string; KV: KVNamespace };
   Variables: { tenant: TenantContext; db: NeonHttpDatabase };
 };
 

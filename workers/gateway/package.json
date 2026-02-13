@@ -9,15 +9,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "catalog:",
-    "@mauntic/worker-lib": "workspace:*",
-    "@mauntic/ui-kit": "workspace:*",
     "@mauntic/contracts": "workspace:*",
-    "@mauntic/domain-kernel": "workspace:*"
+    "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/ui-kit": "workspace:*",
+    "@mauntic/worker-lib": "workspace:*",
+    "hono": "catalog:"
   },
   "devDependencies": {
-    "wrangler": "^3.107.0",
+    "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
-    "@cloudflare/workers-types": "catalog:"
+    "wrangler": "^4.65.0"
   }
 }

@@ -11,7 +11,7 @@ import { webhookRoutes } from './interface/webhook-routes.js';
 
 export interface Env {
   Bindings: {
-    HYPERDRIVE: Hyperdrive;
+    DATABASE_URL: string;
     STRIPE_SECRET_KEY: string;
     STRIPE_WEBHOOK_SECRET: string;
     APP_DOMAIN: string;
@@ -35,7 +35,7 @@ export function createApp() {
 
   // Database and Stripe middleware for all API routes
   app.use('/api/*', async (c, next) => {
-    const db = createDatabase(c.env.HYPERDRIVE);
+    const db = createDatabase(c.env.DATABASE_URL);
     const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
     c.set('db', db as any);
     c.set('stripe', stripe);
