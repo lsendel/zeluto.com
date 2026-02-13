@@ -5,6 +5,7 @@ export * from './entities/usage-record.js';
 
 // Services
 export * from './services/quota-checker.js';
+export * from './services/plan-service.js';
 
 // Application
 export * from './application/stripe-webhook-handler.js';

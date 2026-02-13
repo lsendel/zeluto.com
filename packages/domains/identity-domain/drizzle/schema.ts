@@ -9,7 +9,7 @@ export const users = identitySchema.table('users', {
   email: varchar('email', { length: 320 }).notNull().unique(),
   emailVerified: boolean('email_verified').default(false).notNull(),
   image: text('image'),
-  role: varchar('role', { length: 20 }).default('user').notNull(),
+  role: varchar('role', { length: 20 }).default('member').notNull(), // owner, admin, member, viewer
   isBlocked: boolean('is_blocked').default(false),
   lastSignedIn: timestamp('last_signed_in'),
   loginMethod: varchar('login_method', { length: 64 }),

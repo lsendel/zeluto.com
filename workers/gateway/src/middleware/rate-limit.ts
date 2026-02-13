@@ -57,36 +57,47 @@ export function rateLimitMiddleware(): MiddlewareHandler<Env> {
     const limits = RATE_LIMITS[category];
     const limit = limits[plan];
 
-    // Current minute bucket (e.g., "2026-02-12T14:23")
     const now = new Date();
     const minuteBucket = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}T${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
-
-    const kvKey = `rate:${organizationId}:${category}:${minuteBucket}`;
+    const secondsRemaining = Math.max(1, 60 - now.getUTCSeconds());
+    const resetEpoch = Math.floor(now.getTime() / 1000) + secondsRemaining;
 
     try {
-      const current = await c.env.KV.get(kvKey);
-      const count = current ? parseInt(current, 10) : 0;
+      const rateLimiterId = c.env.RATE_LIMITER.idFromName(organizationId);
+      const stub = c.env.RATE_LIMITER.get(rateLimiterId);
+      const doResponse = await stub.fetch('https://rate-limiter/increment', {
+        method: 'POST',
+        body: JSON.stringify({
+          category,
+          bucket: minuteBucket,
+          limit,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (count >= limit) {
+      if (!doResponse.ok) {
+        throw new Error(`Rate limiter update failed: ${doResponse.status}`);
+      }
+
+      const payload = (await doResponse.json()) as { allowed: boolean; count: number };
+
+      if (!payload.allowed) {
         return c.json(
           {
             error: 'RATE_LIMIT_EXCEEDED',
             message: `Rate limit exceeded. Plan limit: ${limit} requests/minute`,
-            retryAfter: 60,
+            retryAfter: secondsRemaining,
           },
           429,
         );
       }
 
-      // Increment counter
-      await c.env.KV.put(kvKey, String(count + 1), {
-        expirationTtl: 120, // expire after 2 minutes
-      });
-
       // Set rate limit headers
       c.header('X-RateLimit-Limit', String(limit));
-      c.header('X-RateLimit-Remaining', String(limit - count - 1));
-      c.header('X-RateLimit-Reset', String(Math.floor(now.getTime() / 1000) + 60));
+      c.header('X-RateLimit-Remaining', String(Math.max(0, limit - payload.count)));
+      c.header('X-RateLimit-Reset', String(resetEpoch));
 
       await next();
     } catch (error) {

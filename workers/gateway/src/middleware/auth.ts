@@ -1,37 +1,55 @@
 import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../index.js';
 
+export interface SessionUser {
+  id: string; // UUID
+  email: string;
+  name: string;
+}
+
+export interface SessionOrganization {
+  id: string; // UUID
+  name: string;
+  role: 'owner' | 'admin' | 'member' | 'viewer';
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+}
+
 export interface SessionData {
-  user: {
-    id: string; // UUID
-    email: string;
-    name: string;
-  };
-  organization: {
-    id: string; // UUID
-    name: string;
-    role: 'owner' | 'admin' | 'member' | 'viewer';
-    plan: 'free' | 'starter' | 'pro' | 'enterprise';
-  };
+  user: SessionUser;
+  organization?: SessionOrganization;
 }
 
 /**
  * Auth middleware - validates session via Identity Worker
  * Calls IDENTITY service binding to validate session cookie/token
  * Sets user + organization data in context
+ *
+ * On expired/invalid session: redirect to login (HTML) or 401 (API)
+ * On missing organization: redirect to onboarding (HTML) or set user without org (API)
  */
+const PUBLIC_PATHS = new Set(['/login', '/signup', '/health']);
+const PUBLIC_PREFIXES = [
+  '/api/auth/',
+  '/api/v1/billing/webhooks/stripe',
+  '/public/',
+  '/app/signup',
+];
+
+function isPublicPath(path: string): boolean {
+  if (PUBLIC_PATHS.has(path)) return true;
+  return PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+function isApiRequest(path: string): boolean {
+  return path.startsWith('/api/');
+}
+
 export function authMiddleware(): MiddlewareHandler<Env> {
   return async (c, next) => {
     const path = c.req.path;
 
-    // Skip auth for public routes
-    if (
-      path.startsWith('/api/auth/') ||
-      path === '/login' ||
-      path === '/signup' ||
-      path === '/health' ||
-      path.startsWith('/public/')
-    ) {
+    // Skip auth for explicitly public routes (signup, auth callbacks, etc.)
+    if (isPublicPath(path)) {
       return next();
     }
 
@@ -44,25 +62,59 @@ export function authMiddleware(): MiddlewareHandler<Env> {
       );
 
       if (!identityResponse.ok) {
-        // Session invalid - redirect to login for HTML, 401 for API
-        if (path.startsWith('/api/')) {
-          return c.json({ error: 'UNAUTHORIZED' }, 401);
+        const status = identityResponse.status;
+
+        // 401 = session expired or invalid
+        if (isApiRequest(path)) {
+          return c.json(
+            { error: 'UNAUTHORIZED', message: 'Session expired or invalid' },
+            401,
+          );
         }
         return c.redirect('/login');
       }
 
       const sessionData = (await identityResponse.json()) as SessionData;
 
-      // Set session data in context for downstream middleware/handlers
+      // Set user data in context
       c.set('user', sessionData.user);
-      c.set('organization', sessionData.organization);
       c.set('userId', sessionData.user.id);
-      c.set('organizationId', sessionData.organization.id);
+
+      // Handle missing organization
+      if (sessionData.organization) {
+        c.set('organization', sessionData.organization);
+        c.set('organizationId', sessionData.organization.id);
+      } else {
+        // User has no active organization - redirect to onboarding for HTML requests
+        // For onboarding paths, allow through without org
+        if (
+          path.startsWith('/app/onboarding') ||
+          path.startsWith('/api/v1/onboarding') ||
+          path.startsWith('/api/v1/identity')
+        ) {
+          // Allow through - onboarding and identity routes work without org
+        } else if (isApiRequest(path)) {
+          return c.json(
+            {
+              error: 'NO_ORGANIZATION',
+              message: 'No active organization. Complete onboarding first.',
+              redirect: '/app/onboarding/org',
+            },
+            412,
+          );
+        } else {
+          return c.redirect('/app/onboarding/org');
+        }
+      }
 
       await next();
     } catch (error) {
-      c.get('logger')?.error({ error }, 'Auth middleware error');
-      return c.json({ error: 'INTERNAL_ERROR' }, 500);
+      c.get('logger')?.error({ error: String(error) }, 'Auth middleware error');
+
+      if (isApiRequest(path)) {
+        return c.json({ error: 'INTERNAL_ERROR' }, 500);
+      }
+      return c.redirect('/login');
     }
   };
 }

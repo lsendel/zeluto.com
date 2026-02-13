@@ -5,6 +5,7 @@ import type { Env } from './index.js';
 import { authMiddleware } from './middleware/auth.js';
 import { tenantMiddleware } from './middleware/tenant.js';
 import { rateLimitMiddleware } from './middleware/rate-limit.js';
+import { quotaMiddleware } from './middleware/quota.js';
 import { createOnboardingRoutes } from './routes/onboarding.js';
 
 export function createApp() {
@@ -30,44 +31,90 @@ export function createApp() {
   // 6. Rate limiting middleware (plan-based limits)
   app.use('/api/*', rateLimitMiddleware());
 
+  // 7. Quota checking middleware (checks resource quotas via BILLING)
+  app.use('/api/v1/*', quotaMiddleware());
+
   // Health check
   app.get('/health', (c) => c.json({ status: 'ok' }));
+
+  // ========================================
+  // /api/v1/me - Current user profile + org + subscription
+  // ========================================
+  app.get('/api/v1/me', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+      return c.json({ error: 'UNAUTHORIZED' }, 401);
+    }
+
+    const organization = c.get('organization');
+
+    // Build response with user data
+    const result: Record<string, unknown> = {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      organization: organization
+        ? {
+            id: organization.id,
+            name: organization.name,
+            role: organization.role,
+            plan: organization.plan,
+          }
+        : null,
+      subscription: null,
+    };
+
+    // If user has an org, fetch subscription info from BILLING
+    if (organization) {
+      try {
+        const tenantContext = c.get('tenantContext');
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (tenantContext) {
+          headers['X-Tenant-Context'] = btoa(JSON.stringify(tenantContext));
+        }
+        const requestId = c.get('requestId');
+        if (requestId) {
+          headers['X-Request-Id'] = requestId;
+        }
+
+        const billingResponse = await c.env.BILLING.fetch(
+          new Request(
+            `https://internal/api/v1/billing/subscriptions/${organization.id}`,
+            { headers },
+          ),
+        );
+
+        if (billingResponse.ok) {
+          result.subscription = await billingResponse.json();
+        }
+      } catch (error) {
+        // Billing info is non-critical - log and continue
+        c.get('logger')?.warn(
+          { error: String(error) },
+          'Failed to fetch subscription info for /me endpoint',
+        );
+      }
+    }
+
+    return c.json(result);
+  });
 
   // ========================================
   // Service Binding Routes (API)
   // ========================================
 
-  /**
-   * Helper to forward request to service binding with X-Tenant-Context header
-   */
-  const forwardToService = async (c: any, service: Fetcher) => {
-    const tenantContext = c.get('tenantContext');
-
-    // Clone headers and add X-Tenant-Context if available
-    const headers = new Headers(c.req.raw.headers);
-    if (tenantContext) {
-      const contextJson = JSON.stringify(tenantContext);
-      const contextB64 = btoa(contextJson);
-      headers.set('X-Tenant-Context', contextB64);
-    }
-
-    // Create new request with updated headers
-    const request = new Request(c.req.raw.url, {
-      method: c.req.raw.method,
-      headers,
-      body: c.req.raw.body,
-      // @ts-ignore - duplex is needed for streaming
-      duplex: 'half',
-    });
-
-    return service.fetch(request);
-  };
-
-  // Identity routes
+  // Identity auth routes (public, no tenant context needed)
   app.all('/api/auth/*', async (c) => {
-    // Auth routes don't need tenant context
-    const response = await c.env.IDENTITY.fetch(c.req.raw);
-    return response;
+    return forwardToService(c, c.env.IDENTITY, { skipTenant: true });
+  });
+
+  // Billing webhook (public, no tenant context)
+  app.post('/api/v1/billing/webhooks/stripe', async (c) => {
+    return forwardToService(c, c.env.BILLING, { skipTenant: true });
   });
 
   app.all('/api/v1/identity/*', async (c) => {
@@ -187,6 +234,61 @@ export function createApp() {
   });
 
   return app;
+}
+
+/**
+ * Forward request to a downstream service binding with proper headers.
+ *
+ * - Propagates X-Tenant-Context (base64 JSON) unless skipTenant is set
+ * - Propagates X-Request-Id for distributed tracing
+ * - Handles service binding errors gracefully
+ */
+async function forwardToService(
+  c: any,
+  service: Fetcher,
+  options?: { skipTenant?: boolean },
+): Promise<Response> {
+  const url = new URL(c.req.url);
+  const headers = new Headers(c.req.raw.headers);
+
+  // Add tenant context if available and not skipped
+  if (!options?.skipTenant) {
+    const tenant = c.get('tenantContext');
+    if (tenant) {
+      headers.set('X-Tenant-Context', btoa(JSON.stringify(tenant)));
+    }
+  }
+
+  // Forward request ID for distributed tracing
+  const requestId = c.get('requestId');
+  if (requestId) {
+    headers.set('X-Request-Id', requestId);
+  }
+
+  try {
+    const response = await service.fetch(url.toString(), {
+      method: c.req.method,
+      headers,
+      body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
+      // @ts-ignore - duplex is needed for streaming request bodies
+      duplex: 'half',
+    });
+
+    return new Response(response.body, response);
+  } catch (error) {
+    c.get('logger')?.error(
+      { error: String(error), url: url.pathname },
+      'Service binding fetch failed',
+    );
+
+    return c.json(
+      {
+        error: 'SERVICE_UNAVAILABLE',
+        message: 'The requested service is temporarily unavailable',
+      },
+      503,
+    );
+  }
 }
 
 /**

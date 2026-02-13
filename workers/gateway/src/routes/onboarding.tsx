@@ -15,7 +15,9 @@ import {
  * 2. After signup → /app/onboarding/org → CreateOrgView
  * 3. After org created → /app/onboarding/plan → SelectPlanView
  * 4. After plan selected → /app/onboarding/setup → SetupView
- * 5. After setup complete → /app/dashboard
+ * 5. After setup complete → POST /api/v1/onboarding/complete → /app/dashboard
+ *
+ * Each step validates the previous step was completed.
  */
 
 export function createOnboardingRoutes() {
@@ -54,15 +56,56 @@ export function createOnboardingRoutes() {
     return c.html(<CreateOrgView />);
   });
 
-  // Handle organization creation response
+  // Handle organization creation
   app.post("/onboarding/org", async (c) => {
     const user = c.get("user");
     if (!user) {
       return c.redirect("/app/signup");
     }
 
-    // Organization is created via POST to /api/v1/identity/organizations
-    // This route handles the response and redirects
+    const contentType = c.req.header("Content-Type") ?? "";
+    let orgName: string | undefined;
+    let slug: string | undefined;
+
+    if (contentType.includes("application/json")) {
+      const body = (await c.req.json()) as { name?: string; slug?: string };
+      orgName = body.name;
+      slug = body.slug;
+    } else {
+      const formData = await c.req.parseBody();
+      if (typeof formData?.["name"] === "string") orgName = formData["name"];
+      if (typeof formData?.["slug"] === "string") slug = formData["slug"];
+    }
+
+    if (!orgName || !slug) {
+      return c.json({ error: "NAME_AND_SLUG_REQUIRED" }, 400);
+    }
+
+    // Create organization via Identity Worker
+    const identityResponse = await c.env.IDENTITY.fetch(
+      new Request("https://internal/api/v1/identity/organizations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": user.id,
+          "X-Request-Id": c.get("requestId") ?? crypto.randomUUID(),
+        },
+        body: JSON.stringify({ name: orgName, slug }),
+      }),
+    );
+
+    if (!identityResponse.ok) {
+      const error = (await identityResponse.json()) as { error?: string; message?: string };
+      return c.json(
+        {
+          error: error.error ?? "ORG_CREATION_FAILED",
+          message: error.message ?? "Failed to create organization",
+        },
+        identityResponse.status as 400 | 409 | 500,
+      );
+    }
+
+    // Redirect to plan selection step
     return c.redirect("/app/onboarding/plan");
   });
 
@@ -180,18 +223,35 @@ export function createOnboardingRoutes() {
       return c.redirect("/app/signup");
     }
 
-    const body = await c.req.json();
-    const plan = body.plan;
+    const contentType = c.req.header("Content-Type") ?? "";
+    let plan: string | undefined;
+    if (contentType.includes("application/json")) {
+      const body = (await c.req.json()) as { plan?: string };
+      if (typeof body.plan === "string") {
+        plan = body.plan;
+      }
+    } else {
+      const formData = await c.req.parseBody();
+      const rawPlan = formData?.["plan"];
+      if (typeof rawPlan === "string") {
+        plan = rawPlan;
+      }
+    }
+
+    if (!plan) {
+      return c.json({ error: "PLAN_REQUIRED" }, 400);
+    }
 
     // For free plan, just update the organization and redirect
     if (plan === "free" && organization?.id && user?.id) {
       // Update organization plan via Identity Worker
       await c.env.IDENTITY.fetch(
-        new Request(`http://identity/api/v1/organizations/${organization.id}`, {
+        new Request(`https://internal/api/v1/identity/organizations/${organization.id}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             "X-User-Id": user.id,
+            "X-Request-Id": c.get("requestId") ?? crypto.randomUUID(),
           },
           body: JSON.stringify({ plan: "free" }),
         })
@@ -235,13 +295,81 @@ export function createOnboardingRoutes() {
     const user = c.get("user");
     const organization = c.get("organization");
 
-    if (!user || !organization) {
-      return c.redirect("/app/signup");
+    if (!user) {
+      return c.json(
+        { error: "UNAUTHORIZED", message: "Authentication required" },
+        401,
+      );
     }
 
-    // Mark onboarding as complete (could be stored in user metadata)
-    // For now, just redirect to dashboard
-    return c.redirect("/app/dashboard");
+    if (!organization) {
+      return c.json(
+        {
+          error: "ONBOARDING_INCOMPLETE",
+          message: "Organization must be created before completing onboarding",
+          nextStep: "/app/onboarding/org",
+        },
+        400,
+      );
+    }
+
+    // Validate that a plan has been selected (not still in default/unset state)
+    if (!organization.plan) {
+      return c.json(
+        {
+          error: "ONBOARDING_INCOMPLETE",
+          message: "A plan must be selected before completing onboarding",
+          nextStep: "/app/onboarding/plan",
+        },
+        400,
+      );
+    }
+
+    try {
+      // Mark onboarding as complete via Identity Worker
+      const identityResponse = await c.env.IDENTITY.fetch(
+        new Request(
+          `https://internal/api/v1/identity/organizations/${organization.id}/onboarding-complete`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-User-Id": user.id,
+              "X-Request-Id": c.get("requestId") ?? crypto.randomUUID(),
+            },
+          },
+        ),
+      );
+
+      if (!identityResponse.ok) {
+        c.get("logger")?.warn(
+          { status: identityResponse.status },
+          "Failed to mark onboarding complete in identity service",
+        );
+      }
+
+      // If the request expects JSON (API call), return JSON
+      const accept = c.req.header("Accept") ?? "";
+      if (accept.includes("application/json")) {
+        return c.json({
+          success: true,
+          redirect: "/app/dashboard",
+        });
+      }
+
+      // Otherwise redirect to dashboard (HTMX / form submission)
+      return c.redirect("/app/dashboard");
+    } catch (error) {
+      c.get("logger")?.error(
+        { error: String(error) },
+        "Error completing onboarding",
+      );
+
+      return c.json(
+        { error: "INTERNAL_ERROR", message: "Failed to complete onboarding" },
+        500,
+      );
+    }
   });
 
   return app;

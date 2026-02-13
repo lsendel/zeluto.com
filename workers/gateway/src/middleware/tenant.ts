@@ -6,19 +6,31 @@ import type { Env } from '../index.js';
  * Tenant context middleware
  * Constructs TenantContext from authenticated user's organization
  * Sets X-Tenant-Context header as base64-encoded JSON for downstream workers
+ *
+ * The TenantContext includes plan information so downstream workers
+ * can enforce plan-specific quota limits and feature gates.
  */
+const TENANT_OPTIONAL_PATHS = new Set(['/login', '/signup', '/health']);
+const TENANT_OPTIONAL_PREFIXES = [
+  '/api/auth/',
+  '/api/v1/billing/webhooks/stripe',
+  '/public/',
+  '/app/signup',
+  '/app/onboarding',
+  '/api/v1/onboarding',
+  '/api/v1/me',
+];
+
+function shouldSkipTenantContext(path: string): boolean {
+  if (TENANT_OPTIONAL_PATHS.has(path)) return true;
+  return TENANT_OPTIONAL_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
 export function tenantMiddleware(): MiddlewareHandler<Env> {
   return async (c, next) => {
     const path = c.req.path;
 
-    // Skip for public/auth routes
-    if (
-      path.startsWith('/api/auth/') ||
-      path === '/login' ||
-      path === '/signup' ||
-      path === '/health' ||
-      path.startsWith('/public/')
-    ) {
+    if (shouldSkipTenantContext(path)) {
       return next();
     }
 
@@ -26,11 +38,11 @@ export function tenantMiddleware(): MiddlewareHandler<Env> {
     const user = c.get('user');
 
     if (!organization || !user) {
-      // Should not happen if auth middleware ran first
-      return c.json({ error: 'MISSING_AUTH_CONTEXT' }, 500);
+      // If user is authenticated but has no org, the auth middleware
+      // should have already redirected them. This is a safety fallback.
+      return c.json({ error: 'TENANT_CONTEXT_REQUIRED' }, 412);
     }
 
-    // Construct tenant context
     const tenantContext: TenantContext = {
       organizationId: organization.id,
       userId: user.id,
@@ -38,7 +50,6 @@ export function tenantMiddleware(): MiddlewareHandler<Env> {
       plan: organization.plan,
     };
 
-    // Set context in Hono context for use in service binding forwarding
     c.set('tenantContext', tenantContext);
 
     await next();

@@ -1,9 +1,4 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import * as schema from '@mauntic/billing-domain/drizzle';
-
-export function createDatabase(connectionString: string): NeonHttpDatabase<typeof schema> {
-  const sql = neon(connectionString);
-  return drizzle(sql, { schema });
-}
+// Database creation is provided by @mauntic/worker-lib's createDatabase(hyperdrive).
+// This file is kept for backwards compatibility but the primary import should be
+// from @mauntic/worker-lib.
+export { createDatabase } from '@mauntic/worker-lib';

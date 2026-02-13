@@ -14,6 +14,10 @@ id = "placeholder"
 [vars]
 APP_DOMAIN = "17way.com"
 
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"
+
 # Service Bindings
 [[services]]
 binding = "IDENTITY"

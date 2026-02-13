@@ -1,17 +1,17 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import { StripeWebhookHandler } from '@mauntic/billing-domain';
-import { createDatabase } from '../infrastructure/database.js';
 import { verifyStripeWebhook } from '../infrastructure/stripe.js';
+import { createDatabase } from '@mauntic/worker-lib';
 
-export const webhookRoutes = new Hono<{ Bindings: Env }>();
+export const webhookRoutes = new Hono<Env>();
 
-// POST /webhooks/stripe - Handle Stripe webhooks
-webhookRoutes.post('/stripe', async (c) => {
+// POST /api/v1/billing/webhooks/stripe - Handle Stripe webhooks
+webhookRoutes.post('/api/v1/billing/webhooks/stripe', async (c) => {
   const signature = c.req.header('stripe-signature');
 
   if (!signature) {
-    return c.json({ error: 'No signature provided' }, 400);
+    return c.json({ code: 'VALIDATION_ERROR', message: 'No signature provided' }, 400);
   }
 
   const payload = await c.req.text();
@@ -25,13 +25,13 @@ webhookRoutes.post('/stripe', async (c) => {
     );
 
     // Handle the event
-    const db = createDatabase(c.env.DB.connectionString);
+    const db = createDatabase(c.env.HYPERDRIVE);
     const handler = new StripeWebhookHandler(db as any);
     await handler.handleEvent(event);
 
     return c.json({ received: true });
   } catch (error) {
     console.error('Webhook error:', error);
-    return c.json({ error: 'Webhook processing failed' }, 400);
+    return c.json({ code: 'WEBHOOK_ERROR', message: 'Webhook processing failed' }, 400);
   }
 });

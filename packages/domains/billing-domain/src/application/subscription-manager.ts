@@ -1,13 +1,19 @@
 import type Stripe from 'stripe';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
 import { subscriptions, plans } from '../../drizzle/schema.js';
+import { SubscriptionAggregate } from '../entities/subscription.js';
+import { PlanService } from '../services/plan-service.js';
 
 export class SubscriptionManager {
+  private readonly planService: PlanService;
+
   constructor(
-    private db: NodePgDatabase<any>,
-    private stripe: Stripe,
-  ) {}
+    private readonly db: NeonHttpDatabase<any>,
+    private readonly stripe: Stripe,
+  ) {
+    this.planService = new PlanService(db);
+  }
 
   async createCheckoutSession(
     organizationId: string,
@@ -16,16 +22,12 @@ export class SubscriptionManager {
     successUrl: string,
     cancelUrl: string,
   ): Promise<Stripe.Checkout.Session> {
-    // Get plan details
-    const [plan] = await this.db
-      .select()
-      .from(plans)
-      .where(eq(plans.id, planId))
-      .limit(1);
+    // Check for duplicate subscription
+    const existing = await this.getSubscription(organizationId);
+    SubscriptionAggregate.validateNoDuplicate(existing);
 
-    if (!plan) {
-      throw new Error('Plan not found');
-    }
+    // Get plan details
+    const plan = await this.planService.getPlan(planId);
 
     const priceId = interval === 'month'
       ? plan.stripePriceIdMonthly
@@ -74,7 +76,11 @@ export class SubscriptionManager {
       throw new Error('No active subscription found');
     }
 
-    // Cancel at period end
+    // Validate the transition through the aggregate
+    const aggregate = SubscriptionAggregate.from(subscription as any);
+    aggregate.cancel(); // throws if transition is invalid
+
+    // Cancel at period end in Stripe
     await this.stripe.subscriptions.update(subscription.stripeSubscriptionId, {
       cancel_at_period_end: true,
     });
@@ -102,15 +108,18 @@ export class SubscriptionManager {
       throw new Error('No active subscription found');
     }
 
-    const [newPlan] = await this.db
-      .select()
-      .from(plans)
-      .where(eq(plans.id, newPlanId))
-      .limit(1);
+    // Use aggregate to validate plan change
+    const aggregate = SubscriptionAggregate.from(subscription as any);
 
-    if (!newPlan) {
-      throw new Error('Plan not found');
-    }
+    // Compare plans for upgrade/downgrade validation
+    const comparison = await this.planService.comparePlans(
+      subscription.planId,
+      newPlanId,
+    );
+    aggregate.validatePlanChange(
+      comparison.newPlan.priceMonthly,
+      comparison.currentPlan.priceMonthly,
+    );
 
     // Get the Stripe subscription
     const stripeSubscription = await this.stripe.subscriptions.retrieve(
@@ -120,14 +129,14 @@ export class SubscriptionManager {
     // Determine which price to use based on current billing interval
     const currentInterval = stripeSubscription.items.data[0]?.price.recurring?.interval;
     const newPriceId = currentInterval === 'year'
-      ? newPlan.stripePriceIdYearly
-      : newPlan.stripePriceIdMonthly;
+      ? comparison.newPlan.stripePriceIdYearly
+      : comparison.newPlan.stripePriceIdMonthly;
 
     if (!newPriceId) {
       throw new Error('New plan does not have a price configured for current interval');
     }
 
-    // Update the subscription
+    // Update the subscription in Stripe
     await this.stripe.subscriptions.update(subscription.stripeSubscriptionId, {
       items: [
         {

@@ -1,10 +1,10 @@
 import type Stripe from 'stripe';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
 import { subscriptions, invoices } from '../../drizzle/schema.js';
 
 export class StripeWebhookHandler {
-  constructor(private db: NodePgDatabase<any>) {}
+  constructor(private readonly db: NeonHttpDatabase<any>) {}
 
   async handleEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
@@ -82,10 +82,20 @@ export class StripeWebhookHandler {
       return;
     }
 
+    const mapStatus = (status: string): string => {
+      switch (status) {
+        case 'active': return 'active';
+        case 'trialing': return 'trialing';
+        case 'past_due': return 'past_due';
+        case 'canceled': return 'canceled';
+        default: return 'active';
+      }
+    };
+
     await this.db.insert(subscriptions).values({
       organizationId: orgId,
       planId,
-      status: subscription.status === 'active' ? 'active' : subscription.status === 'trialing' ? 'trialing' : 'active',
+      status: mapStatus(subscription.status),
       stripeCustomerId: subscription.customer as string,
       stripeSubscriptionId: subscription.id,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
@@ -95,10 +105,20 @@ export class StripeWebhookHandler {
   }
 
   private async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
+    const mapStatus = (status: string): string => {
+      switch (status) {
+        case 'active': return 'active';
+        case 'trialing': return 'trialing';
+        case 'past_due': return 'past_due';
+        case 'canceled': return 'canceled';
+        default: return 'past_due';
+      }
+    };
+
     await this.db
       .update(subscriptions)
       .set({
-        status: subscription.status === 'active' ? 'active' : subscription.status === 'trialing' ? 'trialing' : subscription.status === 'canceled' ? 'canceled' : 'past_due',
+        status: mapStatus(subscription.status),
         currentPeriodStart: new Date(subscription.current_period_start * 1000),
         currentPeriodEnd: new Date(subscription.current_period_end * 1000),
         trialEnd: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
