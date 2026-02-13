@@ -1,0 +1,26 @@
+{
+  "name": "@mauntic/process-lib",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./bullmq": { "import": "./dist/bullmq/job-processor.js", "types": "./dist/bullmq/job-processor.d.ts" },
+    "./redis": { "import": "./dist/redis/connection.js", "types": "./dist/redis/connection.d.ts" },
+    "./health": { "import": "./dist/health/server.js", "types": "./dist/health/server.d.ts" },
+    "./database": { "import": "./dist/database/connection.js", "types": "./dist/database/connection.d.ts" },
+    "./scheduler": { "import": "./dist/scheduler/cron.js", "types": "./dist/scheduler/cron.d.ts" }
+  },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": {
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.0",
+    "drizzle-orm": "^0.38.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "pino": "^9.0.0",
+    "@mauntic/domain-kernel": "workspace:*"
+  },
+  "devDependencies": { "typescript": "^5.7.0", "@types/node": "^22.0.0" }
+}
