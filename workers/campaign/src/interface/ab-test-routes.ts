@@ -6,7 +6,7 @@ import {
   createAbTest,
   updateAbTest,
 } from '../infrastructure/repositories/ab-test-repository.js';
-import { findCampaignById } from '../infrastructure/repositories/campaign-repository.js';
+import { DrizzleCampaignRepository } from '../infrastructure/repositories/campaign-repository.js';
 import { AbTest } from '@mauntic/campaign-domain';
 
 export const abTestRoutes = new Hono<Env>();
@@ -37,7 +37,8 @@ abTestRoutes.post('/api/v1/campaign/ab-tests', async (c) => {
   }
 
   // Verify campaign exists
-  const campaign = await findCampaignById(db, tenant.organizationId, body.campaignId);
+  const repo = new DrizzleCampaignRepository(db);
+  const campaign = await repo.findById(tenant.organizationId, body.campaignId);
   if (!campaign) {
     return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
   }

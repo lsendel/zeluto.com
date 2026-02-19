@@ -1,17 +1,19 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findCampaignById,
-  findCampaignsByOrganization,
-  createCampaign,
-  updateCampaign,
-  deleteCampaign,
-  findCampaignStats,
-  upsertCampaignStats,
+  DrizzleCampaignRepository,
+  findCampaignStats, // Keep usage of stats query for now
 } from '../infrastructure/repositories/campaign-repository.js';
-import { Campaign } from '@mauntic/campaign-domain';
+import { CampaignService } from '../application/campaign-service.js';
 
 export const campaignRoutes = new Hono<Env>();
+
+// Helper to get service
+function getService(c: any) {
+  const db = c.get('db');
+  const repo = new DrizzleCampaignRepository(db);
+  return new CampaignService(repo, c.env.EVENTS);
+}
 
 // GET /api/v1/campaign/campaigns - List campaigns
 campaignRoutes.get('/api/v1/campaign/campaigns', async (c) => {
@@ -22,7 +24,9 @@ campaignRoutes.get('/api/v1/campaign/campaigns', async (c) => {
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
 
-  const result = await findCampaignsByOrganization(db, tenant.organizationId, {
+  // Access repository directly for reads (CQRS-lite)
+  const repo = new DrizzleCampaignRepository(db);
+  const result = await repo.findByOrganization(tenant.organizationId, {
     page: pageNum,
     limit: limitNum,
     status: status || undefined,
@@ -30,7 +34,7 @@ campaignRoutes.get('/api/v1/campaign/campaigns', async (c) => {
   });
 
   return c.json({
-    data: result.data,
+    data: result.data.map(c => c.toProps()), // Convert entities to DTOs
     total: result.total,
     page: pageNum,
     limit: limitNum,
@@ -41,7 +45,6 @@ campaignRoutes.get('/api/v1/campaign/campaigns', async (c) => {
 // POST /api/v1/campaign/campaigns - Create campaign
 campaignRoutes.post('/api/v1/campaign/campaigns', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const body = await c.req.json<{
     name: string;
     description?: string;
@@ -58,63 +61,19 @@ campaignRoutes.post('/api/v1/campaign/campaigns', async (c) => {
     );
   }
 
-  const entity = Campaign.create({
+  const service = getService(c);
+  const campaign = await service.create({
     organizationId: tenant.organizationId,
+    userId: tenant.userId,
     name: body.name,
+    type: body.type,
     description: body.description,
-    type: body.type as any,
     subject: body.subject,
     templateId: body.templateId,
     segmentId: body.segmentId,
-    createdBy: tenant.userId,
   });
 
-  const props = entity.toProps();
-  const campaign = await createCampaign(db, {
-    id: props.id,
-    organizationId: props.organizationId,
-    name: props.name,
-    description: props.description,
-    type: props.type,
-    status: props.status,
-    subject: props.subject,
-    templateId: props.templateId,
-    segmentId: props.segmentId,
-    scheduledAt: props.scheduledAt,
-    startedAt: props.startedAt,
-    completedAt: props.completedAt,
-    recipientCount: props.recipientCount,
-    sentCount: props.sentCount,
-    failedCount: props.failedCount,
-    openRate: props.openRate,
-    clickRate: props.clickRate,
-    createdBy: props.createdBy,
-  });
-
-  // Publish campaign created event
-  try {
-    await c.env.EVENTS.send({
-      type: 'campaign.CampaignCreated',
-      data: {
-        organizationId: tenant.organizationId,
-        campaignId: campaign.id,
-        name: campaign.name,
-        createdBy: tenant.userId,
-      },
-      metadata: {
-        id: crypto.randomUUID(),
-        version: 1,
-        sourceContext: 'campaign',
-        timestamp: new Date().toISOString(),
-        correlationId: campaign.id,
-        tenantContext: { organizationId: tenant.organizationId },
-      },
-    });
-  } catch (err) {
-    console.error('Failed to publish CampaignCreated event:', err);
-  }
-
-  return c.json(campaign, 201);
+  return c.json(campaign.toProps(), 201);
 });
 
 // GET /api/v1/campaign/campaigns/:id - Get campaign by ID
@@ -123,18 +82,19 @@ campaignRoutes.get('/api/v1/campaign/campaigns/:id', async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
-  const campaign = await findCampaignById(db, tenant.organizationId, id);
+  const repo = new DrizzleCampaignRepository(db);
+  const campaign = await repo.findById(tenant.organizationId, id);
+
   if (!campaign) {
     return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
   }
 
-  return c.json(campaign);
+  return c.json(campaign.toProps());
 });
 
 // PATCH /api/v1/campaign/campaigns/:id - Update campaign
 campaignRoutes.patch('/api/v1/campaign/campaigns/:id', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const id = c.req.param('id');
   const body = await c.req.json<{
     name?: string;
@@ -144,217 +104,114 @@ campaignRoutes.patch('/api/v1/campaign/campaigns/:id', async (c) => {
     segmentId?: string | null;
   }>();
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
-  if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+  const service = getService(c);
+  try {
+    const updated = await service.update(tenant.organizationId, id, body);
+    return c.json(updated.toProps());
+  } catch (err: any) {
+    if (err.message === 'Campaign not found') {
+      return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+    }
+    throw err;
   }
-
-  // Use entity to validate state transitions
-  const entity = Campaign.reconstitute({
-    ...existing,
-    type: existing.type as any,
-    status: existing.status as any,
-    openRate: existing.openRate,
-    clickRate: existing.clickRate,
-  });
-  entity.update(body);
-
-  const updated = await updateCampaign(db, tenant.organizationId, id, body);
-  return c.json(updated);
 });
 
 // DELETE /api/v1/campaign/campaigns/:id - Delete campaign
 campaignRoutes.delete('/api/v1/campaign/campaigns/:id', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const id = c.req.param('id');
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
-  if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
-  }
+  const service = getService(c);
+  await service.delete(tenant.organizationId, id);
 
-  await deleteCampaign(db, tenant.organizationId, id);
   return c.json({ success: true });
 });
 
 // POST /api/v1/campaign/campaigns/:id/schedule - Schedule campaign
 campaignRoutes.post('/api/v1/campaign/campaigns/:id/schedule', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const id = c.req.param('id');
   const body = await c.req.json<{ scheduledAt: string }>();
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
-  if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
-  }
-
-  const entity = Campaign.reconstitute({
-    ...existing,
-    type: existing.type as any,
-    status: existing.status as any,
-    openRate: existing.openRate,
-    clickRate: existing.clickRate,
-  });
-  entity.schedule(new Date(body.scheduledAt));
-
-  const props = entity.toProps();
-  const updated = await updateCampaign(db, tenant.organizationId, id, {
-    status: props.status,
-    scheduledAt: props.scheduledAt,
-  });
-
-  // Publish scheduled event
+  const service = getService(c);
   try {
-    await c.env.EVENTS.send({
-      type: 'campaign.CampaignScheduled',
-      data: {
-        organizationId: tenant.organizationId,
-        campaignId: id,
-        scheduledFor: body.scheduledAt,
-        scheduledBy: tenant.userId,
-      },
-      metadata: {
-        id: crypto.randomUUID(),
-        version: 1,
-        sourceContext: 'campaign',
-        timestamp: new Date().toISOString(),
-        correlationId: id,
-        tenantContext: { organizationId: tenant.organizationId },
-      },
-    });
-  } catch (err) {
-    console.error('Failed to publish CampaignScheduled event:', err);
+    const updated = await service.schedule(
+      tenant.organizationId,
+      id,
+      new Date(body.scheduledAt),
+      tenant.userId
+    );
+    return c.json(updated.toProps());
+  } catch (err: any) {
+    if (err.message === 'Campaign not found') {
+      return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+    }
+    // Handle invariant violations (e.g. invalid state transition)
+    if (err.name === 'InvariantViolation') {
+      return c.json({ code: 'BAD_REQUEST', message: err.message }, 400);
+    }
+    throw err;
   }
-
-  return c.json(updated);
 });
 
 // POST /api/v1/campaign/campaigns/:id/send - Send campaign
 campaignRoutes.post('/api/v1/campaign/campaigns/:id/send', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const id = c.req.param('id');
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
-  if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
-  }
-
-  const entity = Campaign.reconstitute({
-    ...existing,
-    type: existing.type as any,
-    status: existing.status as any,
-    openRate: existing.openRate,
-    clickRate: existing.clickRate,
-  });
-  entity.send();
-
-  const props = entity.toProps();
-  const updated = await updateCampaign(db, tenant.organizationId, id, {
-    status: props.status,
-    startedAt: props.startedAt,
-  });
-
-  // Publish CampaignSent event to trigger delivery
+  const service = getService(c);
   try {
-    await c.env.EVENTS.send({
-      type: 'campaign.CampaignSent',
-      data: {
-        organizationId: tenant.organizationId,
-        campaignId: id,
-        contactCount: 0, // will be resolved by campaign-sender
-      },
-      metadata: {
-        id: crypto.randomUUID(),
-        version: 1,
-        sourceContext: 'campaign',
-        timestamp: new Date().toISOString(),
-        correlationId: id,
-        tenantContext: { organizationId: tenant.organizationId },
-      },
-    });
-  } catch (err) {
-    console.error('Failed to publish CampaignSent event:', err);
+    const updated = await service.send(tenant.organizationId, id);
+    return c.json(updated.toProps());
+  } catch (err: any) {
+    if (err.message === 'Campaign not found') {
+      return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+    }
+    if (err.name === 'InvariantViolation') {
+      return c.json({ code: 'BAD_REQUEST', message: err.message }, 400);
+    }
+    throw err;
   }
-
-  return c.json(updated);
 });
 
 // POST /api/v1/campaign/campaigns/:id/pause - Pause campaign
 campaignRoutes.post('/api/v1/campaign/campaigns/:id/pause', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const id = c.req.param('id');
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
-  if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
-  }
-
-  const entity = Campaign.reconstitute({
-    ...existing,
-    type: existing.type as any,
-    status: existing.status as any,
-    openRate: existing.openRate,
-    clickRate: existing.clickRate,
-  });
-  entity.pause();
-
-  const updated = await updateCampaign(db, tenant.organizationId, id, {
-    status: 'paused',
-  });
-
+  const service = getService(c);
   try {
-    await c.env.EVENTS.send({
-      type: 'campaign.CampaignPaused',
-      data: {
-        organizationId: tenant.organizationId,
-        campaignId: id,
-        pausedBy: tenant.userId,
-      },
-      metadata: {
-        id: crypto.randomUUID(),
-        version: 1,
-        sourceContext: 'campaign',
-        timestamp: new Date().toISOString(),
-        correlationId: id,
-        tenantContext: { organizationId: tenant.organizationId },
-      },
-    });
-  } catch (err) {
-    console.error('Failed to publish CampaignPaused event:', err);
+    const updated = await service.pause(tenant.organizationId, id, tenant.userId);
+    return c.json(updated.toProps());
+  } catch (err: any) {
+    if (err.message === 'Campaign not found') {
+      return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+    }
+    if (err.name === 'InvariantViolation') {
+      return c.json({ code: 'BAD_REQUEST', message: err.message }, 400);
+    }
+    throw err;
   }
-
-  return c.json(updated);
 });
 
 // POST /api/v1/campaign/campaigns/:id/resume - Resume campaign
 campaignRoutes.post('/api/v1/campaign/campaigns/:id/resume', async (c) => {
   const tenant = c.get('tenant');
-  const db = c.get('db');
   const id = c.req.param('id');
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
-  if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+  const service = getService(c);
+  try {
+    const updated = await service.resume(tenant.organizationId, id);
+    return c.json(updated.toProps());
+  } catch (err: any) {
+    if (err.message === 'Campaign not found') {
+      return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
+    }
+    if (err.name === 'InvariantViolation') {
+      return c.json({ code: 'BAD_REQUEST', message: err.message }, 400);
+    }
+    throw err;
   }
-
-  const entity = Campaign.reconstitute({
-    ...existing,
-    type: existing.type as any,
-    status: existing.status as any,
-    openRate: existing.openRate,
-    clickRate: existing.clickRate,
-  });
-  entity.resume();
-
-  const updated = await updateCampaign(db, tenant.organizationId, id, {
-    status: 'sending',
-  });
-
-  return c.json(updated);
 });
 
 // GET /api/v1/campaign/campaigns/:id/stats - Get campaign stats
@@ -363,11 +220,13 @@ campaignRoutes.get('/api/v1/campaign/campaigns/:id/stats', async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
-  const campaign = await findCampaignById(db, tenant.organizationId, id);
+  const repo = new DrizzleCampaignRepository(db);
+  const campaign = await repo.findById(tenant.organizationId, id);
   if (!campaign) {
     return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
   }
 
+  // Use the standalone stats query for now
   const stats = await findCampaignStats(db, tenant.organizationId, id);
   if (!stats) {
     // Return zero stats
@@ -393,7 +252,8 @@ campaignRoutes.post('/api/v1/campaign/campaigns/:id/clone', async (c) => {
   const db = c.get('db');
   const id = c.req.param('id');
 
-  const existing = await findCampaignById(db, tenant.organizationId, id);
+  const repo = new DrizzleCampaignRepository(db);
+  const existing = await repo.findById(tenant.organizationId, id);
   if (!existing) {
     return c.json({ code: 'NOT_FOUND', message: 'Campaign not found' }, 404);
   }
@@ -408,30 +268,21 @@ campaignRoutes.post('/api/v1/campaign/campaigns/:id/clone', async (c) => {
     // No body provided, use default clone name
   }
 
-  const entity = Campaign.create({
+  const service = getService(c);
+  // We can use service.create for cloning if we extract props
+  // or add a clone method to service.
+  // For now, let's use service.create with props from existing.
+
+  const campaign = await service.create({
     organizationId: tenant.organizationId,
+    userId: tenant.userId,
     name: cloneName,
-    description: existing.description,
-    type: existing.type as any,
-    subject: existing.subject,
-    templateId: existing.templateId,
-    segmentId: existing.segmentId,
-    createdBy: tenant.userId,
+    type: existing.type,
+    description: existing.description ?? undefined,
+    subject: existing.subject ?? undefined,
+    templateId: existing.templateId ?? undefined,
+    segmentId: existing.segmentId ?? undefined,
   });
 
-  const props = entity.toProps();
-  const cloned = await createCampaign(db, {
-    id: props.id,
-    organizationId: props.organizationId,
-    name: props.name,
-    description: props.description,
-    type: props.type,
-    status: props.status,
-    subject: props.subject,
-    templateId: props.templateId,
-    segmentId: props.segmentId,
-    createdBy: props.createdBy,
-  });
-
-  return c.json(cloned, 201);
+  return c.json(campaign.toProps(), 201);
 });

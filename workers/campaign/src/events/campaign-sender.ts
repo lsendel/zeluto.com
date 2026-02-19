@@ -1,8 +1,5 @@
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import {
-  findCampaignById,
-  updateCampaign,
-} from '../infrastructure/repositories/campaign-repository.js';
+import { DrizzleCampaignRepository } from '../infrastructure/repositories/campaign-repository.js';
 import { publishDeliveryBatch, publishCampaignStarted } from './publisher.js';
 
 /**
@@ -23,9 +20,10 @@ export async function handleCampaignSend(
   },
 ): Promise<void> {
   const { organizationId, campaignId } = event;
+  const repo = new DrizzleCampaignRepository(db);
 
   // Load campaign
-  const campaign = await findCampaignById(db, organizationId, campaignId);
+  const campaign = await repo.findById(organizationId, campaignId);
   if (!campaign) {
     console.error(`Campaign ${campaignId} not found for org ${organizationId}`);
     return;
@@ -50,18 +48,15 @@ export async function handleCampaignSend(
   if (contacts.length === 0) {
     console.warn(`No contacts found in segment ${campaign.segmentId} for campaign ${campaignId}`);
     // Mark campaign completed with 0 sends
-    await updateCampaign(db, organizationId, campaignId, {
-      status: 'sent',
-      completedAt: new Date(),
-      recipientCount: 0,
-    });
+    campaign.markCompleted();
+    campaign.updateStats({ recipientCount: 0 });
+    await repo.save(campaign);
     return;
   }
 
   // Update recipient count on campaign
-  await updateCampaign(db, organizationId, campaignId, {
-    recipientCount: contacts.length,
-  });
+  campaign.updateStats({ recipientCount: contacts.length });
+  await repo.save(campaign);
 
   // Publish CampaignStarted event
   await publishCampaignStarted(queue, {
