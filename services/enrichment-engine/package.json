@@ -1,0 +1,27 @@
+{
+  "name": "@mauntic/enrichment-engine-service",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/lead-intelligence-domain": "workspace:*",
+    "@mauntic/process-lib": "workspace:*",
+    "@neondatabase/serverless": "catalog:",
+    "bullmq": "catalog:",
+    "drizzle-orm": "catalog:",
+    "ioredis": "catalog:",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "^4.21.0",
+    "typescript": "catalog:"
+  }
+}
