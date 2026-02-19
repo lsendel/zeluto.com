@@ -1334,7 +1334,7 @@ git add workers/campaign/ workers/content/ workers/analytics/ workers/integratio
 Same structure as v2 but with updated deps:
 - `services/journey-executor/` — imports process-lib, journey-domain
 - `services/delivery-engine/` — imports process-lib, delivery-domain
-- `services/analytics-aggregator/` — imports process-lib, analytics-domain
+- (Superseded) `services/analytics-aggregator/` — replaced by Cloudflare Queues as of Feb 2026
 
 All Dockerfiles use multi-stage Node.js 22 build with pnpm. All include health check endpoints. All fly.toml configs include Neon pooler URL and Redis URL as secrets.
 
@@ -1679,9 +1679,9 @@ Translates CRM events (ContactCreated, SegmentRebuilt) into Journey domain langu
 ### Task 88: Implement analytics-domain package
 ### Task 89: Implement Report engine
 ### Task 90: Implement Dashboard widgets
-### Task 91: Implement Analytics Aggregator on Fly.io (services/analytics-aggregator/)
+### Task 91: Implement Analytics Aggregator (Cloudflare Workers)
 - Pre-aggregation hourly job (materialized summaries per org)
-- Heavy query execution with connection pooling
+- Heavy query execution handled by Cloudflare Queue consumers + Hyperdrive
 ### Task 92: Implement integrations-domain package
 ### Task 93: Implement Webhook dispatch engine
 - Exponential backoff retry: 1min, 5min, 30min, 2hr, 12hr

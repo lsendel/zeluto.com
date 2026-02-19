@@ -32,7 +32,7 @@
 - Implement a Workers-backed `WarmupCounterStore` implementation and inject into queue worker. ✅
 - Document cutover steps (enable cron flag, stop Fly job scheduler, monitor queue metrics). ✅
 - Enable cron permanently (`ENABLE_ANALYTICS_CRON=true`) and bind the R2 warmup bucket to the queue worker. ✅
-- **Remaining:** Scale down the Fly `analytics-aggregator` app after verifying 24h of healthy Cloudflare runs (see Runbook Step 4) so Fly no longer schedules or runs analytics jobs.
+- (Complete): Fly `analytics-aggregator` app has been destroyed; Cloudflare owns cron + aggregation end-to-end.
 
 ## Cutover Runbook
 1. **Pre-flight**
@@ -46,8 +46,7 @@
    - `wrangler secret put ENABLE_ANALYTICS_CRON true` (defaults to `"true"` in `wrangler.toml` now; set to `"false"` only if you need to pause).
    - Monitor `wrangler queues tail mauntic-analytics-jobs` plus Workers Analytics Engine metrics for retries/failures.
 4. **Disable Fly schedulers**
-   - `flyctl secrets set DISABLE_SCHEDULER=true` (if supported) or remove `registerScheduledJobs` block + redeploy `mauntic-analytics-aggregator`.
-   - After confirming at least 24 hours of successful Cloudflare runs, scale the Fly `analytics-aggregator` app down to zero (or destroy it) so Cloudflare is the sole source of truth.
+   - (Historical) These steps were completed on 2026-02-19 when the Fly `analytics-aggregator` was torn down. No Fly services remain for analytics.
 5. **Post-cutover**
-   - Remove Redis dependency from the analytics aggregator service (optional if only used for warmup).
-   - Update `docs/scheduled-jobs.md` to mark Fly jobs deprecated once Fly service is torn down.
+   - Remove Redis dependency from the analytics aggregator service (obsolete now that the service is deleted).
+   - Update `docs/scheduled-jobs.md` to mark Fly jobs deprecated once Fly service is torn down. ✅

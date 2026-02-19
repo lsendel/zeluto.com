@@ -1691,15 +1691,15 @@ git commit -m "feat: add Scoring & Intent commands, queries, and contract (Phase
 
 ---
 
-### Task 142: Create scoring CF Worker and scoring-engine Fly.io service
+### Task 142: Create scoring CF Worker and queue worker (Cloudflare-native)
 
 **Files:**
 - Create: `workers/scoring/` — scaffold with Hono app, routes, Drizzle repos
-- Create: `services/scoring-engine/` — BullMQ workers for scoring jobs
+- Create: `workers/scoring-queue/` — queue consumers for scoring jobs (replaces the old Fly service)
 
 **Scoring Worker** (CF): Real-time signal detection (listens to domain events), serves score/signal APIs.
 
-**Scoring Engine** (Fly.io) BullMQ jobs:
+**Scoring Queue Worker** (Cloudflare Queues):
 - `scoring-job-handler` — recalculates score for a contact (concurrency: 10)
 - `batch-scoring-handler` — hourly batch rescoring of all contacts with recent activity
 - `signal-decay-handler` — hourly cleanup of expired signals
@@ -1708,8 +1708,8 @@ git commit -m "feat: add Scoring & Intent commands, queries, and contract (Phase
 **Step 1: Commit**
 
 ```bash
-git add workers/scoring/ services/scoring-engine/
-git commit -m "feat: create Scoring Worker and scoring-engine service (Phase 15, Task 142)"
+git add workers/scoring/ workers/scoring-queue/
+git commit -m "feat: create Scoring HTTP + queue workers (Phase 15, Task 142)"
 ```
 
 ---
@@ -2185,7 +2185,7 @@ git commit -m "feat: add score-based filtering to Campaign domain (Phase 18, Tas
 
 **Files:**
 - Modify: `packages/domains/analytics-domain/drizzle/schema.ts` — add tables: `daily_score_distribution`, `engagement_cohorts`, `score_trends`, `enrichment_metrics`
-- Modify: `services/analytics-aggregator/src/index.ts` — add scheduled jobs for score distribution and enrichment metrics aggregation
+- Modify: `workers/analytics/src/queue/queue-worker.ts` — add scheduled jobs for score distribution and enrichment metrics aggregation (replaces the retired Fly service)
 
 **New tables:**
 - `daily_score_distribution` (date, org_id, avg_score, min, max, p50, p90, p95, total_contacts)
@@ -2196,7 +2196,7 @@ git commit -m "feat: add score-based filtering to Campaign domain (Phase 18, Tas
 **Step 1: Commit**
 
 ```bash
-git add packages/domains/analytics-domain/ services/analytics-aggregator/
+git add packages/domains/analytics-domain/ workers/analytics/
 git commit -m "feat: add scoring and enrichment analytics aggregations (Phase 18, Task 162)"
 ```
 
@@ -2443,9 +2443,9 @@ git commit -m "feat: add Wrangler configs for new workers (Phase 20, Task 173)"
 
 **Files:**
 - Modify: `services/enrichment-engine/fly.toml` — memory, CPU, env vars, health checks
-- Modify: `services/scoring-engine/fly.toml` — same
+- (Superseded) `services/scoring-engine/fly.toml` — scoring now runs on Cloudflare Queues; no Fly config required
 - Modify: `services/revops-engine/fly.toml` — same
-- Modify: `docker-compose.dev.yml` — add new services for local dev
+- Modify: `docker-compose.dev.yml` — add new services for local dev (exclude scoring engine)
 
 **Step 1: Commit**
 

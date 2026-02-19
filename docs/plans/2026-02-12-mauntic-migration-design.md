@@ -321,7 +321,7 @@ mauntic3/
 |   |   |   +-- providers/         # TCP-only providers (SMTP, Postfix)
 |   |   +-- Dockerfile
 |   |   +-- fly.toml
-|   +-- analytics-aggregator/      # Imports: process-lib, analytics-domain
+|   +-- analytics-aggregator/      # (Retired Feb 2026 — analytics now runs on Cloudflare Queues)
 |   |   +-- src/worker.ts
 |   |   +-- Dockerfile
 |   |   +-- fly.toml
@@ -1453,7 +1453,7 @@ volumes:
 
 ### Phase 8: Analytics & Integrations (Week 19-22)
 - Reporting engine + dashboard widgets
-- services/analytics-aggregator/ on Fly.io for heavy queries
+- Cloudflare Queue workers for aggregation (replaces the earlier Fly.io analytics-aggregator)
 - Pre-aggregation hourly job (materialized summaries)
 - Webhook dispatch with retry + exponential backoff
 - Third-party CRM sync (Salesforce, HubSpot patterns)

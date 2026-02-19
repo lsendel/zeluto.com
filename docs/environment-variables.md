@@ -190,14 +190,9 @@ Fly.io services use environment variables set via `fly.toml` (`[env]` section) a
 | `REDIS_URL` | secret | Redis connection string for BullMQ |
 | `ENCRYPTION_KEY` | secret | Key for decrypting provider configs |
 
-### Analytics Aggregator (`mauntic-analytics-aggregator`)
+### Analytics Aggregator (retired)
 
-| Variable | Type | Description |
-|---|---|---|
-| `NODE_ENV` | env | `production` or `development` |
-| `PORT` | env | Health check HTTP port (default: `8080`) |
-| `DATABASE_URL` | secret | Neon Postgres connection string |
-| `REDIS_URL` | secret | Redis connection string for BullMQ |
+This Fly.io service has been replaced by the Cloudflare analytics queue worker; no additional secrets are required beyond the Workers configuration (`DATABASE_URL`, `WARMUP_R2`, `ENABLE_ANALYTICS_CRON`).
 
 ---
 
@@ -285,9 +280,7 @@ fly secrets set DATABASE_URL="postgresql://..." --app mauntic-delivery-engine
 fly secrets set REDIS_URL="redis://..." --app mauntic-delivery-engine
 fly secrets set ENCRYPTION_KEY="..." --app mauntic-delivery-engine
 
-# Analytics Aggregator
-fly secrets set DATABASE_URL="postgresql://..." --app mauntic-analytics-aggregator
-fly secrets set REDIS_URL="redis://..." --app mauntic-analytics-aggregator
+# Analytics Aggregator (retired — Cloudflare worker uses Wrangler secrets instead)
 ```
 
 ### Security Notes

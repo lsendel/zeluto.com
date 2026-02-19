@@ -110,13 +110,13 @@ Link the store to each Worker in the Cloudflare dashboard (Workers & Pages → S
 
 ## 6. Post-Deploy Tasks (Fly.io Services)
 
-Workers Deployments only covers Cloudflare Workers. For Fly.io services (journey-executor, delivery-engine, analytics-aggregator), add a GitHub Actions workflow that:
+Workers Deployments only covers Cloudflare Workers. For Fly.io services (journey-executor, delivery-engine), add a GitHub Actions workflow that:
 
 1. Waits for Cloudflare Deployments to finish successfully (GitHub “deployment status” webhook or Cloudflare API).
 2. Runs `fly deploy` for each service (`./services/<name>/fly.toml`).
 3. Publishes the Fly deployment status back to the PR (optional).
 
-This keeps Cloudflare (edge) + Fly (heavy compute) in sync without manual steps.
+This keeps Cloudflare (edge) + the remaining Fly services (journey executor + delivery engine) in sync without manual steps.
 
 ---
 

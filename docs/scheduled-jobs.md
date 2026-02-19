@@ -9,7 +9,7 @@ This document lists all recurring jobs across the platform, including their runt
 
 ## Worker: mauntic-analytics-queue (Cloudflare)
 
-> **Status (2026-02-19):** Cloudflare is the source of truth for analytics aggregation/reporting. Cron triggers enqueue messages on `mauntic-analytics-jobs`, consumed by `src/queue-worker.ts`. `ENABLE_ANALYTICS_CRON` now defaults to `"true"` (override with a secret if you need to pause). Keep the Fly analytics-aggregator scaled down once Cloudflare jobs run cleanly for 24h.
+> **Status (2026-02-19):** Cloudflare is the source of truth for analytics aggregation/reporting. Cron triggers enqueue messages on `mauntic-analytics-jobs`, consumed by `src/queue-worker.ts`. `ENABLE_ANALYTICS_CRON` now defaults to `"true"` (override with a secret if you need to pause). The legacy Fly `analytics-aggregator` service has been fully decommissioned, so no Fly scaling or schedulers remain.
 
 ### Hourly: Event Aggregation
 
@@ -169,7 +169,7 @@ Failed jobs that exceed max retries should be monitored via the DLQ monitoring s
 1. Ensure `mauntic-analytics-jobs` + DLQ exist in Cloudflare Queues.
 2. (Optional shadow run) Override `ENABLE_ANALYTICS_CRON=false` via secret, deploy `@mauntic/analytics-queue`, and monitor manual enqueues.
 3. Set/confirm `ENABLE_ANALYTICS_CRON=true`, tail the queue + Workers Analytics dataset.
-4. After 24h of healthy runs, keep the Fly `analytics-aggregator` app scaled down or set `DISABLE_SCHEDULER=true` (default) so it no longer registers jobs.
+4. After 24h of healthy runs (complete as of 2026-02-19), verify structured logging + Analytics Engine dashboards and keep Cloudflare as the sole cron runner—there is no Fly `analytics-aggregator` to manage anymore.
 5. Update this file + the runbook if cron patterns change.
 
 ## Adding New Scheduled Jobs

@@ -68,7 +68,7 @@ Deploy Fly.io services with staging configuration:
 
 ```bash
 # Deploy to staging
-for service in journey-executor delivery-engine analytics-aggregator; do
+for service in journey-executor delivery-engine; do
   cd services/$service
   fly deploy --app mauntic-${service}-staging --config fly.staging.toml
   cd ../..
@@ -202,11 +202,10 @@ fly releases rollback --app mauntic-journey-executor
 Deploy services in dependency order:
 
 1. **delivery-engine** (no dependencies on other Fly services)
-2. **analytics-aggregator** (no dependencies on other Fly services)
-3. **journey-executor** (enqueues to delivery-engine via BullMQ, but loosely coupled)
+2. **journey-executor** (enqueues to delivery-engine via BullMQ, but loosely coupled)
 
 ```bash
-for service in delivery-engine analytics-aggregator journey-executor; do
+for service in delivery-engine journey-executor; do
   echo "Deploying $service..."
   cd "services/$service"
   fly deploy --strategy bluegreen

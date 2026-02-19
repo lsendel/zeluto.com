@@ -51,14 +51,14 @@ Mauntic3 is a multi-tenant SaaS marketing automation platform built on Cloudflar
     +-------------------+     +--------------------+
 
               Fly.io (Long-running workers)
-    +-------------------+--------------------+--------------------+
-    | Journey Executor  | Delivery Engine    | Analytics          |
-    | (BullMQ worker)   | (BullMQ worker)    | Aggregator         |
-    +---+---------------+---+----------------+---+----------------+
-        |                   |                    |
-    +---+-------------------+--------------------+---+
-    |              Redis (BullMQ queues)              |
-    +-------------------------------------------------+
+    +-------------------+--------------------+
+    | Journey Executor  | Delivery Engine    |
+    | (BullMQ worker)   | (BullMQ worker)    |
+    +---+---------------+---+----------------+
+        |                   |
+    +---+-------------------+---+
+    |      Redis (BullMQ queues) |
+    +----------------------------+
 ```
 
 ## Bounded Contexts
@@ -170,7 +170,7 @@ Mauntic3 is a multi-tenant SaaS marketing automation platform built on Cloudflar
 ### 8. Analytics (Reporting & Dashboards)
 
 **Worker**: `mauntic-analytics`
-**Fly.io Service**: `analytics-aggregator`
+**Fly.io Service**: _retired (Cloudflare Queues now handle aggregations)_
 **Domain Package**: `@mauntic/analytics-domain`
 **Responsibilities**:
 - Event aggregation (hourly, daily, monthly)

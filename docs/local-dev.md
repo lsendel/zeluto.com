@@ -151,9 +151,6 @@ npx tsx src/index.ts
 cd services/delivery-engine
 npx tsx src/index.ts
 
-# Terminal 3: Analytics Aggregator
-cd services/analytics-aggregator
-npx tsx src/index.ts
 ```
 
 ## 5. Running Tests
@@ -233,7 +230,6 @@ mauntic3/
   services/
     journey-executor/   # BullMQ worker for journey steps
     delivery-engine/    # BullMQ worker for email/SMS/push
-    analytics-aggregator/ # BullMQ worker for aggregation
   scripts/
     init-schemas.ts     # Create Postgres schemas
     apply-rls.ts        # Apply RLS policies

@@ -25,7 +25,7 @@ Integrate all features from the Leads project (lead enrichment, intent signals, 
 | Context | Domain Package | Worker (CF) | Fly.io Service | DB Schema |
 |---------|---------------|-------------|----------------|-----------|
 | Lead Intelligence | `lead-intelligence-domain` | `workers/lead-intelligence` | `services/enrichment-engine` | `lead_intelligence` |
-| Scoring & Intent | `scoring-domain` | `workers/scoring` | `services/scoring-engine` | `scoring` |
+| Scoring & Intent | `scoring-domain` | `workers/scoring` | _retired Fly service (scoring-engine)_ | `scoring` |
 | Revenue Operations | `revops-domain` | `workers/revops` | `services/revops-engine` | `revops` |
 
 ### Cross-Context Event Flow
