@@ -1,0 +1,16 @@
+name = "mauntic-scoring"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "src/index.ts"
+
+[[hyperdrive]]
+binding = "DB"
+id = "270bd3689e8846e7ae61d3e1674bfba0"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "107300e1a7004921b6b4fc22d098af9a"
+
+[[queues.producers]]
+binding = "EVENTS"
+queue = "mauntic-scoring-events"
