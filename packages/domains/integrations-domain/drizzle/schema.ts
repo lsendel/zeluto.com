@@ -6,7 +6,7 @@ export const integrationsSchema = pgSchema('integrations');
 export const connections = integrationsSchema.table('connections', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id').notNull(),
-  provider: varchar('provider', { length: 50 }).notNull(), // salesforce/hubspot/zapier/webhook/custom
+  provider: varchar('provider', { length: 50 }).notNull(), // salesforce/hubspot/zapier/webhook/custom/clearbit/apollo/hunter/zoominfo/rocketreach/lusha
   name: varchar('name', { length: 255 }).notNull(),
   config: jsonb('config').notNull(), // encrypted config (API keys, tokens, etc.)
   status: varchar('status', { length: 20 }).notNull(), // active/inactive/error
