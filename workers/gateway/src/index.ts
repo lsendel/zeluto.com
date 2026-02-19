@@ -32,6 +32,9 @@ export interface Env {
     CONTENT: Fetcher;
     ANALYTICS: Fetcher;
     INTEGRATIONS: Fetcher;
+    LEAD_INTELLIGENCE: Fetcher;
+    SCORING: Fetcher;
+    REVOPS: Fetcher;
   };
 }
 

@@ -162,6 +162,21 @@ export function createApp() {
     return forwardToService(c, c.env.INTEGRATIONS);
   });
 
+  // Lead Intelligence routes
+  app.all('/api/v1/lead-intelligence/*', async (c) => {
+    return forwardToService(c, c.env.LEAD_INTELLIGENCE);
+  });
+
+  // Scoring routes
+  app.all('/api/v1/scoring/*', async (c) => {
+    return forwardToService(c, c.env.SCORING);
+  });
+
+  // Revenue Operations routes
+  app.all('/api/v1/revops/*', async (c) => {
+    return forwardToService(c, c.env.REVOPS);
+  });
+
   // ========================================
   // Onboarding Routes
   // ========================================
