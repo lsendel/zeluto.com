@@ -1,5 +1,5 @@
 import { eq, and, desc, sql } from 'drizzle-orm';
-import { campaigns, campaignStats } from '@mauntic/campaign-domain/drizzle';
+import { campaigns, campaignStats, campaignSummaries } from '@mauntic/campaign-domain/drizzle';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Campaign, type CampaignRepository, type CampaignProps } from '@mauntic/campaign-domain';
 
@@ -24,34 +24,36 @@ export class DrizzleCampaignRepository implements CampaignRepository {
     const { page, limit, status, search } = pagination;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(campaigns.organizationId, orgId)];
-    if (status) conditions.push(eq(campaigns.status, status));
-    if (search) conditions.push(sql`${campaigns.name} ILIKE ${'%' + search + '%'}`);
+    const conditions = [eq(campaignSummaries.organizationId, orgId)];
+    if (status) conditions.push(eq(campaignSummaries.status, status));
+    if (search) conditions.push(sql`${campaignSummaries.name} ILIKE ${'%' + search + '%'}`);
 
     const where = and(...conditions);
 
     const [rows, countResult] = await Promise.all([
       this.db
         .select()
-        .from(campaigns)
+        .from(campaignSummaries)
         .where(where)
-        .orderBy(desc(campaigns.createdAt))
+        .orderBy(desc(campaignSummaries.updatedAt))
         .limit(limit)
         .offset(offset),
       this.db
         .select({ count: sql<number>`count(*)::int` })
-        .from(campaigns)
+        .from(campaignSummaries)
         .where(where),
     ]);
 
     return {
-      data: rows.map((row) => this.mapToEntity(row)),
+      data: rows.map((row) => this.mapSummaryToEntity(row)),
       total: countResult[0]?.count ?? 0,
     };
   }
 
   async save(campaign: Campaign): Promise<void> {
     const props = campaign.toProps();
+    const summaryProps = this.mapEntityToSummaryProps(props);
+
     await this.db
       .insert(campaigns)
       .values({
@@ -62,6 +64,17 @@ export class DrizzleCampaignRepository implements CampaignRepository {
         target: campaigns.id,
         set: {
           ...props,
+          updatedAt: new Date(),
+        },
+      });
+
+    await this.db
+      .insert(campaignSummaries)
+      .values(summaryProps)
+      .onConflictDoUpdate({
+        target: campaignSummaries.campaignId,
+        set: {
+          ...summaryProps,
           updatedAt: new Date(),
         },
       });
@@ -76,10 +89,80 @@ export class DrizzleCampaignRepository implements CampaignRepository {
   // Private helper to reconstite entity
   private mapToEntity(row: typeof campaigns.$inferSelect): Campaign {
     return Campaign.reconstitute({
+      minScore: null,
+      maxScore: null,
+      grades: null,
       ...row,
       type: row.type as any,
       status: row.status as any,
     });
+  }
+
+  private mapSummaryToEntity(row: typeof campaignSummaries.$inferSelect): Campaign {
+    return Campaign.reconstitute({
+      id: row.campaignId,
+      organizationId: row.organizationId,
+      name: row.name,
+      description: row.description ?? null,
+      type: row.type as any,
+      status: row.status as any,
+      subject: row.subject ?? null,
+      templateId: row.templateId ?? null,
+      segmentId: row.segmentId ?? null,
+      minScore: null,
+      maxScore: null,
+      grades: null,
+      scheduledAt: row.scheduledAt ?? null,
+      startedAt: row.startedAt ?? null,
+      completedAt: row.completedAt ?? null,
+      recipientCount: row.recipientCount,
+      sentCount: row.sentCount,
+      failedCount: row.failedCount,
+      deliveredCount: row.deliveredCount,
+      openCount: row.openCount,
+      clickCount: row.clickCount,
+      bounceCount: row.bounceCount,
+      complaintCount: row.complaintCount,
+      unsubscribeCount: row.unsubscribeCount,
+      openRate: row.openRate,
+      clickRate: row.clickRate,
+      lastEventAt: row.lastEventAt ?? null,
+      createdBy: row.createdBy,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+  }
+
+  private mapEntityToSummaryProps(props: CampaignProps) {
+    return {
+      campaignId: props.id,
+      organizationId: props.organizationId,
+      name: props.name,
+      description: props.description,
+      type: props.type,
+      status: props.status,
+      subject: props.subject,
+      templateId: props.templateId,
+      segmentId: props.segmentId,
+      createdBy: props.createdBy,
+      scheduledAt: props.scheduledAt,
+      startedAt: props.startedAt,
+      completedAt: props.completedAt,
+      recipientCount: props.recipientCount,
+      sentCount: props.sentCount,
+      failedCount: props.failedCount,
+      deliveredCount: props.deliveredCount,
+      openCount: props.openCount,
+      clickCount: props.clickCount,
+      bounceCount: props.bounceCount,
+      complaintCount: props.complaintCount,
+      unsubscribeCount: props.unsubscribeCount,
+      openRate: props.openRate,
+      clickRate: props.clickRate,
+      lastEventAt: props.lastEventAt,
+      createdAt: props.createdAt,
+      updatedAt: props.updatedAt,
+    };
   }
 }
 

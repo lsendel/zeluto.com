@@ -10,6 +10,7 @@ import { suppressionRoutes } from './interface/suppression-routes.js';
 import { domainRoutes } from './interface/domain-routes.js';
 import { warmupRoutes } from './interface/warmup-routes.js';
 import { trackingRoutes } from './interface/tracking-routes.js';
+import { deliveryDispatchRoutes } from './interface/dispatch-routes.js';
 
 export interface Env {
   Bindings: {
@@ -76,6 +77,7 @@ export function createApp() {
   app.route('/', domainRoutes);
   app.route('/', warmupRoutes);
   app.route('/', trackingRoutes);
+  app.route('/__dispatch/delivery', deliveryDispatchRoutes);
 
   return app;
 }

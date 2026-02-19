@@ -5,6 +5,7 @@ import { listUsers } from '../application/queries/list-users.js';
 import { getUser } from '../application/queries/get-user.js';
 import { updateUser, updateUserRole } from '../application/commands/update-user.js';
 import { blockUser, unblockUser } from '../application/commands/block-user.js';
+import { serializeUser } from '../utils/serialize-user.js';
 
 type Env = {
   Bindings: { DB: Hyperdrive };
@@ -12,32 +13,6 @@ type Env = {
 };
 
 const userRoutes = new Hono<Env>();
-
-/**
- * Serialize a user row for JSON response.
- * Converts Date fields to ISO strings and ensures nullable booleans are booleans.
- */
-function serializeUser(user: Record<string, unknown>) {
-  return {
-    id: user.id,
-    name: user.name ?? '',
-    email: user.email,
-    emailVerified: user.emailVerified ?? false,
-    image: user.image ?? null,
-    role: user.role,
-    isBlocked: user.isBlocked ?? false,
-    lastSignedIn: user.lastSignedIn instanceof Date
-      ? user.lastSignedIn.toISOString()
-      : user.lastSignedIn ?? null,
-    loginMethod: user.loginMethod ?? null,
-    createdAt: user.createdAt instanceof Date
-      ? user.createdAt.toISOString()
-      : String(user.createdAt),
-    updatedAt: user.updatedAt instanceof Date
-      ? user.updatedAt.toISOString()
-      : String(user.updatedAt),
-  };
-}
 
 // GET /api/v1/identity/users - List users in the organization
 userRoutes.get('/api/v1/identity/users', async (c) => {

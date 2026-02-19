@@ -5,7 +5,12 @@ main = "src/index.ts"
 
 [[hyperdrive]]
 binding = "DB"
-id = "270bd3689e8846e7ae61d3e1674bfba0"
+id = "72ed37f34f16429088564b927eb093bc"
+
+[[durable_objects.bindings]]
+name = "TENANT_CACHE"
+class_name = "TenantContextDurableObject"
+script_name = "mauntic-gateway"
 
 [vars]
-APP_DOMAIN = "17way.com"
+APP_DOMAIN = "zeluto.com"

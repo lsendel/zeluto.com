@@ -1,6 +1,5 @@
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { DrizzleCampaignRepository } from '../infrastructure/repositories/campaign-repository.js';
-import { publishDeliveryBatch, publishCampaignStarted } from './publisher.js';
 
 /**
  * Handles the campaign send flow:
@@ -39,55 +38,20 @@ export async function handleCampaignSend(
     return;
   }
 
-  // Fetch segment contacts
-  // In production this would call the CRM service to get contacts in the segment.
-  // For now we use a stub that returns an empty array - the actual integration
-  // happens via cross-service calls or shared database access.
-  const contacts = await fetchSegmentContacts(organizationId, campaign.segmentId);
-
-  if (contacts.length === 0) {
-    console.warn(`No contacts found in segment ${campaign.segmentId} for campaign ${campaignId}`);
-    // Mark campaign completed with 0 sends
-    campaign.markCompleted();
-    campaign.updateStats({ recipientCount: 0 });
-    await repo.save(campaign);
-    return;
-  }
-
-  // Update recipient count on campaign
-  campaign.updateStats({ recipientCount: contacts.length });
-  await repo.save(campaign);
-
-  // Publish CampaignStarted event
-  await publishCampaignStarted(queue, {
-    organizationId,
-    campaignId,
-    targetCount: contacts.length,
-  });
-
-  // Create delivery jobs for each batch of contacts
-  const batchSize = 500;
-  for (let i = 0; i < contacts.length; i += batchSize) {
-    const batch = contacts.slice(i, i + batchSize);
-    await publishDeliveryBatch(queue, {
+  // Enqueue first fan-out batch. Subsequent batches will enqueue themselves.
+  await queue.send({
+    type: 'campaign.FanOutBatch',
+    data: {
       organizationId,
       campaignId,
-      templateId: campaign.templateId,
-      contacts: batch,
-    });
-  }
-}
-
-/**
- * Stub for fetching contacts from a segment.
- * In production, this would call the CRM service or use a shared database view.
- */
-async function fetchSegmentContacts(
-  _organizationId: string,
-  _segmentId: string,
-): Promise<Array<{ contactId: string }>> {
-  // TODO: Integrate with CRM service to fetch segment contacts
-  // This would typically be an HTTP call to the CRM worker or
-  // a direct database query against the CRM schema.
-  return [];
+    },
+    metadata: {
+      id: crypto.randomUUID(),
+      version: 1,
+      sourceContext: 'campaign',
+      timestamp: new Date().toISOString(),
+      correlationId: campaignId,
+      tenantContext: { organizationId },
+    },
+  });
 }

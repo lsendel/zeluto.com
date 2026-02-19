@@ -10,7 +10,6 @@ import { stepRoutes } from './interface/step-routes.js';
 import { triggerRoutes } from './interface/trigger-routes.js';
 import { executionRoutes } from './interface/execution-routes.js';
 import { viewRoutes } from './interface/view-routes.js';
-import { handleJourneyQueue } from './events/index.js';
 
 export type Env = {
   Bindings: {
@@ -61,6 +60,3 @@ app.route('/', executionRoutes);
 app.route('/', viewRoutes);
 
 export default app;
-
-// Queue consumer export for Cloudflare Workers
-export const queue = handleJourneyQueue;

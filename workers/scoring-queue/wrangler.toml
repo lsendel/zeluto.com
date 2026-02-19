@@ -1,0 +1,42 @@
+name = "mauntic-scoring-queue"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "../scoring/src/queue.ts"
+tsconfig = "../scoring/tsconfig.json"
+
+[vars]
+ENABLE_SCORING_CRON = "true"
+
+[[hyperdrive]]
+binding = "DB"
+id = "72ed37f34f16429088564b927eb093bc"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "107300e1a7004921b6b4fc22d098af9a"
+
+[[durable_objects.bindings]]
+name = "TENANT_CACHE"
+class_name = "TenantContextDurableObject"
+script_name = "mauntic-gateway"
+
+[[queues.producers]]
+binding = "EVENTS"
+queue = "mauntic-scoring-events"
+
+[[queues.consumers]]
+queue = "mauntic-scoring-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "mauntic-scoring-events-dlq"
+
+[[triggers.crons]]
+cron = "0 * * * *"
+
+[[triggers.crons]]
+cron = "*/15 * * * *"
+
+[[analytics_engine_datasets]]
+binding = "LOGS_DATASET"
+dataset = "mauntic_logs"

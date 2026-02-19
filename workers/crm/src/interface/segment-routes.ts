@@ -8,6 +8,12 @@ import {
   contacts,
 } from '@mauntic/crm-domain/drizzle';
 import { buildFilterWhere, type FilterCriteria } from '../services/filter-engine.js';
+import {
+  SegmentNotFoundError,
+  querySegmentContacts,
+  encodeCursor,
+  decodeCursor,
+} from '../services/segment-query.js';
 
 // ---------------------------------------------------------------------------
 // Env
@@ -484,6 +490,31 @@ segmentRoutes.delete('/api/v1/crm/segments/:id/contacts', async (c) => {
       },
       500,
     );
+  }
+});
+
+// POST /api/v1/crm/segments/:id/query - Fetch paginated contacts for a segment
+segmentRoutes.post('/api/v1/crm/segments/:id/query', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const segmentId = c.req.param('id');
+
+  try {
+    const body = await c.req.json<{ cursor?: string; limit?: number }>().catch(() => ({}));
+    const result = await querySegmentContacts(db, {
+      organizationId: tenant.organizationId,
+      segmentId,
+      cursor: body.cursor,
+      limit: body.limit,
+    });
+
+    return c.json(result);
+  } catch (error) {
+    if (error instanceof SegmentNotFoundError) {
+      return c.json({ code: 'NOT_FOUND', message: 'Segment not found' }, 404);
+    }
+    console.error('Error querying segment contacts:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to query segment contacts' }, 500);
   }
 });
 

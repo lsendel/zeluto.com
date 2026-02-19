@@ -1,0 +1,120 @@
+# Central manifest describing every Cloudflare Worker in this repo.
+# Used by CI (see .github/workflows/cloudflare-workers.yml) to know which
+# wrangler config to deploy for preview + production environments.
+
+[project]
+name = "mauntic3"
+
+[[project.workers]]
+name = "mauntic-gateway"
+package = "@mauntic/gateway"
+config = "workers/gateway/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-identity"
+package = "@mauntic/identity"
+config = "workers/identity/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-billing"
+package = "@mauntic/billing"
+config = "workers/billing/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-crm"
+package = "@mauntic/crm"
+config = "workers/crm/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-content"
+package = "@mauntic/content"
+config = "workers/content/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-campaign"
+package = "@mauntic/campaign"
+config = "workers/campaign/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-campaign-queue"
+package = "@mauntic/campaign-queue"
+config = "workers/campaign-queue/wrangler.toml"
+entry = "queue"
+
+[[project.workers]]
+name = "mauntic-journey"
+package = "@mauntic/journey"
+config = "workers/journey/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-journey-queue"
+package = "@mauntic/journey-queue"
+config = "workers/journey-queue/wrangler.toml"
+entry = "queue"
+
+[[project.workers]]
+name = "mauntic-delivery"
+package = "@mauntic/delivery"
+config = "workers/delivery/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-analytics"
+package = "@mauntic/analytics"
+config = "workers/analytics/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-analytics-queue"
+package = "@mauntic/analytics-queue"
+config = "workers/analytics-queue/wrangler.toml"
+entry = "queue"
+
+[[project.workers]]
+name = "mauntic-integrations"
+package = "@mauntic/integrations"
+config = "workers/integrations/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-lead-intelligence"
+package = "@mauntic/lead-intelligence"
+config = "workers/lead-intelligence/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-lead-intelligence-queue"
+package = "@mauntic/lead-intelligence-queue"
+config = "workers/lead-intelligence-queue/wrangler.toml"
+entry = "queue"
+
+[[project.workers]]
+name = "mauntic-scoring"
+package = "@mauntic/scoring"
+config = "workers/scoring/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-scoring-queue"
+package = "@mauntic/scoring-queue"
+config = "workers/scoring-queue/wrangler.toml"
+entry = "queue"
+
+[[project.workers]]
+name = "mauntic-revops"
+package = "@mauntic/revops"
+config = "workers/revops/wrangler.toml"
+entry = "http"
+
+[[project.workers]]
+name = "mauntic-revops-queue"
+package = "@mauntic/revops-queue"
+config = "workers/revops-queue/wrangler.toml"
+entry = "queue"

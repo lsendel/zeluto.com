@@ -7,13 +7,15 @@ import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-
 import { campaignRoutes } from './interface/campaign-routes.js';
 import { abTestRoutes } from './interface/ab-test-routes.js';
 import { pointRoutes } from './interface/point-routes.js';
-import { handleCampaignQueue } from './events/index.js';
 
 export type Env = {
   Bindings: {
     DATABASE_URL: string;
     KV: KVNamespace;
     EVENTS: Queue;
+    SERVICE_TENANT_USER_ID?: string;
+    SERVICE_TENANT_USER_ROLE?: string;
+    SERVICE_TENANT_PLAN?: string;
   };
   Variables: {
     tenant: TenantContext;
@@ -47,6 +49,3 @@ app.route('/', abTestRoutes);
 app.route('/', pointRoutes);
 
 export default app;
-
-// Queue consumer export for Cloudflare Workers
-export const queue = handleCampaignQueue;

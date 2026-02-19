@@ -11,10 +11,12 @@
     "@mauntic/campaign-domain": "workspace:*",
     "@mauntic/contracts": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/worker-clients": "workspace:*",
     "@mauntic/worker-lib": "workspace:*",
     "@neondatabase/serverless": "catalog:",
     "drizzle-orm": "catalog:",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",

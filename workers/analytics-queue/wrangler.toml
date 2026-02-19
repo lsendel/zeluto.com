@@ -1,0 +1,46 @@
+name = "mauntic-analytics-queue"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "../analytics/src/queue.ts"
+tsconfig = "../analytics/tsconfig.json"
+
+[vars]
+ENABLE_ANALYTICS_CRON = "true"
+
+[[r2_buckets]]
+binding = "WARMUP_R2"
+bucket_name = "mauntic-warmup-counters"
+preview_bucket_name = "mauntic-warmup-counters-dev"
+
+[[triggers.crons]]
+cron = "0 * * * *"
+
+[[triggers.crons]]
+cron = "0 2 * * *"
+
+[[triggers.crons]]
+cron = "0 3 1 * *"
+
+[[triggers.crons]]
+cron = "0 0 * * *"
+
+[[triggers.crons]]
+cron = "0 4 * * *"
+
+[[triggers.crons]]
+cron = "0 5 * * *"
+
+[[queues.producers]]
+binding = "ANALYTICS_JOBS"
+queue = "mauntic-analytics-jobs"
+
+[[queues.consumers]]
+queue = "mauntic-analytics-jobs"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "mauntic-analytics-jobs-dlq"
+
+[[analytics_engine_datasets]]
+binding = "LOGS_DATASET"
+dataset = "mauntic_logs"

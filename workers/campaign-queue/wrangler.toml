@@ -1,0 +1,34 @@
+name = "mauntic-campaign-queue"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "../campaign/src/queue.ts"
+tsconfig = "../campaign/tsconfig.json"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "107300e1a7004921b6b4fc22d098af9a"
+
+[[durable_objects.bindings]]
+name = "TENANT_CACHE"
+class_name = "TenantContextDurableObject"
+script_name = "mauntic-gateway"
+
+[[services]]
+binding = "CRM"
+service = "mauntic-crm"
+
+[vars]
+SERVICE_TENANT_USER_ID = "00000000-0000-0000-0000-000000000000"
+SERVICE_TENANT_USER_ROLE = "system"
+SERVICE_TENANT_PLAN = "enterprise"
+
+[[queues.producers]]
+binding = "EVENTS"
+queue = "mauntic-campaign-events"
+
+[[queues.consumers]]
+queue = "mauntic-campaign-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "mauntic-campaign-events-dlq"

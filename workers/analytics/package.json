@@ -9,8 +9,11 @@
   },
   "dependencies": {
     "@mauntic/analytics-domain": "workspace:*",
+    "@mauntic/delivery-domain": "workspace:*",
     "@mauntic/contracts": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/lead-intelligence-domain": "workspace:*",
+    "@mauntic/scoring-domain": "workspace:*",
     "@mauntic/worker-lib": "workspace:*",
     "@neondatabase/serverless": "catalog:",
     "drizzle-orm": "catalog:",

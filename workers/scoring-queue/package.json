@@ -1,0 +1,22 @@
+{
+  "name": "@mauntic/scoring-queue",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@mauntic/scoring-domain": "workspace:*",
+    "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/worker-lib": "workspace:*",
+    "@neondatabase/serverless": "catalog:",
+    "drizzle-orm": "catalog:"
+  },
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.toml",
+    "build": "wrangler deploy --dry-run --config wrangler.toml",
+    "typecheck": "tsc --noEmit -p ../scoring/tsconfig.json"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "typescript": "catalog:",
+    "wrangler": "^4.65.0"
+  }
+}

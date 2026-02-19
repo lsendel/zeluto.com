@@ -1,5 +1,9 @@
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { createDatabase } from '@mauntic/worker-lib';
+import {
+  createDatabase,
+  fetchTenantState,
+  cacheTenantState,
+} from '@mauntic/worker-lib';
 import { handleContactCreated } from './contact-event-handler.js';
 import { handleFormSubmitted } from './form-event-handler.js';
 import { handleDeliveryEvent } from './delivery-event-handler.js';
@@ -8,6 +12,7 @@ interface QueueEnv {
   DATABASE_URL: string;
   KV: KVNamespace;
   EVENTS: Queue;
+  TENANT_CACHE?: DurableObjectNamespace;
 }
 
 /**
@@ -24,9 +29,15 @@ export async function handleJourneyQueue(
     const event = msg.body as Record<string, unknown>;
     const eventType = (event.type as string) ?? (event as any).payload?.type;
 
-    // Idempotency check via KV
+    const orgId = extractOrganizationId(event);
+    const tenantCacheKey = orgId ? `tenant:${orgId}:system` : null;
     const idempotencyKey = `journey-queue:${msg.id}`;
-    const existing = await env.KV.get(idempotencyKey);
+    let existing: string | null = null;
+    if (tenantCacheKey && env.TENANT_CACHE) {
+      existing = await fetchTenantState(env.TENANT_CACHE, tenantCacheKey, idempotencyKey);
+    } else {
+      existing = await env.KV.get(idempotencyKey);
+    }
     if (existing) {
       msg.ack();
       continue;
@@ -54,11 +65,27 @@ export async function handleJourneyQueue(
           break;
       }
 
-      await env.KV.put(idempotencyKey, '1', { expirationTtl: 86400 });
+      if (tenantCacheKey && env.TENANT_CACHE) {
+        await cacheTenantState(env.TENANT_CACHE, tenantCacheKey, idempotencyKey, '1', 86400);
+      } else {
+        await env.KV.put(idempotencyKey, '1', { expirationTtl: 86400 });
+      }
       msg.ack();
     } catch (error) {
       console.error(`Failed to process event ${eventType}:`, error);
       msg.retry();
     }
   }
+}
+
+function extractOrganizationId(event: Record<string, unknown>): string | null {
+  const dataOrg = (event.data as any)?.organizationId;
+  if (dataOrg !== undefined && dataOrg !== null) {
+    return String(dataOrg);
+  }
+  const metadataOrg = (event.metadata as any)?.tenantContext?.organizationId;
+  if (metadataOrg !== undefined && metadataOrg !== null) {
+    return String(metadataOrg);
+  }
+  return null;
 }

@@ -16,6 +16,7 @@ import { removeMember } from '../application/commands/remove-member.js';
 import { changeRole } from '../application/commands/change-role.js';
 import { listOrgs } from '../application/queries/list-orgs.js';
 import { getOrg } from '../application/queries/get-org.js';
+import { serializeOrg, serializeInvite } from './org-serializers.js';
 
 type Env = {
   Bindings: { DB: Hyperdrive };
@@ -23,50 +24,6 @@ type Env = {
 };
 
 const orgRoutes = new Hono<Env>();
-
-/**
- * Serialize an organization row for JSON response.
- */
-function serializeOrg(org: Record<string, unknown>) {
-  return {
-    id: org.id,
-    name: org.name,
-    slug: org.slug ?? '',
-    logo: org.logo ?? null,
-    planId: org.planId ?? null,
-    stripeCustomerId: org.stripeCustomerId ?? null,
-    isBlocked: org.isBlocked ?? false,
-    createdAt: org.createdAt instanceof Date
-      ? org.createdAt.toISOString()
-      : String(org.createdAt),
-    updatedAt: org.updatedAt instanceof Date
-      ? org.updatedAt.toISOString()
-      : String(org.updatedAt),
-  };
-}
-
-/**
- * Serialize an invite row for JSON response.
- */
-function serializeInvite(invite: Record<string, unknown>) {
-  return {
-    id: invite.id,
-    organizationId: invite.organizationId,
-    email: invite.email,
-    role: invite.role,
-    token: invite.token,
-    invitedBy: invite.invitedBy,
-    expiresAt: invite.expiresAt instanceof Date
-      ? invite.expiresAt.toISOString()
-      : String(invite.expiresAt),
-    acceptedAt: invite.acceptedAt instanceof Date
-      ? invite.acceptedAt.toISOString()
-      : invite.acceptedAt ?? null,
-    createdAt: invite.createdAt instanceof Date
-      ? invite.createdAt.toISOString()
-      : String(invite.createdAt),
-  };
-}
 
 // ─── Organization CRUD ──────────────────────────────────────────────────────
 
@@ -600,7 +557,7 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
     // Mark invite as accepted
     await db
       .update(organizationInvites)
-      .set({ acceptedAt: new Date() })
+      .set({ acceptedAt: new Date(), status: 'accepted' })
       .where(eq(organizationInvites.id, invite.id));
 
     return c.json({ success: true, organizationId: invite.organizationId });

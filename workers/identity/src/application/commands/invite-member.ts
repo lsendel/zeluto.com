@@ -85,8 +85,8 @@ export async function inviteMember(
     .values({
       organizationId: parsed.organizationId,
       email: parsed.email,
-      role: parsed.role,
       token,
+      role: parsed.role,
       invitedBy: parsed.invitedBy,
       expiresAt,
     })

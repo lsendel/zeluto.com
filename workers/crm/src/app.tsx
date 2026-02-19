@@ -7,6 +7,8 @@ import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-
 import { contactRoutes } from './interface/contact-routes.js';
 import { companyRoutes } from './interface/company-routes.js';
 import { viewRoutes } from './interface/view-routes.js';
+import { segmentRoutes } from './interface/segment-routes.js';
+import { querySegmentContacts, SegmentNotFoundError } from './services/segment-query.js';
 
 export type Env = {
   Bindings: {
@@ -30,6 +32,38 @@ app.use('*', errorHandler());
 // Health check (no auth required)
 app.get('/health', (c) => c.json({ status: 'ok', service: 'crm' }));
 
+// Internal dispatch endpoint for Cloudflare Worker modules (no tenant middleware)
+app.post('/__dispatch/crm/segments/query', async (c) => {
+  try {
+    const body = await c.req
+      .json<{
+        organizationId: string;
+        segmentId: string;
+        cursor?: string;
+        limit?: number;
+      }>()
+      .catch(() => null);
+    if (!body?.organizationId || !body.segmentId) {
+      return c.json({ code: 'VALIDATION_ERROR', message: 'organizationId and segmentId required' }, 400);
+    }
+
+    const db = createDatabase(c.env.DATABASE_URL);
+    const result = await querySegmentContacts(db as any, {
+      organizationId: body.organizationId,
+      segmentId: body.segmentId,
+      cursor: body.cursor,
+      limit: body.limit,
+    });
+    return c.json(result);
+  } catch (error) {
+    if (error instanceof SegmentNotFoundError) {
+      return c.json({ code: 'NOT_FOUND', message: 'Segment not found' }, 404);
+    }
+    console.error('CRM dispatch segments query failed:', error);
+    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to query segment contacts' }, 500);
+  }
+});
+
 // Database middleware for API and view routes
 app.use('/api/*', async (c, next) => {
   const db = createDatabase(c.env.DATABASE_URL);
@@ -49,6 +83,7 @@ app.use('/app/crm/*', tenantMiddleware());
 // Mount API routes
 app.route('/', contactRoutes);
 app.route('/', companyRoutes);
+app.route('/', segmentRoutes);
 
 // Mount HTMX view routes (HTML fragments)
 app.route('/', viewRoutes);

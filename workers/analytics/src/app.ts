@@ -7,6 +7,7 @@ import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-
 import { eventRoutes } from './interface/event-routes.js';
 import { reportRoutes } from './interface/report-routes.js';
 import { dashboardRoutes } from './interface/dashboard-routes.js';
+import { analyticsDispatchRoutes } from './interface/dispatch-routes.js';
 
 export type Env = {
   Bindings: {
@@ -44,5 +45,6 @@ app.use('/api/v1/analytics/*', tenantMiddleware());
 app.route('/', eventRoutes);
 app.route('/', reportRoutes);
 app.route('/', dashboardRoutes);
+app.route('/__dispatch/analytics', analyticsDispatchRoutes);
 
 export default app;
