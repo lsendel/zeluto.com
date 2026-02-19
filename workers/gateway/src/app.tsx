@@ -130,6 +130,31 @@ export function createApp() {
   // Service Binding Routes (API)
   // ========================================
 
+  // OAuth callback — intercept JSON responses from Better Auth's API-flow callbacks
+  // and convert them to browser redirects (preserving Set-Cookie for the session).
+  app.get('/api/auth/callback/:provider', async (c) => {
+    const response = await forwardToService(c, c.env.IDENTITY, { skipTenant: true });
+    const contentType = response.headers.get('Content-Type') || '';
+
+    // Better Auth returns JSON when the sign-in was initiated as an API call (fetch + JSON).
+    // The browser expects a redirect, so convert JSON 200 → 302.
+    if (response.status === 200 && contentType.includes('application/json')) {
+      const redirectUrl = '/app/dashboard';
+      const headers = new Headers({ Location: redirectUrl });
+
+      // Preserve Set-Cookie headers so the session token is stored
+      response.headers.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') {
+          headers.append('Set-Cookie', value);
+        }
+      });
+
+      return new Response(null, { status: 302, headers });
+    }
+
+    return response;
+  });
+
   // Identity auth routes (public, no tenant context needed)
   app.all('/api/auth/*', async (c) => {
     return forwardToService(c, c.env.IDENTITY, { skipTenant: true });

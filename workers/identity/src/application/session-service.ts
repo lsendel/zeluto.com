@@ -46,7 +46,17 @@ export async function validateSessionFromHeaders(
           .set({ activeOrganizationId: activeOrgId })
           .where(eq(sessions.id, session.session.id));
       } else {
-        return { status: 400, body: { error: 'NO_ACTIVE_ORGANIZATION' } };
+        // User is authenticated but has no org — return user data without organization
+        return {
+          status: 200,
+          body: {
+            user: {
+              id: session.user.id,
+              email: session.user.email,
+              name: session.user.name || session.user.email,
+            },
+          },
+        };
       }
     }
 
