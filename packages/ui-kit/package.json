@@ -11,7 +11,11 @@
     "./components": { "import": "./dist/components/index.js", "types": "./dist/components/index.d.ts" },
     "./styles": "./src/styles/tailwind.css"
   },
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "build:css": "mkdir -p dist && tailwindcss -c tailwind.config.ts -i src/styles/tailwind.css -o dist/ui-kit.css --minify"
+  },
   "dependencies": {
     "hono": "catalog:"
   },

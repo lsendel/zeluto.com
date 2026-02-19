@@ -1,4 +1,4 @@
-import type { Logger } from '../middleware/logging.js';
+import type { Logger } from '../logger/index.js';
 
 export interface DlqMonitorConfig {
   /** Webhook URL for Slack/Discord/etc. alert notifications */

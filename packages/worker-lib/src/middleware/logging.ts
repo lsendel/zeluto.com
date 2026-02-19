@@ -1,56 +1,31 @@
 import type { MiddlewareHandler } from 'hono';
+import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
+import { createLogger, type Logger } from '../logger/index.js';
 
-export interface Logger {
-  info(data: Record<string, unknown>, msg?: string): void;
-  warn(data: Record<string, unknown>, msg?: string): void;
-  error(data: Record<string, unknown>, msg?: string): void;
-  debug(data: Record<string, unknown>, msg?: string): void;
+export interface LoggingOptions {
+  datasetBinding?: string;
 }
 
-function createLogger(
-  service: string,
-  requestId: string,
-  baseFields?: Record<string, unknown>,
-): Logger {
-  const log = (
-    level: string,
-    data: Record<string, unknown>,
-    msg?: string,
-  ) => {
-    console.log(
-      JSON.stringify({
-        level,
-        service,
-        requestId,
-        ...baseFields,
-        ...data,
-        msg,
-        timestamp: new Date().toISOString(),
-      }),
-    );
-  };
-
-  return {
-    info: (data: Record<string, unknown>, msg?: string) =>
-      log('info', data, msg),
-    warn: (data: Record<string, unknown>, msg?: string) =>
-      log('warn', data, msg),
-    error: (data: Record<string, unknown>, msg?: string) =>
-      log('error', data, msg),
-    debug: (data: Record<string, unknown>, msg?: string) =>
-      log('debug', data, msg),
-  };
-}
-
-export function loggingMiddleware(serviceName: string): MiddlewareHandler {
+export function loggingMiddleware(
+  serviceName: string,
+  options?: LoggingOptions,
+): MiddlewareHandler {
   return async (c, next) => {
     const requestId =
       c.req.header('X-Request-Id') ?? crypto.randomUUID();
     c.set('requestId', requestId);
     c.header('X-Request-Id', requestId);
 
-    // Create logger with base fields; organizationId/userId populated after auth
-    const logger = createLogger(serviceName, requestId);
+    const datasetBinding = options?.datasetBinding ?? 'LOGS_DATASET';
+    const dataset = (c.env as Record<string, unknown> | undefined)?.[
+      datasetBinding
+    ] as AnalyticsEngineDataset | undefined;
+
+    const logger = createLogger({
+      service: serviceName,
+      requestId,
+      dataset,
+    });
     c.set('logger', logger);
 
     const start = Date.now();
@@ -71,7 +46,6 @@ export function loggingMiddleware(serviceName: string): MiddlewareHandler {
     if (organizationId) fields.organizationId = organizationId;
     if (userId) fields.userId = userId;
 
-    // Log at appropriate level based on status code
     if (statusCode >= 500) {
       logger.error(fields, 'request');
     } else if (statusCode >= 400) {

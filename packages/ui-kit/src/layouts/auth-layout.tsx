@@ -1,4 +1,5 @@
 import type { Child, FC } from "../types.js";
+import { resolveAssetUrl } from "../utils/assets.js";
 
 export interface AuthLayoutProps {
   /** Page title */
@@ -13,6 +14,8 @@ export interface AuthLayoutProps {
   head?: Child;
   /** Footer content below the card (e.g., links to other auth pages) */
   footer?: Child;
+  /** Base URL for static assets (CSS/JS) */
+  assetsBaseUrl?: string;
 }
 
 export const AuthLayout: FC<AuthLayoutProps> = ({
@@ -22,6 +25,7 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
   children,
   head,
   footer,
+  assetsBaseUrl,
 }) => {
   return (
     <html lang="en" class="h-full bg-gray-50">
@@ -29,7 +33,7 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{title} | Mauntic</title>
-        <link rel="stylesheet" href="/styles/tailwind.css" />
+        <link rel="stylesheet" href={resolveAssetUrl(assetsBaseUrl, "/styles/latest.css")} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
         {head}
       </head>

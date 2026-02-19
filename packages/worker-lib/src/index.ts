@@ -1,7 +1,9 @@
 // Middleware
 export { errorHandler } from './middleware/error-handler.js';
 export { loggingMiddleware } from './middleware/logging.js';
-export type { Logger } from './middleware/logging.js';
+export type { LoggingOptions } from './middleware/logging.js';
+export { createLogger, createLoggerFromEnv } from './logger/index.js';
+export type { Logger } from './logger/index.js';
 export { tenantMiddleware } from './middleware/tenant.js';
 export { csrfMiddleware } from './middleware/csrf.js';
 export { CircuitBreaker } from './middleware/circuit-breaker.js';
@@ -35,3 +37,15 @@ export {
   runDlqHealthCheck,
 } from './monitoring/dlq-monitor.js';
 export type { DlqMonitorConfig, DlqMessage, DlqStats } from './monitoring/dlq-monitor.js';
+export { logQueueMetric } from './monitoring/queue-telemetry.js';
+export type { QueueMetricEvent, QueueMetricStatus } from './monitoring/queue-telemetry.js';
+
+// Tenant context cache (Durable Object helpers)
+export {
+  TenantContextDurableObject,
+  cacheTenantContext,
+  fetchTenantContext,
+  cacheTenantState,
+  fetchTenantState,
+  deleteTenantState,
+} from './tenant/tenant-context-do.js';

@@ -2,6 +2,7 @@ import type { Child, FC } from "../types.js";
 import { SidebarNav } from "../components/nav.js";
 import type { NavGroup } from "../components/nav.js";
 import { ModalContainer } from "../components/modal.js";
+import { resolveAssetUrl } from "../utils/assets.js";
 
 export interface AppLayoutProps {
   /** Page title for the <title> tag */
@@ -18,6 +19,8 @@ export interface AppLayoutProps {
   children: Child;
   /** Additional head content (meta tags, scripts) */
   head?: Child;
+  /** Base URL for static assets (CSS/JS) */
+  assetsBaseUrl?: string;
 }
 
 /** SVG icon helper — renders a 20x20 outline icon */
@@ -155,6 +158,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
   orgName = "My Organization",
   children,
   head,
+  assetsBaseUrl,
 }) => {
   const navGroups = buildNavGroups(currentPath);
   const initials = userName
@@ -170,7 +174,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{title} | Mauntic</title>
-        <link rel="stylesheet" href="/styles/tailwind.css" />
+        <link rel="stylesheet" href={resolveAssetUrl(assetsBaseUrl, "/styles/latest.css")} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
         {head}
       </head>
