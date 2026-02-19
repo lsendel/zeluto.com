@@ -7,13 +7,16 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@mauntic/analytics-domain": "workspace:*",
     "@mauntic/delivery-domain": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/lead-intelligence-domain": "workspace:*",
     "@mauntic/process-lib": "workspace:*",
+    "@mauntic/scoring-domain": "workspace:*",
     "@neondatabase/serverless": "catalog:",
     "bullmq": "catalog:",
     "drizzle-orm": "catalog:",
@@ -23,6 +26,7 @@
   "devDependencies": {
     "@types/node": "catalog:",
     "tsx": "^4.21.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

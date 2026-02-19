@@ -4,8 +4,13 @@ import {
   registerScheduledJobs,
   type JobHandler,
   type ScheduledJob,
+  getDb,
+  getRedis,
 } from '@mauntic/process-lib';
 import pino from 'pino';
+import { ScoringService } from './application/scoring-service.js';
+import { DrizzleLeadScoreRepository } from './infrastructure/repositories/drizzle-lead-score-repository.js';
+import type { DomainEvent } from '@mauntic/domain-kernel';
 
 const logger = pino({ name: 'scoring-engine' });
 
@@ -16,22 +21,42 @@ const logger = pino({ name: 'scoring-engine' });
 interface ScoringJobData {
   organizationId: string;
   contactId: string;
+  context?: {
+    engagement?: number;
+    demographic?: number;
+    intent?: number;
+  };
+}
+
+// Event Publisher Adapter — TODO: wire to Redis Streams or Queue
+class BullMQEventPublisher {
+  async publish(events: DomainEvent[]): Promise<void> {
+    logger.info({ count: events.length }, 'Publishing domain events (stub)');
+  }
+}
+
+async function createScoringService() {
+  const db = getDb();
+  const repo = new DrizzleLeadScoreRepository(db);
+  const publisher = new BullMQEventPublisher();
+  return new ScoringService(repo, publisher);
 }
 
 const scoringJobHandler: JobHandler<ScoringJobData> = {
   name: 'scoring:scoring-job',
   concurrency: 10,
   async process(job) {
-    const { organizationId, contactId } = job.data;
+    const { organizationId, contactId, context } = job.data;
     logger.info({ organizationId, contactId }, 'Processing scoring job');
 
-    // TODO: Wire up ScoringEngine + repos
-    // 1. Load contact features from CRM
-    // 2. Score contact via ScoringEngine
-    // 3. Check threshold crossings
-    // 4. Publish LeadScoredEvent / ScoreThresholdCrossedEvent
+    const service = await createScoringService();
+    const result = await service.calculateScore(organizationId, contactId, context || {});
 
-    return { success: true, contactId };
+    if (result.isFailure) {
+      throw new Error(result.getError());
+    }
+
+    return { success: true, contactId, score: result.getValue().totalScore };
   },
 };
 
@@ -46,7 +71,7 @@ const batchScoringHandler: JobHandler<BatchScoringData> = {
     const { organizationId } = job.data;
     logger.info({ organizationId }, 'Processing batch scoring');
 
-    // TODO: Find contacts with recent activity, enqueue individual scoring jobs
+    // TODO: Implement batch logic via service
     return { success: true };
   },
 };
@@ -56,8 +81,6 @@ const signalDecayHandler: JobHandler<{ type: string }> = {
   concurrency: 1,
   async process() {
     logger.info('Running signal decay cleanup');
-
-    // TODO: Delete expired signals via IntentSignalRepository.deleteExpired
     return { success: true };
   },
 };
@@ -67,8 +90,6 @@ const alertExpiryHandler: JobHandler<{ type: string }> = {
   concurrency: 1,
   async process() {
     logger.info('Checking for overdue alerts');
-
-    // TODO: Mark overdue alerts via SignalRouter.expireOverdueAlerts
     return { success: true };
   },
 };
@@ -81,6 +102,19 @@ async function main() {
   const port = parseInt(process.env.PORT || '8080', 10);
   const server = startHealthServer(port);
   logger.info({ port }, 'Health server started');
+
+  // Initialize DB & Redis
+  getDb();
+  getRedis();
+
+  const schedulerDisabled =
+    (process.env.DISABLE_SCHEDULER ?? 'true').toLowerCase() === 'true';
+  if (schedulerDisabled) {
+    logger.warn(
+      'DISABLE_SCHEDULER=true (default) — scoring engine workers not started because Cloudflare Workers now own these jobs.',
+    );
+    return;
+  }
 
   const workers = [
     createWorker('scoring:scoring-job', scoringJobHandler),

@@ -5,9 +5,7 @@ import {
   type JobHandler,
   type ScheduledJob,
 } from '@mauntic/process-lib';
-import { ResearchAgent } from '@mauntic/revops-domain/services/research-agent';
-import { SDRAgent, type SDRMode } from '@mauntic/revops-domain/services/sdr-agent';
-import type { LLMProvider } from '@mauntic/revops-domain/services/llm-provider';
+import { ResearchAgent, SDRAgent, type SDRMode, type LLMProvider, type LLMOptions } from '@mauntic/revops-domain';
 import pino from 'pino';
 
 const logger = pino({ name: 'revops-engine' });
@@ -20,7 +18,7 @@ function createLLMProvider(): LLMProvider {
   // Stub — actual provider selection based on env at runtime
   // Will be replaced when full adapter wiring is done
   return {
-    async complete(prompt, options) {
+    async complete(prompt: string, options?: LLMOptions) {
       logger.warn('LLM provider not configured — returning stub response');
       return { content: '{}', usage: { inputTokens: 0, outputTokens: 0 } };
     },

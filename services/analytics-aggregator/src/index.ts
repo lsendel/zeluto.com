@@ -1,17 +1,19 @@
 import { startHealthServer, createWorker, registerScheduledJobs, getRedis, getDb, type JobHandler } from '@mauntic/process-lib';
 import type { Job } from 'bullmq';
 import pino from 'pino';
-import { eq, and, sql, gte, lte, desc } from 'drizzle-orm';
-import {
-  contactActivity,
-  eventAggregates,
-  campaignDailyStats,
-  journeyDailyStats,
-  dailyScoreDistribution,
-  enrichmentMetrics,
-} from '@mauntic/analytics-domain/drizzle';
+import { AnalyticsService } from './application/analytics-service.js';
+import { DrizzleAnalyticsRepository } from '@mauntic/analytics-domain';
+import { RedisWarmupCounterStore } from './infrastructure/warmup-counter-store.js';
 
 const logger = pino({ name: 'analytics-aggregator' });
+
+async function createService() {
+  const db = getDb();
+  const redis = getRedis();
+  const warmupStore = new RedisWarmupCounterStore(redis);
+  const repo = new DrizzleAnalyticsRepository(db, warmupStore);
+  return new AnalyticsService(repo);
+}
 
 // ---------------------------------------------------------------------------
 // Hourly: Event aggregation
@@ -23,64 +25,21 @@ const hourlyAggregationHandler: JobHandler = {
   async process(job: Job) {
     logger.info('Starting hourly analytics aggregation...');
 
-    const db = getDb();
-    const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const todayStr = now.toISOString().split('T')[0];
-
     try {
-      // Query raw events from the last hour grouped by org + event type
-      const rawEvents = await db
-        .select({
-          organizationId: contactActivity.organizationId,
-          eventType: contactActivity.eventType,
-          count: sql<number>`count(*)::int`,
-          uniqueCount: sql<number>`count(distinct ${contactActivity.contactId})::int`,
-        })
-        .from(contactActivity)
-        .where(gte(contactActivity.createdAt, oneHourAgo))
-        .groupBy(contactActivity.organizationId, contactActivity.eventType);
+      const service = await createService();
+      const result = await service.runHourlyAggregation();
 
-      // Upsert into event_aggregates
-      for (const row of rawEvents) {
-        // Try to update existing row for today
-        const [existing] = await db
-          .select()
-          .from(eventAggregates)
-          .where(
-            and(
-              eq(eventAggregates.organizationId, row.organizationId),
-              eq(eventAggregates.eventType, row.eventType),
-              eq(eventAggregates.date, todayStr),
-            ),
-          )
-          .limit(1);
-
-        if (existing) {
-          await db
-            .update(eventAggregates)
-            .set({
-              count: sql`${eventAggregates.count} + ${row.count}`,
-              uniqueCount: sql`${eventAggregates.uniqueCount} + ${row.uniqueCount}`,
-            })
-            .where(eq(eventAggregates.id, existing.id));
-        } else {
-          await db.insert(eventAggregates).values({
-            organizationId: row.organizationId,
-            date: todayStr,
-            eventType: row.eventType,
-            count: row.count,
-            uniqueCount: row.uniqueCount,
-          });
-        }
+      if (result.isFailure) {
+        throw new Error(result.getError());
       }
 
+      const data = result.getValue();
       logger.info(
-        { aggregatedGroups: rawEvents.length, date: todayStr },
+        { aggregatedGroups: data.aggregatedGroups, date: data.timestamp.toISOString() },
         'Hourly aggregation completed',
       );
 
-      return { success: true, aggregatedAt: now.toISOString(), groups: rawEvents.length };
+      return { success: true, aggregatedAt: data.timestamp.toISOString(), groups: data.aggregatedGroups };
     } catch (error) {
       logger.error({ error }, 'Hourly aggregation failed');
       throw error;
@@ -89,7 +48,7 @@ const hourlyAggregationHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
-// Daily: Report generation (campaign + journey daily stats rollup)
+// Daily: Report generation
 // ---------------------------------------------------------------------------
 
 const dailyReportHandler: JobHandler = {
@@ -98,78 +57,20 @@ const dailyReportHandler: JobHandler = {
   async process(job: Job) {
     logger.info('Starting daily report generation...');
 
-    const db = getDb();
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
     try {
-      // Aggregate campaign events from yesterday into campaign_daily_stats
-      const campaignEvents = await db
-        .select({
-          organizationId: contactActivity.organizationId,
-          eventSource: contactActivity.eventSource,
-          eventType: contactActivity.eventType,
-          count: sql<number>`count(*)::int`,
-          uniqueCount: sql<number>`count(distinct ${contactActivity.contactId})::int`,
-        })
-        .from(contactActivity)
-        .where(
-          and(
-            gte(contactActivity.createdAt, yesterday),
-            lte(contactActivity.createdAt, now),
-            sql`${contactActivity.eventSource} IS NOT NULL`,
-          ),
-        )
-        .groupBy(
-          contactActivity.organizationId,
-          contactActivity.eventSource,
-          contactActivity.eventType,
-        );
+      const service = await createService();
+      const result = await service.runDailyReports();
 
-      // Group campaign events by campaignId
-      const campaignMap = new Map<string, {
-        orgId: string;
-        campaignId: string;
-        metrics: Record<string, { count: number; uniqueCount: number }>;
-      }>();
-      for (const row of campaignEvents) {
-        if (!row.eventSource) continue;
-        const key = `${row.organizationId}:${row.eventSource}`;
-        if (!campaignMap.has(key)) {
-          campaignMap.set(key, { orgId: row.organizationId, campaignId: row.eventSource, metrics: {} });
-        }
-        const entry = campaignMap.get(key)!;
-        entry.metrics[row.eventType] = { count: row.count, uniqueCount: row.uniqueCount };
+      if (result.isFailure) {
+        throw new Error(result.getError());
       }
 
-      // Insert campaign daily stats
-      for (const [, { orgId, campaignId, metrics }] of campaignMap) {
-        const get = (type: string) => metrics[type] ?? { count: 0, uniqueCount: 0 };
-
-        await db.insert(campaignDailyStats).values({
-          campaignId,
-          organizationId: orgId,
-          date: yesterdayStr,
-          sent: get('email_sent').count,
-          delivered: get('email_delivered').count,
-          opened: get('email_opened').count,
-          uniqueOpened: get('email_opened').uniqueCount,
-          clicked: get('email_clicked').count,
-          uniqueClicked: get('email_clicked').uniqueCount,
-          bounced: get('email_bounced').count,
-          complained: get('email_complained').count,
-          unsubscribed: get('email_unsubscribed').count,
-        });
-      }
-
+      const data = result.getValue();
       logger.info(
-        { date: yesterdayStr, campaigns: campaignMap.size },
+        { date: data.date, campaigns: data.campaignsProcessed },
         'Daily report generation completed',
       );
-
-      return { success: true, date: yesterdayStr, campaigns: campaignMap.size };
+      return { success: true, date: data.date, campaigns: data.campaignsProcessed };
     } catch (error) {
       logger.error({ error }, 'Daily report generation failed');
       throw error;
@@ -178,7 +79,7 @@ const dailyReportHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
-// Monthly: Usage summary per organization
+// Monthly: Usage summary
 // ---------------------------------------------------------------------------
 
 const monthlyUsageHandler: JobHandler = {
@@ -187,48 +88,17 @@ const monthlyUsageHandler: JobHandler = {
   async process(job: Job) {
     logger.info('Starting monthly usage summary...');
 
-    const db = getDb();
-    const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(firstOfMonth);
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-
     try {
-      // Count events per org for last month
-      const monthlyCounts = await db
-        .select({
-          organizationId: contactActivity.organizationId,
-          eventType: contactActivity.eventType,
-          count: sql<number>`count(*)::int`,
-        })
-        .from(contactActivity)
-        .where(
-          and(
-            gte(contactActivity.createdAt, lastMonth),
-            lte(contactActivity.createdAt, firstOfMonth),
-          ),
-        )
-        .groupBy(contactActivity.organizationId, contactActivity.eventType);
+      const service = await createService();
+      const result = await service.runMonthlyUsage();
 
-      // Store as monthly aggregates in event_aggregates
-      const monthStr = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}-01`;
-      for (const row of monthlyCounts) {
-        await db.insert(eventAggregates).values({
-          organizationId: row.organizationId,
-          date: monthStr,
-          eventType: `monthly:${row.eventType}`,
-          count: row.count,
-          uniqueCount: 0,
-          channel: 'monthly_summary',
-        });
+      if (result.isFailure) {
+        throw new Error(result.getError());
       }
 
-      logger.info(
-        { month: monthStr, orgs: new Set(monthlyCounts.map((r) => r.organizationId)).size },
-        'Monthly usage summary completed',
-      );
-
-      return { success: true, month: monthStr, rows: monthlyCounts.length };
+      const count = result.getValue();
+      logger.info({ rows: count }, 'Monthly usage summary completed');
+      return { success: true, rows: count };
     } catch (error) {
       logger.error({ error }, 'Monthly usage summary failed');
       throw error;
@@ -246,42 +116,17 @@ const warmupResetHandler: JobHandler = {
   async process(job: Job) {
     logger.info('Starting warmup daily send counter reset...');
 
-    const db = getDb();
-    const redis = getRedis();
-
     try {
-      // Find all sending domains that are in warmup period (created < 30 days ago)
-      const { sending_domains } = await import('@mauntic/delivery-domain/drizzle');
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const service = await createService();
+      const result = await service.runWarmupReset();
 
-      const domains = await db
-        .select({
-          organizationId: sending_domains.organization_id,
-          domain: sending_domains.domain,
-        })
-        .from(sending_domains)
-        .where(
-          and(
-            eq(sending_domains.status, 'verified'),
-            gte(sending_domains.created_at, thirtyDaysAgo),
-          ),
-        );
-
-      // Reset daily send counters in Redis for each org+domain
-      let resetCount = 0;
-      for (const domain of domains) {
-        const key = `warmup:daily:${domain.organizationId}:${domain.domain}`;
-        await redis.del(key);
-        resetCount++;
+      if (result.isFailure) {
+        throw new Error(result.getError());
       }
 
-      logger.info(
-        { resetCount, domains: domains.length },
-        'Warmup daily send counter reset completed',
-      );
-
-      return { success: true, resetCount };
+      const count = result.getValue();
+      logger.info({ resetCount: count }, 'Warmup daily send counter reset completed');
+      return { success: true, resetCount: count };
     } catch (error) {
       logger.error({ error }, 'Warmup daily reset failed');
       throw error;
@@ -299,43 +144,16 @@ const scoreDistributionHandler: JobHandler = {
   async process(job: Job) {
     logger.info('Starting daily score distribution aggregation...');
 
-    const db = getDb();
-    const todayStr = new Date().toISOString().split('T')[0];
-
     try {
-      const { lead_scores } = await import('@mauntic/scoring-domain/drizzle');
+      const service = await createService();
+      const result = await service.runScoreDistribution();
 
-      // Aggregate score distribution per organization
-      const distributions = await db
-        .select({
-          organizationId: lead_scores.organization_id,
-          avgScore: sql<string>`avg(${lead_scores.total_score})::numeric(5,2)`,
-          minScore: sql<number>`min(${lead_scores.total_score})`,
-          maxScore: sql<number>`max(${lead_scores.total_score})`,
-          p50: sql<number>`percentile_cont(0.5) within group (order by ${lead_scores.total_score})`,
-          p90: sql<number>`percentile_cont(0.9) within group (order by ${lead_scores.total_score})`,
-          p95: sql<number>`percentile_cont(0.95) within group (order by ${lead_scores.total_score})`,
-          totalContacts: sql<number>`count(*)::int`,
-        })
-        .from(lead_scores)
-        .groupBy(lead_scores.organization_id);
-
-      for (const dist of distributions) {
-        await db.insert(dailyScoreDistribution).values({
-          organizationId: dist.organizationId,
-          date: todayStr,
-          avgScore: dist.avgScore,
-          minScore: dist.minScore,
-          maxScore: dist.maxScore,
-          p50: dist.p50,
-          p90: dist.p90,
-          p95: dist.p95,
-          totalContacts: dist.totalContacts,
-        });
+      if (result.isFailure) {
+        throw new Error(result.getError());
       }
-
-      logger.info({ date: todayStr, orgs: distributions.length }, 'Score distribution aggregation completed');
-      return { success: true, date: todayStr, orgs: distributions.length };
+      const count = result.getValue();
+      logger.info({ orgs: count }, 'Score distribution aggregation completed');
+      return { success: true, orgs: count };
     } catch (error) {
       logger.error({ error }, 'Score distribution aggregation failed');
       throw error;
@@ -353,42 +171,17 @@ const enrichmentMetricsHandler: JobHandler = {
   async process(job: Job) {
     logger.info('Starting daily enrichment metrics aggregation...');
 
-    const db = getDb();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
     try {
-      const { enrichment_jobs } = await import('@mauntic/lead-intelligence-domain/drizzle');
+      const service = await createService();
+      const result = await service.runEnrichmentMetrics();
 
-      const metrics = await db
-        .select({
-          organizationId: enrichment_jobs.organization_id,
-          totalEnriched: sql<number>`count(*)::int`,
-          successRate: sql<string>`(count(*) filter (where ${enrichment_jobs.status} = 'completed')::numeric / nullif(count(*), 0) * 100)::numeric(5,2)`,
-        })
-        .from(enrichment_jobs)
-        .where(
-          and(
-            gte(enrichment_jobs.created_at, yesterday),
-            lte(enrichment_jobs.created_at, new Date()),
-          ),
-        )
-        .groupBy(enrichment_jobs.organization_id);
-
-      for (const m of metrics) {
-        await db.insert(enrichmentMetrics).values({
-          organizationId: m.organizationId,
-          date: yesterdayStr,
-          totalEnriched: m.totalEnriched,
-          successRate: m.successRate ?? '0',
-          avgCost: '0',
-          avgFreshness: '0',
-        });
+      if (result.isFailure) {
+        throw new Error(result.getError());
       }
 
-      logger.info({ date: yesterdayStr, orgs: metrics.length }, 'Enrichment metrics aggregation completed');
-      return { success: true, date: yesterdayStr, orgs: metrics.length };
+      const count = result.getValue();
+      logger.info({ orgs: count }, 'Enrichment metrics aggregation completed');
+      return { success: true, orgs: count };
     } catch (error) {
       logger.error({ error }, 'Enrichment metrics aggregation failed');
       throw error;
@@ -397,13 +190,22 @@ const enrichmentMetricsHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
-// Main entry point
+// Main
 // ---------------------------------------------------------------------------
 
 async function main() {
   const port = parseInt(process.env.PORT || '8080', 10);
   const server = startHealthServer(port);
   logger.info({ port }, 'Health server started');
+
+  const schedulerDisabled =
+    (process.env.DISABLE_SCHEDULER ?? 'true').toLowerCase() === 'true';
+  if (schedulerDisabled) {
+    logger.warn(
+      'DISABLE_SCHEDULER=true (default) — analytics aggregator workers not started because Cloudflare Workers now own these jobs.',
+    );
+    return;
+  }
 
   // Register scheduled jobs
   await registerScheduledJobs('analytics:aggregate-hourly', [
