@@ -185,6 +185,22 @@ export function createApp() {
   app.route('/api/v1/onboarding', onboardingRoutes);
 
   // ========================================
+  // HTMX View Routes (forward partials to service workers)
+  // ========================================
+
+  app.all('/api/v1/lead-intelligence/views/*', async (c) => {
+    return forwardToService(c, c.env.LEAD_INTELLIGENCE);
+  });
+
+  app.all('/api/v1/scoring/views/*', async (c) => {
+    return forwardToService(c, c.env.SCORING);
+  });
+
+  app.all('/api/v1/revops/views/*', async (c) => {
+    return forwardToService(c, c.env.REVOPS);
+  });
+
+  // ========================================
   // HTMX Application Shell Routes
   // ========================================
 

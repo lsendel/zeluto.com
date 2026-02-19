@@ -67,3 +67,15 @@ service = "mauntic-analytics"
 [[services]]
 binding = "INTEGRATIONS"
 service = "mauntic-integrations"
+
+[[services]]
+binding = "LEAD_INTELLIGENCE"
+service = "mauntic-lead-intelligence"
+
+[[services]]
+binding = "SCORING"
+service = "mauntic-scoring"
+
+[[services]]
+binding = "REVOPS"
+service = "mauntic-revops"
