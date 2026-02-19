@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/nodemailer": "^7.0.9",
+    "@types/nodemailer": "^7.0.10",
     "tsx": "^4.21.0",
     "typescript": "catalog:"
   }

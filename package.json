@@ -21,8 +21,8 @@
     "@cloudflare/workers-types": "catalog:",
     "@neondatabase/serverless": "catalog:",
     "@types/node": "catalog:",
-    "wrangler": "^4.65.0",
-    "turbo": "^2.8.7",
+    "wrangler": "^4.67.0",
+    "turbo": "^2.8.10",
     "typescript": "catalog:"
   }
 }

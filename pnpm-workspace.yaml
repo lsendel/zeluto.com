@@ -8,17 +8,17 @@ packages:
 
 catalogs:
   default:
-    '@cloudflare/workers-types': ^4.20260213.0
+    '@cloudflare/workers-types': ^4.20260219.0
     '@neondatabase/serverless': ^1.0.2
     '@ts-rest/core': ^3.52.1
-    '@types/node': ^25.2.3
-    bullmq: ^5.69.1
+    '@types/node': ^25.3.0
+    bullmq: ^5.69.3
     drizzle-kit: ^0.31.9
     drizzle-orm: ^0.45.1
-    hono: ^4.11.10
+    hono: ^4.12.0
     ioredis: ^5.9.3
     pino: ^10.3.1
-    tailwindcss: ^4.1.18
+    tailwindcss: ^4.2.0
     typescript: ^5.9.3
     vitest: ^4.0.18
     zod: ^4.3.6

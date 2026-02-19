@@ -21,7 +21,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
-    "vitest": "^3.0.5",
-    "wrangler": "^4.65.0"
+    "vitest": "catalog:",
+    "wrangler": "^4.67.0"
   }
 }
