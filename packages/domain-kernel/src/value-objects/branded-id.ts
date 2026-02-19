@@ -24,6 +24,10 @@ export type TemplateId = Brand<string, 'TemplateId'>;
 export type SubscriptionId = Brand<string, 'SubscriptionId'>;
 export type PlanId = Brand<string, 'PlanId'>;
 
+// Lead Intelligence IDs
+export type EnrichmentJobId = Brand<string, 'EnrichmentJobId'>;
+export type EnrichmentProviderId = Brand<string, 'EnrichmentProviderId'>;
+
 export const ContactIdSchema = z.string().uuid() as unknown as z.ZodType<ContactId>;
 export const CompanyIdSchema = z.string().uuid() as unknown as z.ZodType<CompanyId>;
 export const CampaignIdSchema = z.string().uuid() as unknown as z.ZodType<CampaignId>;
@@ -44,3 +48,7 @@ export const DeliveryJobIdSchema = z.string().uuid() as unknown as z.ZodType<Del
 export const TemplateIdSchema = z.string().uuid() as unknown as z.ZodType<TemplateId>;
 export const SubscriptionIdSchema = z.string().min(1) as unknown as z.ZodType<SubscriptionId>;
 export const PlanIdSchema = z.string().uuid() as unknown as z.ZodType<PlanId>;
+
+// Lead Intelligence ID Schemas
+export const EnrichmentJobIdSchema = z.string().uuid() as unknown as z.ZodType<EnrichmentJobId>;
+export const EnrichmentProviderIdSchema = z.string().min(1) as unknown as z.ZodType<EnrichmentProviderId>;

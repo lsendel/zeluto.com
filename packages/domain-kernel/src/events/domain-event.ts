@@ -737,6 +737,32 @@ export interface WebhookDisabledEvent extends DomainEvent<'integration.WebhookDi
 }> {}
 
 // ============================================================================
+// LEAD INTELLIGENCE EVENTS
+// ============================================================================
+
+export interface LeadEnrichedEvent extends DomainEvent<'leadIntelligence.LeadEnriched', {
+  organizationId: number;
+  contactId: string;
+  changedFields: string[];
+  source: string;
+  confidence: number;
+}> {}
+
+export interface EnrichmentFailedEvent extends DomainEvent<'leadIntelligence.EnrichmentFailed', {
+  organizationId: number;
+  contactId: string;
+  provider: string;
+  reason: string;
+}> {}
+
+export interface DataQualityChangedEvent extends DomainEvent<'leadIntelligence.DataQualityChanged', {
+  organizationId: number;
+  contactId: string;
+  oldScore: number;
+  newScore: number;
+}> {}
+
+// ============================================================================
 // MISC EVENTS
 // ============================================================================
 
@@ -861,5 +887,9 @@ export type AnyDomainEvent =
   | WebhookTriggeredEvent
   | WebhookFailedEvent
   | WebhookDisabledEvent
+  // Lead Intelligence Events
+  | LeadEnrichedEvent
+  | EnrichmentFailedEvent
+  | DataQualityChangedEvent
   // Misc Events
   | PointsAwardedEvent;
