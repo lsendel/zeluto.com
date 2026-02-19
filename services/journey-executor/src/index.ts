@@ -374,6 +374,101 @@ const gateListenerHandler: JobHandler<GateListenerData> = {
 };
 
 // ============================================================================
+// Score-based trigger handler
+// ============================================================================
+
+interface ScoreTriggerData {
+  organizationId: string;
+  contactId: string;
+  score: number;
+  grade: string;
+  previousScore: number | null;
+  eventType: 'LeadScored' | 'IntentSignalDetected';
+  signalType?: string;
+}
+
+const scoreTriggerHandler: JobHandler<ScoreTriggerData> = {
+  name: 'journey:score-trigger-eval',
+  concurrency: 5,
+  async process(job: Job<ScoreTriggerData>) {
+    const { organizationId, contactId, score, eventType, signalType } = job.data;
+    logger.info({ organizationId, contactId, score, eventType }, 'Evaluating score-based triggers');
+
+    const { journey_triggers, journeys } = await import('@mauntic/journey-domain/drizzle');
+
+    // Find matching triggers based on event type
+    const triggerType = eventType === 'LeadScored' ? 'score_threshold' : 'intent_signal';
+    const matchingTriggers = await db()
+      .select({
+        trigger: journey_triggers,
+        journey: journeys,
+      })
+      .from(journey_triggers)
+      .innerJoin(journeys, eq(journeys.id, journey_triggers.journey_id))
+      .where(
+        and(
+          eq(journey_triggers.organization_id, organizationId),
+          eq(journey_triggers.type, triggerType),
+          eq(journeys.status, 'active'),
+        ),
+      );
+
+    let triggered = 0;
+    for (const { trigger, journey } of matchingTriggers) {
+      const config = trigger.config as Record<string, unknown>;
+
+      if (triggerType === 'score_threshold') {
+        const minScore = (config.minScore as number) ?? 80;
+        const direction = (config.direction as string) ?? 'up';
+
+        if (direction === 'up' && score >= minScore) {
+          // Check if contact is already in this journey
+          const [existing] = await db()
+            .select()
+            .from(journey_executions)
+            .where(
+              and(
+                eq(journey_executions.journey_id, journey.id),
+                eq(journey_executions.contact_id, contactId),
+                eq(journey_executions.status, 'active'),
+              ),
+            );
+
+          if (!existing) {
+            logger.info({ journeyId: journey.id, contactId, score }, 'Score threshold trigger fired');
+            // TODO: Start journey execution for this contact
+            triggered++;
+          }
+        }
+      } else if (triggerType === 'intent_signal') {
+        const targetSignalType = config.signalType as string;
+        if (!targetSignalType || targetSignalType === signalType) {
+          const [existing] = await db()
+            .select()
+            .from(journey_executions)
+            .where(
+              and(
+                eq(journey_executions.journey_id, journey.id),
+                eq(journey_executions.contact_id, contactId),
+                eq(journey_executions.status, 'active'),
+              ),
+            );
+
+          if (!existing) {
+            logger.info({ journeyId: journey.id, contactId, signalType }, 'Intent signal trigger fired');
+            // TODO: Start journey execution for this contact
+            triggered++;
+          }
+        }
+      }
+    }
+
+    logger.info({ organizationId, contactId, triggered }, 'Score-based trigger evaluation complete');
+    return { success: true, triggered };
+  },
+};
+
+// ============================================================================
 // Scheduled Jobs
 // ============================================================================
 
@@ -542,15 +637,38 @@ function evaluateCondition(
   config: Record<string, unknown>,
   _data: StepExecutionData,
 ): string {
-  // Placeholder condition evaluation.
-  // In a full implementation this would evaluate the expression against
-  // the contact's data from the CRM ACL.
-  const expression = config.expression as string;
-  if (!expression) return 'yes';
+  const conditionType = config.type as string;
 
-  // Simple placeholder: always returns 'yes'
-  // The real implementation would use the split evaluator domain service
-  return 'yes';
+  switch (conditionType) {
+    case 'score_range': {
+      // Config: { ranges: [{ min: 80, branch: "hot" }, { min: 50, branch: "warm" }, { branch: "cold" }] }
+      const ranges = (config.config as Record<string, unknown>)?.ranges as Array<{ min?: number; branch: string }>;
+      const score = (config.contactScore as number) ?? 0;
+      if (ranges) {
+        for (const range of ranges) {
+          if (range.min === undefined || score >= range.min) {
+            return range.branch;
+          }
+        }
+      }
+      return ranges?.[ranges.length - 1]?.branch ?? 'default';
+    }
+
+    case 'lead_grade': {
+      // Config: { grades: { "A": "vip_path", "B": "standard_path", "default": "nurture_path" } }
+      const grades = (config.config as Record<string, unknown>)?.grades as Record<string, string>;
+      const grade = (config.contactGrade as string) ?? 'F';
+      return grades?.[grade] ?? grades?.default ?? 'default';
+    }
+
+    default: {
+      // Legacy expression-based conditions
+      const expression = config.expression as string;
+      if (!expression) return 'yes';
+      // Placeholder: always returns 'yes' for legacy conditions
+      return 'yes';
+    }
+  }
 }
 
 async function enqueueNextStep(
@@ -605,6 +723,9 @@ async function main() {
   const delayedWorker = createWorker('journey:delayed-steps', delayedStepHandler);
   const gateWorker = createWorker('journey:gate-listeners', gateListenerHandler);
 
+  // Create workers for score-based triggers
+  const scoreTriggerWorker = createWorker('journey:score-trigger-eval', scoreTriggerHandler);
+
   // Create workers for scheduled jobs
   const segmentWorker = createWorker('journey:segment-trigger-eval', segmentTriggerEvalHandler);
   const cleanupWorker = createWorker('journey:stale-execution-cleanup', staleExecutionCleanupHandler);
@@ -627,7 +748,7 @@ async function main() {
   await registerScheduledJobs('journey:stale-execution-cleanup', [scheduledJobs[1]]);
 
   // Event handlers
-  const workers = [stepWorker, delayedWorker, gateWorker, segmentWorker, cleanupWorker];
+  const workers = [stepWorker, delayedWorker, gateWorker, scoreTriggerWorker, segmentWorker, cleanupWorker];
 
   for (const worker of workers) {
     worker.on('completed', (job) => {

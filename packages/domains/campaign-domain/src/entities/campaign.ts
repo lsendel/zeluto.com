@@ -25,6 +25,9 @@ export const CampaignPropsSchema = z.object({
   subject: z.string().nullable(),
   templateId: z.string().uuid().nullable(),
   segmentId: z.string().uuid().nullable(),
+  minScore: z.number().int().min(0).max(100).nullable(),
+  maxScore: z.number().int().min(0).max(100).nullable(),
+  grades: z.array(z.string()).nullable(),
   scheduledAt: z.coerce.date().nullable(),
   startedAt: z.coerce.date().nullable(),
   completedAt: z.coerce.date().nullable(),
@@ -53,6 +56,9 @@ export class Campaign {
     subject?: string | null;
     templateId?: string | null;
     segmentId?: string | null;
+    minScore?: number | null;
+    maxScore?: number | null;
+    grades?: string[] | null;
     createdBy: string;
   }): Campaign {
     if (!input.name || input.name.trim().length === 0) {
@@ -70,6 +76,9 @@ export class Campaign {
         subject: input.subject ?? null,
         templateId: input.templateId ?? null,
         segmentId: input.segmentId ?? null,
+        minScore: input.minScore ?? null,
+        maxScore: input.maxScore ?? null,
+        grades: input.grades ?? null,
         scheduledAt: null,
         startedAt: null,
         completedAt: null,
@@ -118,6 +127,15 @@ export class Campaign {
   get segmentId(): string | null {
     return this.props.segmentId;
   }
+  get minScore(): number | null {
+    return this.props.minScore;
+  }
+  get maxScore(): number | null {
+    return this.props.maxScore;
+  }
+  get grades(): string[] | null {
+    return this.props.grades;
+  }
   get scheduledAt(): Date | null {
     return this.props.scheduledAt;
   }
@@ -160,6 +178,9 @@ export class Campaign {
     subject?: string | null;
     templateId?: string | null;
     segmentId?: string | null;
+    minScore?: number | null;
+    maxScore?: number | null;
+    grades?: string[] | null;
   }): void {
     if (this.props.status !== 'draft') {
       throw new InvariantViolation(
@@ -183,6 +204,15 @@ export class Campaign {
     }
     if (input.segmentId !== undefined) {
       this.props.segmentId = input.segmentId;
+    }
+    if (input.minScore !== undefined) {
+      this.props.minScore = input.minScore;
+    }
+    if (input.maxScore !== undefined) {
+      this.props.maxScore = input.maxScore;
+    }
+    if (input.grades !== undefined) {
+      this.props.grades = input.grades;
     }
     this.props.updatedAt = new Date();
   }

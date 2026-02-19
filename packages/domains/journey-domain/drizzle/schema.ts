@@ -48,12 +48,12 @@ export const journey_step_connections = journeySchema.table('journey_step_connec
   label: varchar('label', { length: 255 }),
 });
 
-// journey_triggers: id, journey_id, organization_id, type (event/segment/manual/scheduled), config (jsonb)
+// journey_triggers: id, journey_id, organization_id, type (event/segment/manual/scheduled/score_threshold/intent_signal), config (jsonb)
 export const journey_triggers = journeySchema.table('journey_triggers', {
   id: uuid('id').primaryKey().defaultRandom(),
   journey_id: uuid('journey_id').notNull(),
   organization_id: uuid('organization_id').notNull(),
-  type: varchar('type', { length: 50 }).notNull(), // event/segment/manual/scheduled
+  type: varchar('type', { length: 50 }).notNull(), // event/segment/manual/scheduled/score_threshold/intent_signal
   config: jsonb('config').notNull(),
 }, (table) => ({
   journeyIdx: { columns: [table.journey_id] },
