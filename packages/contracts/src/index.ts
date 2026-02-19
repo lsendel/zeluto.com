@@ -94,6 +94,16 @@ export {
   LeadIntelligenceDataQualityScoreSchema,
 } from './lead-intelligence.contract';
 
+// Scoring contract & schemas
+export {
+  scoringContract,
+  LeadScoreSchema,
+  ScoreHistoryEntrySchema,
+  IntentSignalSchema,
+  SignalAlertSchema,
+  ScoringConfigEntrySchema,
+} from './scoring.contract';
+
 // Integrations contract & schemas
 export {
   integrationsContract,
