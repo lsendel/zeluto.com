@@ -10,6 +10,9 @@ const schemas = [
   'content',
   'analytics',
   'integrations',
+  'lead_intelligence',
+  'scoring',
+  'revops',
 ];
 
 // Tables that don't have org-scoped RLS (don't have organization_id column)

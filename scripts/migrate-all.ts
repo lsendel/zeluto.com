@@ -4,6 +4,7 @@ const migrationOrder = [
   'identity-domain', 'billing-domain', 'crm-domain', 'content-domain',
   'campaign-domain', 'delivery-domain', 'journey-domain',
   'analytics-domain', 'integrations-domain',
+  'lead-intelligence-domain', 'scoring-domain', 'revops-domain',
 ];
 
 async function migrateAll() {
