@@ -31,11 +31,8 @@ max_batch_timeout = 30
 max_retries = 3
 dead_letter_queue = "mauntic-scoring-events-dlq"
 
-[[triggers.crons]]
-cron = "0 * * * *"
-
-[[triggers.crons]]
-cron = "*/15 * * * *"
+[triggers]
+crons = ["0 * * * *", "*/15 * * * *"]
 
 [[analytics_engine_datasets]]
 binding = "LOGS_DATASET"
