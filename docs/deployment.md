@@ -55,7 +55,7 @@ Each worker's `wrangler.toml` should have a `[env.staging]` section:
 name = "mauntic-crm-staging"
 
 [env.staging.vars]
-APP_DOMAIN = "staging.17way.com"
+APP_DOMAIN = "staging.zeluto.com"
 
 [[env.staging.hyperdrive]]
 binding = "DB"
@@ -81,7 +81,7 @@ done
 |---|---|
 | `DATABASE_URL` | Neon staging branch connection string |
 | `REDIS_URL` | Separate Redis instance or database number |
-| `APP_DOMAIN` | `staging.17way.com` |
+| `APP_DOMAIN` | `staging.zeluto.com` |
 | `STRIPE_SECRET_KEY` | Stripe test mode key |
 | `ENCRYPTION_KEY` | Separate encryption key for staging |
 
@@ -148,6 +148,35 @@ done
 
 echo "All workers deployed"
 ```
+
+### Static Assets (Cloudflare R2 / Pages)
+
+`workers/gateway` now expects a `STATIC_BASE_URL` (default `/assets`) that points to the public origin for CSS/JS artifacts. The gateway also exposes `/assets/*` which proxies to the `STATIC_ASSETS` R2 binding, so local dev can keep using relative URLs.
+
+**Build + upload workflow**
+
+1. Build Tailwind bundles from `@mauntic/ui-kit`:
+
+   ```bash
+   pnpm run static:build
+   ```
+
+   This runs `pnpm --filter @mauntic/ui-kit build:css`, writes `packages/ui-kit/dist/ui-kit.css`, and copies it to `dist/static/styles.css`.
+
+2. Upload to R2 (or let CI do it):
+
+   ```bash
+   pnpm run static:upload
+   # builds CSS and runs scripts/upload-static-assets.mjs
+   ```
+
+   The upload script publishes both `styles/latest.css` and `styles/<git-sha>.css` to the bucket defined by `STATIC_R2_BUCKET` (defaults to `mauntic-static-assets`). CI sets `GIT_SHA=${{ github.sha }}` automatically so versioned files pair with each deploy.
+
+3. Set `STATIC_BASE_URL` per worker/env (e.g., `https://assets.zeluto.com` in production, `/assets` for wrangler dev). CI should upload assets before invoking `wrangler publish` so Worker responses always reference the latest CSS.
+
+4. (Optional) If you serve via Cloudflare Pages instead of R2, point `STATIC_BASE_URL` to the Pages domain and skip the R2 upload step.
+
+Documented commands live in the repo root `package.json` and run inside the Turbo pipeline target `static:build` so `pnpm turbo static:build` works in CI.
 
 ### Fly.io - Blue-Green Deployment
 

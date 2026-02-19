@@ -50,7 +50,7 @@ describeSuite('Mauntic Production Workflows', () => {
     await expect(page).toHaveURL(/\/app\/contacts\/new/);
 
     // Fill form
-    const uniqueEmail = `integration-${Date.now()}@17way.com`;
+    const uniqueEmail = `integration-${Date.now()}@zeluto.com`;
     await page.getByLabel(/Email/i).fill(uniqueEmail);
     await page.getByLabel(/First Name/i).fill('Integration');
     await page.getByLabel(/Last Name/i).fill('Test');
@@ -113,7 +113,7 @@ describeSuite('Mauntic Production Workflows', () => {
 
   test('Workflow 5: Multi-tenant / Org Switcher', async ({ page }) => {
     // Open org switcher
-    await page.getByRole('button', { name: /17way/i }).click();
+    await page.getByRole('button', { name: /zeluto/i }).click();
     
     // Verify modal appears
     await expect(page.locator('#modal-container')).toBeVisible();

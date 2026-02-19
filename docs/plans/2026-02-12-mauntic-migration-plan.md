@@ -16,6 +16,8 @@
 
 **Mail Reference:** [BillionMail](https://github.com/Billionmail/BillionMail)
 
+> **Note:** Steps involving `docker-compose.dev.yml` describe the original migration workflow. Local development now uses the shared Neon database directly and no longer relies on Docker.
+
 ---
 
 ## Phase 0: Foundation (Tasks 1-20)

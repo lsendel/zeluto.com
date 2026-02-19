@@ -6,8 +6,8 @@ This document provides an overview of all API endpoints in Mauntic3. All endpoin
 
 | Environment | URL |
 |---|---|
-| Production | `https://17way.com` |
-| Staging | `https://staging.17way.com` |
+| Production | `https://zeluto.com` |
+| Staging | `https://staging.zeluto.com` |
 | Local Dev | `http://localhost:8787` |
 
 All API endpoints are prefixed with `/api/v1/`.

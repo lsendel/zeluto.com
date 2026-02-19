@@ -10,7 +10,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
  * - A running API environment (local or staging)
  *
  * Run with:
- *   API_BASE_URL=https://17way.com pnpm vitest tests/tenant-isolation/
+ *   API_BASE_URL=https://zeluto.com pnpm vitest tests/tenant-isolation/
  */
 
 const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:8787';

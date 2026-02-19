@@ -106,6 +106,6 @@ This document outlines the test strategy and major flows for Mauntic3, a multi-t
 
 | Environment | Database | Workers | Background Services |
 | :--- | :--- | :--- | :--- |
-| **Local** | Docker Postgres | Miniflare / `wrangler dev` | Local Redis + `npm run dev` |
+| **Local** | Neon dev branch | Miniflare / `wrangler dev` | Node services (`pnpm dev`) + hosted Redis (Upstash/Fly) |
 | **Staging** | Neon Branch | Preview Workers | Fly.io Staging Apps |
 | **Production** | Neon Main | Production Workers | Fly.io Production Apps |

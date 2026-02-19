@@ -8,7 +8,6 @@ This guide walks through setting up the Mauntic3 development environment on your
 |---|---|---|
 | Node.js | 22+ | https://nodejs.org or `nvm install 22` |
 | pnpm | 10+ | `npm install -g pnpm@10` |
-| Docker | Latest | https://docs.docker.com/get-docker/ |
 | Wrangler | Latest | `npm install -g wrangler` (or use via npx) |
 | Fly CLI | Latest | https://fly.io/docs/flyctl/install/ |
 | Turbo | Latest | Installed as devDependency |
@@ -21,38 +20,22 @@ cd mauntic3
 pnpm install
 ```
 
-## 2. Start Infrastructure Services
-
-Start Postgres and Redis via Docker Compose:
-
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
-
-This starts:
-- **PostgreSQL 16** on `localhost:5432` (user: `mauntic`, password: `mauntic`, db: `mauntic_dev`)
-- **Redis 7** on `localhost:6379`
-
-Verify services are healthy:
-
-```bash
-docker compose -f docker-compose.dev.yml ps
-```
-
-## 3. Environment Variables
+## 2. Environment Variables
 
 Create a `.dev.vars` file in each worker directory for Wrangler local development. Most workers need:
 
 ```bash
 # workers/<worker-name>/.dev.vars
-DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
+DATABASE_URL=postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 ```
 
 For the identity worker:
 
 ```bash
 # workers/identity/.dev.vars
-DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
+DATABASE_URL=postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 BETTER_AUTH_SECRET=dev-secret-key-change-in-production
 ```
 
@@ -60,21 +43,32 @@ For the billing worker:
 
 ```bash
 # workers/billing/.dev.vars
-DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
+DATABASE_URL=postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 ```
+
+For workers that render HTML (gateway, onboarding, auth flows) add the static asset binding defaults:
+
+```bash
+# workers/gateway/.dev.vars (excerpt)
+STATIC_BASE_URL=/assets
+```
+
+Running `pnpm run static:build` once and uploading with `pnpm run static:upload` populates the `STATIC_ASSETS` R2 bucket so `/assets/styles/latest.css` works while developing locally.
 
 For Fly.io services, create a `.env` file:
 
 ```bash
 # services/journey-executor/.env
-DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
+DATABASE_URL=postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 REDIS_URL=redis://localhost:6379
 ENCRYPTION_KEY=dev-encryption-key-32-chars-long!!
 ```
 
-## 4. Initialize the Database
+## 3. Initialize the Database
 
 Create all schemas and run migrations:
 
@@ -92,7 +86,7 @@ npx tsx scripts/migrate-all.ts
 npx tsx scripts/seed.ts
 ```
 
-## 5. Starting Services
+## 4. Starting Services
 
 ### Cloudflare Workers (Local Dev)
 
@@ -113,6 +107,37 @@ cd workers/crm && wrangler dev
 
 Each worker starts on a different port. The gateway worker routes to other workers via Cloudflare service bindings (in production) or direct HTTP calls (in local dev).
 
+#### Core Cloudflare stack (`dev:core`)
+
+To avoid booting every Worker/Queue combo, run only the core HTTP workers (gateway, identity, CRM, campaign, analytics) plus their queue consumers with:
+
+```bash
+pnpm run dev:core
+```
+
+This script wraps `turbo run dev --parallel --no-cache` with a curated filter list:
+
+| Scope | Package |
+| --- | --- |
+| Gateway shell | `@mauntic/gateway` |
+| Auth/session | `@mauntic/identity` |
+| CRM APIs | `@mauntic/crm` |
+| Campaign composer | `@mauntic/campaign` |
+| Analytics dashboards | `@mauntic/analytics` |
+| Fan-out processors | `@mauntic/campaign-queue`, `@mauntic/journey`, `@mauntic/journey-queue`, `@mauntic/analytics-queue` |
+
+Add more packages temporarily via either environment variable or passthrough filters:
+
+```bash
+# 1) Environment variable (comma-separated package names)
+DEV_CORE_FILTERS='@mauntic/content,@mauntic/delivery' pnpm run dev:core
+
+# 2) Pass turbo flags straight through
+pnpm run dev:core -- --filter @mauntic/content --filter @mauntic/delivery
+```
+
+The script deduplicates packages, so you can safely mix both approaches. Kill the process with `Ctrl+C` when you are done; Turbo will stop every watcher.
+
 ### Fly.io Services (Local Dev)
 
 Run Fly.io services locally with Node.js:
@@ -131,7 +156,7 @@ cd services/analytics-aggregator
 npx tsx src/index.ts
 ```
 
-## 6. Running Tests
+## 5. Running Tests
 
 ### Unit Tests
 
@@ -160,7 +185,7 @@ E2E_BASE_URL=http://localhost:8787 pnpm test
 pnpm turbo typecheck
 ```
 
-## 7. Code Generation
+## 6. Code Generation
 
 ### Drizzle Schema Changes
 
@@ -174,7 +199,7 @@ pnpm --filter @mauntic/crm-domain db:generate
 npx tsx scripts/migrate-all.ts
 ```
 
-## 8. Project Structure
+## 7. Project Structure
 
 ```
 mauntic3/
@@ -221,7 +246,7 @@ mauntic3/
   infrastructure/       # Infrastructure configs (mail, etc.)
 ```
 
-## 9. Useful Commands
+## 8. Useful Commands
 
 | Command | Description |
 |---|---|
@@ -233,24 +258,22 @@ mauntic3/
 | `pnpm turbo lint` | Lint all packages |
 | `pnpm --filter @mauntic/<pkg> <cmd>` | Run command for specific package |
 
-## 10. Troubleshooting
+## 9. Troubleshooting
 
 ### Postgres connection refused
 
-Make sure Docker is running and the postgres container is healthy:
+Ensure the Neon connection string in `.dev.vars` is correct and that your IP has access. You can validate connectivity with `psql`:
 
 ```bash
-docker compose -f docker-compose.dev.yml ps
-docker compose -f docker-compose.dev.yml logs postgres
+psql "$DATABASE_URL" -c 'SELECT version();'
 ```
 
 ### Redis connection refused
 
-Check the Redis container:
+If you're using a local Redis install (Homebrew, apt, etc.) make sure the service is running, or update `REDIS_URL` to point at a hosted instance (Upstash, Fly, etc.). To test the URL:
 
 ```bash
-docker compose -f docker-compose.dev.yml logs redis
-redis-cli ping  # Should return PONG
+redis-cli -u "$REDIS_URL" ping  # Should return PONG
 ```
 
 ### Wrangler dev fails

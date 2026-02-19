@@ -130,6 +130,9 @@ Mauntic3 is a multi-tenant SaaS marketing automation platform built on Cloudflar
 - Campaign scheduling and sending triggers
 - Campaign statistics aggregation
 - Campaign cloning
+- HTTP routes delegate to the shared `CampaignApplicationService`, which publishes events through the `CampaignEventPublisher` port to keep invariants inside the domain layer.
+- Campaign recipient fan-out runs entirely in background queue batches (`campaign.FanOutBatch`), so Cloudflare Queue `sendBatch` fan-outs handle multi-thousand contact segments without blocking HTTP handlers.
+- Denormalized `campaign_summaries` projections (with org/status/name indexes) back the `/campaigns` listings, keeping filters and pagination off the hot `campaigns` table.
 
 **Key Entities**: Campaign, CampaignVersion, CampaignStats, AbTest
 
@@ -241,9 +244,21 @@ Client -> Gateway -> CRM Worker
 Client -> Gateway -> Campaign Worker
                         |
                         +--> Create campaign send job
-                        +--> Resolve segment -> CRM Worker (get contacts)
-                        +--> For each contact batch:
-                              +--> Enqueue to BullMQ (delivery:send-email)
+                        +--> Publish campaign.CampaignSent event
+                                |
+                                v
+                       Campaign Queue Consumer
+                                |
+                                +--> Enqueue campaign.FanOutBatch (cursor=null)
+                                       |
+                                       v
+                           Fan-out processor (Queue)
+                                |
+                                +--> Fetch segment page (future CRM fetch)
+                                +--> publish delivery.SendMessage via queue.sendBatch
+                                +--> enqueue next cursor until empty
+                                +--> Update campaign & campaign_summaries projections
+                                +--> Publish CampaignStarted/Completed events
                                       |
                                       v
                               Delivery Engine (Fly.io)
@@ -284,7 +299,7 @@ Mauntic3 uses a **shared database, shared schema** multi-tenancy model with `org
 
 1. **Every tenant-scoped table** has an `organization_id UUID NOT NULL` column
 2. **Application-level filtering**: All queries include `WHERE organization_id = ?`
-3. **Middleware enforcement**: The `tenantMiddleware` in `@mauntic/worker-lib` extracts `organizationId` from the session and attaches it to the request context
+3. **Middleware enforcement + cache**: The gateway’s tenant middleware stores the `TenantContext` in a dedicated Durable Object (`TenantContextDurableObject`, 5‑minute TTL) and attaches both `X-Tenant-Context` and `X-Tenant-Context-Key` headers so downstream workers can hydrate from cache without re-reading session data.
 4. **RLS policies** (optional): Row-Level Security policies on Postgres provide defense-in-depth
 5. **Cross-tenant prevention**: API responses never include `organization_id` in a way that allows enumeration
 
@@ -295,12 +310,12 @@ Request -> Gateway
               |
               +--> Validate JWT / session token
               +--> Extract organizationId from session
-              +--> Attach to X-Organization-Id header
+              +--> Cache TenantContext in Durable Object + attach X-Tenant-Context & X-Tenant-Context-Key headers
               |
               v
          Backend Worker
               |
-              +--> tenantMiddleware reads X-Organization-Id
+              +--> tenantMiddleware reads cache key (fallback to base64 payload)
               +--> All DB queries scoped by organization_id
               +--> Response filtered to tenant data only
 ```
@@ -311,3 +326,55 @@ Request -> Gateway
 - `identity.sessions` - Sessions reference active org
 - `identity.accounts` - OAuth links (user-level)
 - `billing.plans` - Plans are system-wide
+
+## Observability & Structured Logging
+
+All Workers share the `loggingMiddleware` from `@mauntic/worker-lib`, which now emits JSON log lines with a consistent envelope:
+
+```json
+{
+  "level": "info",
+  "service": "gateway",
+  "event": "request",
+  "requestId": "f2a1...",
+  "organizationId": "org_123",
+  "path": "/api/v1/contacts",
+  "statusCode": 200,
+  "durationMs": 32,
+  "timestamp": "2026-02-19T22:35:12.148Z"
+}
+```
+
+- `event` defaults to the message name (e.g., `request`, `queue.metric`, `tenant.cache.fallback`) so filters remain stable.
+- The middleware automatically attaches `organizationId`, `userId`, and plan data once the tenant context is resolved; downstream code can produce more specific events by calling `logger.child({ event: 'journey.step.executed', journeyId })`.
+- Queue consumers and background jobs reuse the same `Logger` interface, so fan-out failures, Durable Object errors, etc., appear in the same stream.
+
+### Workers Analytics Engine dataset
+
+When a Worker sets the binding `LOGS_DATASET` (see `workers/gateway/wrangler.toml` for an example) the middleware mirrors every log entry to the Cloudflare Workers Analytics Engine dataset `mauntic_logs` using the schema:
+
+| Index position | Field |
+| --- | --- |
+| 0 | `service` |
+| 1 | `level` |
+| 2 | `event` |
+| 3 | `organizationId` (empty string if absent) |
+| 4 | `requestId` |
+
+| Metric | Meaning |
+| --- | --- |
+| `duration_ms` | Request or job duration (0 if not applicable) |
+
+| Blob | Payload |
+| --- | --- |
+| `payload` | Full JSON entry (same as console log line) |
+
+Create the dataset once via the Cloudflare dashboard (Workers → Analytics Engine) and add the binding to each Worker:
+
+```toml
+[[analytics_engine_datasets]]
+binding = "LOGS_DATASET"
+dataset = "mauntic_logs"
+```
+
+During local development the binding is optional; logs continue to stream via `wrangler tail`. In production, Workers Deployments can query `mauntic_logs` to detect spikes (e.g., `event = 'queue.metric' AND status = 'retry'`) without scraping `console.log`.

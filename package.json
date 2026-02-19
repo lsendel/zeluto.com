@@ -6,9 +6,12 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:core": "node ./scripts/dev-core.mjs",
     "test": "turbo test",
     "lint": "turbo lint",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "static:build": "pnpm --filter @mauntic/ui-kit run build:css && mkdir -p dist/static && cp packages/ui-kit/dist/ui-kit.css dist/static/styles.css",
+    "static:upload": "pnpm run static:build && node ./scripts/upload-static-assets.mjs"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +21,7 @@
     "@cloudflare/workers-types": "catalog:",
     "@neondatabase/serverless": "catalog:",
     "@types/node": "catalog:",
+    "wrangler": "^4.65.0",
     "turbo": "^2.8.7",
     "typescript": "catalog:"
   }

@@ -4,6 +4,8 @@
 **Status:** Approved (v3 — SaaS multi-tenancy, audit fixes, DDD hardening)
 **Scope:** Full rewrite of Mautic + Parcelvoy journey engine + BillionMail delivery infra → TypeScript/Hono/Cloudflare + Fly.io, multi-tenant SaaS for marketing organizations
 
+> **Note:** References to `docker-compose.dev.yml` in this document reflect the original 2026 migration plan. The current developer workflow connects directly to the shared Neon branch and no longer requires Docker.
+
 ---
 
 ## 1. Overview

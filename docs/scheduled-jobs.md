@@ -1,62 +1,105 @@
 # Scheduled Jobs
 
-This document lists all BullMQ repeatable jobs across all Fly.io services, including their schedule, purpose, and error handling behavior.
+This document lists all recurring jobs across the platform, including their runtime (Cloudflare Worker vs. Fly service), schedule, purpose, and failure behavior.
 
 ## Overview
 
-All scheduled jobs are registered via `registerScheduledJobs()` from `@mauntic/process-lib`. They use BullMQ's `upsertJobScheduler` with cron patterns and are automatically managed by the respective service's BullMQ workers.
+- **Cloudflare Workers** (`mauntic-analytics-queue`, future queue workers) rely on Cloudflare Cron bindings + Queues. Cron dispatch is gated by worker-specific secrets (e.g., `ENABLE_ANALYTICS_CRON`) so we can shadow-run before retiring Fly.
+- **Fly/BullMQ services** (`journey-executor`, etc.) still use `registerScheduledJobs()` from `@mauntic/process-lib` and BullMQ repeatable jobs.
 
-## Service: analytics-aggregator
+## Worker: mauntic-analytics-queue (Cloudflare)
+
+> **Status (2026-02-19):** Cloudflare is the source of truth for analytics aggregation/reporting. Cron triggers enqueue messages on `mauntic-analytics-jobs`, consumed by `src/queue-worker.ts`. `ENABLE_ANALYTICS_CRON` now defaults to `"true"` (override with a secret if you need to pause). Keep the Fly analytics-aggregator scaled down once Cloudflare jobs run cleanly for 24h.
 
 ### Hourly: Event Aggregation
 
 | Property | Value |
 |---|---|
-| **Queue** | `analytics:aggregate-hourly` |
+| **Queue** | `mauntic-analytics-jobs` (type `analytics.aggregate-hourly`) |
 | **Schedule** | `0 * * * *` (every hour at :00) |
-| **Handler** | `hourlyAggregationHandler` |
-| **Concurrency** | 1 |
-| **Purpose** | Aggregates raw contact activity events from the last hour into `analytics.event_aggregates` daily rollups. Groups events by `organization_id` and `event_type`, then upserts counts into the aggregates table for the current date. |
-| **Error Handling** | On failure, the job throws and BullMQ retries with default backoff. The next hourly run will re-aggregate the missed window (idempotent upsert pattern). |
+| **Consumer** | `analytics.aggregateHourly` |
+| **Purpose** | Aggregates the last hour of contact activity events into `analytics.event_aggregates` daily rollups (grouped by `organization_id` + `event_type`). Uses idempotent upserts keyed by (org, date, event type). |
+| **Error Handling** | Failures trigger Cloudflare Queue retries (`max_retries = 5`, exponential backoff). Missed windows are re-aggregated on the next successful run. |
 | **Dependencies** | Reads from `analytics.contact_activity`, writes to `analytics.event_aggregates` |
 
 ### Daily: Report Generation
 
 | Property | Value |
 |---|---|
-| **Queue** | `analytics:generate-daily-reports` |
+| **Queue** | `mauntic-analytics-jobs` (type `analytics.generate-daily-reports`) |
 | **Schedule** | `0 2 * * *` (daily at 2:00 AM) |
-| **Handler** | `dailyReportHandler` |
-| **Concurrency** | 1 |
-| **Purpose** | Generates campaign daily stats rollups for the previous day. Reads contact activity events from yesterday, groups by campaign (via `event_source`), and inserts rows into `analytics.campaign_daily_stats` with sent/delivered/opened/clicked/bounced/complained/unsubscribed counts. |
-| **Error Handling** | On failure, the job throws and BullMQ retries. Since it writes for a specific date, re-runs for the same day may create duplicate rows. Idempotency should be added via upsert on `(campaign_id, organization_id, date)`. |
+| **Consumer** | `analytics.generateDailyReports` |
+| **Purpose** | Generates campaign daily stats for the prior day (sent/delivered/opened/clicked/bounced/complained/unsubscribed). Upserts rows in `analytics.campaign_daily_stats`. |
+| **Error Handling** | Failures retry through the queue. Because writes are upserts keyed by `(campaign_id, organization_id, date)`, replays are safe. |
 | **Dependencies** | Reads from `analytics.contact_activity`, writes to `analytics.campaign_daily_stats` |
 
 ### Daily: Warmup Daily Send Counter Reset
 
 | Property | Value |
 |---|---|
-| **Queue** | `analytics:warmup-daily-reset` |
+| **Queue** | `mauntic-analytics-jobs` (type `analytics.reset-warmup-daily`) |
 | **Schedule** | `0 0 * * *` (daily at midnight) |
-| **Handler** | `warmupResetHandler` |
-| **Concurrency** | 1 |
-| **Purpose** | Resets daily send counters in Redis for domains in their warmup period (created within last 30 days). Clears `warmup:daily:{orgId}:{domain}` keys so that warmup limits are enforced per-day. |
-| **Error Handling** | On failure, the job throws and BullMQ retries. If the reset is missed, sending will be blocked for warmup domains until the next successful run. This is a conservative failure mode (prevents over-sending). |
-| **Dependencies** | Reads from `delivery.sending_domains`, deletes keys from Redis |
+| **Consumer** | `analytics.resetWarmupCounters` |
+| **Purpose** | Resets daily warmup counters stored in the `WARMUP_R2` bucket for domains created within the last 30 days. |
+| **Error Handling** | Failures retry via the queue. Missing a reset blocks sending for warmup domains until the next successful run. |
+| **Dependencies** | Reads from `delivery.sending_domains`, deletes objects from the `mauntic-warmup-counters` R2 bucket |
 
 ### Monthly: Usage Summary
 
 | Property | Value |
 |---|---|
-| **Queue** | `analytics:monthly-usage-summary` |
+| **Queue** | `mauntic-analytics-jobs` (type `analytics.generate-monthly-usage`) |
 | **Schedule** | `0 3 1 * *` (1st of each month at 3:00 AM) |
-| **Handler** | `monthlyUsageHandler` |
-| **Concurrency** | 1 |
-| **Purpose** | Generates monthly usage summaries per organization. Counts all events for the previous month grouped by `organization_id` and `event_type`, then stores them as `monthly:{eventType}` entries in `analytics.event_aggregates`. Used for billing usage reports and historical dashboards. |
-| **Error Handling** | On failure, BullMQ retries. Since it uses the previous month's date range, re-runs are idempotent if using upsert. Currently uses insert, so duplicate runs may create duplicate rows. |
+| **Consumer** | `analytics.generateMonthlyUsage` |
+| **Purpose** | Summarizes prior-month usage per organization/event type and upserts `monthly:{eventType}` metrics into `analytics.event_aggregates`. |
+| **Error Handling** | Queue retries + idempotent upserts mean replays are safe. |
 | **Dependencies** | Reads from `analytics.contact_activity`, writes to `analytics.event_aggregates` |
 
-## Service: journey-executor
+**Ops tips**
+
+- Toggle cron dispatch: `wrangler secret put ENABLE_ANALYTICS_CRON true|false`.
+- Pre-flight verification: `wrangler queues enqueue mauntic-analytics-jobs '{"type":"analytics.aggregate-hourly"}'`.
+- Monitoring: `wrangler queues tail mauntic-analytics-jobs` + Workers Analytics Engine (`event = 'queue.metric' AND queue = 'mauntic-analytics-jobs'`).
+
+## Worker: mauntic-scoring-queue (Cloudflare)
+
+> **Status (2026-02-19):** Cron bindings are deployed and default to `ENABLE_SCORING_CRON=true` (override via secret if you need to pause). Message schema lives in `workers/scoring/src/queue/queue-handler.ts`. Batch/decay/alert handlers still log placeholders until Fly logic is ported, but Cloudflare now drives the schedule instead of Fly.
+
+### Hourly: Batch Recompute
+
+| Property | Value |
+|---|---|
+| **Queue** | `mauntic-scoring-events` (type `scoring.BatchRecompute`) |
+| **Schedule** | `0 * * * *` |
+| **Consumer** | `handleScoringQueue → runBatchRecompute` |
+| **Purpose** | Recalculate all lead scores for orgs with pending recompute backlog. Current implementation logs a placeholder, but the structure is ready for repo wiring. |
+| **Error Handling** | Queue retries (3 max) + alert via structured logging. Jobs include `scheduledFor` ISO timestamp for auditing. |
+
+### Hourly: Signal Decay
+
+| Property | Value |
+|---|---|
+| **Queue** | `mauntic-scoring-events` (type `scoring.SignalDecay`) |
+| **Schedule** | `0 * * * *` |
+| **Consumer** | `handleScoringQueue → runSignalDecay` |
+| **Purpose** | Apply decay rules to stale engagement signals so scores trend down over time. Placeholder logs until repo logic lands. |
+
+### Every 15 Minutes: Alert Expiry
+
+| Property | Value |
+|---|---|
+| **Queue** | `mauntic-scoring-events` (type `scoring.AlertExpiry`) |
+| **Schedule** | `*/15 * * * *` |
+| **Consumer** | `handleScoringQueue → runAlertExpiry` |
+| **Purpose** | Checks scoring alerts (e.g., high-score notifications) and marks them expired after SLAs. Current implementation logs stub entries. |
+
+**Ops tips**
+
+- Toggle cron dispatch: `wrangler secret put ENABLE_SCORING_CRON true|false`.
+- Manual enqueue for smoke test: `wrangler queues enqueue mauntic-scoring-events '{"type":"scoring.CalculateScore","data":{"organizationId":"org_123","contactId":"contact_456"}}'`.
+- Monitor: `wrangler queues tail mauntic-scoring-events` + Workers Analytics Engine filter `queue = "mauntic-scoring-events"`.
+
+## Service: journey-executor (Fly/BullMQ)
 
 ### Hourly: Segment Trigger Evaluation
 
@@ -82,7 +125,7 @@ All scheduled jobs are registered via `registerScheduledJobs()` from `@mauntic/p
 | **Error Handling** | On failure, the job throws and BullMQ retries. If cleanup is missed, stale executions remain active but do not consume resources (they are simply database records). The next successful run will clean them up. |
 | **Dependencies** | Reads/writes `journey.journey_executions`, writes `journey.execution_logs` |
 
-## Service: delivery-engine
+## Service: delivery-engine (Fly/BullMQ)
 
 The delivery engine does not currently register any scheduled jobs. All delivery processing is event-driven via BullMQ queues:
 
@@ -94,7 +137,8 @@ The delivery engine does not currently register any scheduled jobs. All delivery
 
 ## Job Failure Behavior
 
-All scheduled jobs use BullMQ's default retry behavior:
+- **Cloudflare Queues:** Controlled via the consumer configuration in each worker (`max_batch_size`, `max_retries`, exponential backoff). Failed messages remain visible in tail + Workers Analytics dataset.
+- **BullMQ jobs:** Use the defaults below (configurable via `defaultJobOptions`).
 
 | Setting | Default Value | Notes |
 |---|---|---|
@@ -109,14 +153,24 @@ Failed jobs that exceed max retries should be monitored via the DLQ monitoring s
 
 ## Cron Schedule Summary
 
-| Time | Service | Job | Frequency |
+| Time | Worker/Service | Job | Runtime |
 |---|---|---|---|
-| `0 * * * *` | analytics-aggregator | Hourly event aggregation | Hourly |
-| `0 * * * *` | journey-executor | Segment trigger evaluation | Hourly |
-| `0 0 * * *` | analytics-aggregator | Warmup daily send counter reset | Daily (midnight) |
-| `0 2 * * *` | analytics-aggregator | Daily report generation | Daily (2 AM) |
-| `0 3 * * *` | journey-executor | Stale execution cleanup | Daily (3 AM) |
-| `0 3 1 * *` | analytics-aggregator | Monthly usage summary | Monthly (1st, 3 AM) |
+| `0 * * * *` | mauntic-analytics-queue | Hourly event aggregation | Cloudflare Cron → Queue |
+| `0 * * * *` | mauntic-scoring-queue | Batch recompute & signal decay | Cloudflare Cron → Queue |
+| `0 * * * *` | journey-executor | Segment trigger evaluation | Fly/BullMQ |
+| `0 0 * * *` | mauntic-analytics-queue | Warmup daily counter reset | Cloudflare Cron → Queue |
+| `0 2 * * *` | mauntic-analytics-queue | Daily report generation | Cloudflare Cron → Queue |
+| `0 3 * * *` | journey-executor | Stale execution cleanup | Fly/BullMQ |
+| `0 3 1 * *` | mauntic-analytics-queue | Monthly usage summary | Cloudflare Cron → Queue |
+| `*/15 * * * *` | mauntic-scoring-queue | Alert expiry sweep | Cloudflare Cron → Queue |
+
+## Analytics Cutover Checklist
+
+1. Ensure `mauntic-analytics-jobs` + DLQ exist in Cloudflare Queues.
+2. (Optional shadow run) Override `ENABLE_ANALYTICS_CRON=false` via secret, deploy `@mauntic/analytics-queue`, and monitor manual enqueues.
+3. Set/confirm `ENABLE_ANALYTICS_CRON=true`, tail the queue + Workers Analytics dataset.
+4. After 24h of healthy runs, keep the Fly `analytics-aggregator` app scaled down or set `DISABLE_SCHEDULER=true` (default) so it no longer registers jobs.
+5. Update this file + the runbook if cron patterns change.
 
 ## Adding New Scheduled Jobs
 

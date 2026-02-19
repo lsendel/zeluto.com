@@ -10,6 +10,8 @@
 
 **Ref:** Design doc at `docs/plans/2026-02-18-leads-integration-design.md`
 
+> **Note:** Legacy steps that reference `docker-compose.dev.yml` were part of the original 2026 workflow. The current setup connects to Neon directly and no longer runs Docker locally.
+
 ---
 
 ## Phase 13: Lead Intelligence — Domain & Schema (Tasks 119-126)

@@ -19,6 +19,9 @@
     "deploy": {
       "dependsOn": ["build", "typecheck"]
     },
+    "static:build": {
+      "outputs": ["dist/static/**"]
+    },
     "db:generate": {},
     "db:migrate": {}
   }

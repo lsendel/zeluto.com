@@ -4,17 +4,19 @@ This document lists all environment variables and secrets required by each servi
 
 ## Cloudflare Workers
 
-Workers use two mechanisms for configuration:
+Workers use three mechanisms for configuration:
 
-1. **`[vars]` in `wrangler.toml`**: Non-secret configuration values
-2. **`wrangler secret put`**: Secret values (API keys, connection strings)
-3. **`.dev.vars`**: Local development overrides (not committed to git)
+1. **Secrets Store**: All sensitive values live in Cloudflare’s Secrets Store (per environment) and are linked to every Worker/queue via the dashboard. Follow the playbook at `docs/ci-cd/cloudflare-secrets-store.md` to add/update entries.
+2. **`[vars]` in `wrangler.toml`**: Non-secret configuration values that can live in git (feature flags, domains, feature toggles).
+3. **`.dev.vars`**: Local development overrides (never committed).
+
+> `wrangler secret put` should only be used as a fallback for legacy workflows; the long-term workflow is “update the Secrets Store once, link it to every Worker.”
 
 ### Gateway Worker (`mauntic-gateway`)
 
 | Variable | Type | Description |
 |---|---|---|
-| `APP_DOMAIN` | var | Application domain (e.g., `17way.com`) |
+| `APP_DOMAIN` | var | Application domain (e.g., `zeluto.com`) |
 | `JWT_SECRET` | secret | Secret key for JWT verification |
 
 **Bindings:**
@@ -39,7 +41,7 @@ Workers use two mechanisms for configuration:
 | Variable | Type | Description |
 |---|---|---|
 | `APP_DOMAIN` | var | Application domain |
-| `BETTER_AUTH_URL` | var | Better Auth base URL (e.g., `https://17way.com`) |
+| `BETTER_AUTH_URL` | var | Better Auth base URL (e.g., `https://zeluto.com`) |
 | `BETTER_AUTH_SECRET` | secret | Better Auth secret key |
 | `GOOGLE_CLIENT_ID` | secret | Google OAuth client ID (optional) |
 | `GOOGLE_CLIENT_SECRET` | secret | Google OAuth client secret (optional) |
@@ -223,7 +225,8 @@ For local development, use `.dev.vars` files for Workers and `.env` files for Fl
 ### Common `.dev.vars` (Workers)
 
 ```bash
-DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
+DATABASE_URL=postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 ```
 
 ### Common `.env` (Fly.io services)
@@ -231,7 +234,8 @@ DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 ```bash
 NODE_ENV=development
 PORT=8080
-DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
+DATABASE_URL=postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+# DATABASE_URL=postgresql://mauntic:mauntic@localhost:5432/mauntic_dev
 REDIS_URL=redis://localhost:6379
 ENCRYPTION_KEY=local-dev-encryption-key-32chars!
 ```
