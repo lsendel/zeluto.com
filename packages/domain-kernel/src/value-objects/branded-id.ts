@@ -28,6 +28,11 @@ export type PlanId = Brand<string, 'PlanId'>;
 export type EnrichmentJobId = Brand<string, 'EnrichmentJobId'>;
 export type EnrichmentProviderId = Brand<string, 'EnrichmentProviderId'>;
 
+// Scoring & Intent IDs
+export type LeadScoreId = Brand<string, 'LeadScoreId'>;
+export type IntentSignalId = Brand<string, 'IntentSignalId'>;
+export type SignalAlertId = Brand<string, 'SignalAlertId'>;
+
 export const ContactIdSchema = z.string().uuid() as unknown as z.ZodType<ContactId>;
 export const CompanyIdSchema = z.string().uuid() as unknown as z.ZodType<CompanyId>;
 export const CampaignIdSchema = z.string().uuid() as unknown as z.ZodType<CampaignId>;
@@ -52,3 +57,8 @@ export const PlanIdSchema = z.string().uuid() as unknown as z.ZodType<PlanId>;
 // Lead Intelligence ID Schemas
 export const EnrichmentJobIdSchema = z.string().uuid() as unknown as z.ZodType<EnrichmentJobId>;
 export const EnrichmentProviderIdSchema = z.string().min(1) as unknown as z.ZodType<EnrichmentProviderId>;
+
+// Scoring & Intent ID Schemas
+export const LeadScoreIdSchema = z.string().uuid() as unknown as z.ZodType<LeadScoreId>;
+export const IntentSignalIdSchema = z.string().uuid() as unknown as z.ZodType<IntentSignalId>;
+export const SignalAlertIdSchema = z.string().uuid() as unknown as z.ZodType<SignalAlertId>;

@@ -763,6 +763,43 @@ export interface DataQualityChangedEvent extends DomainEvent<'leadIntelligence.D
 }> {}
 
 // ============================================================================
+// SCORING & INTENT EVENTS
+// ============================================================================
+
+export interface LeadScoredEvent extends DomainEvent<'scoring.LeadScored', {
+  organizationId: number;
+  contactId: string;
+  score: number;
+  grade: string;
+  previousScore: number | null;
+  topContributors: Array<{ factor: string; points: number }>;
+}> {}
+
+export interface ScoreThresholdCrossedEvent extends DomainEvent<'scoring.ScoreThresholdCrossed', {
+  organizationId: number;
+  contactId: string;
+  threshold: number;
+  direction: 'up' | 'down';
+  score: number;
+}> {}
+
+export interface IntentSignalDetectedEvent extends DomainEvent<'scoring.IntentSignalDetected', {
+  organizationId: number;
+  contactId: string;
+  signalType: string;
+  weight: number;
+  source: string;
+}> {}
+
+export interface SignalAlertCreatedEvent extends DomainEvent<'scoring.SignalAlertCreated', {
+  organizationId: number;
+  contactId: string;
+  priority: string;
+  deadline: string;
+  signalType: string;
+}> {}
+
+// ============================================================================
 // MISC EVENTS
 // ============================================================================
 
@@ -891,5 +928,10 @@ export type AnyDomainEvent =
   | LeadEnrichedEvent
   | EnrichmentFailedEvent
   | DataQualityChangedEvent
+  // Scoring & Intent Events
+  | LeadScoredEvent
+  | ScoreThresholdCrossedEvent
+  | IntentSignalDetectedEvent
+  | SignalAlertCreatedEvent
   // Misc Events
   | PointsAwardedEvent;
