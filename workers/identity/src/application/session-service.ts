@@ -1,6 +1,6 @@
 import { createAuth } from '../infrastructure/better-auth.js';
 import { createDatabase, type Env } from '../infrastructure/database.js';
-import { organizations, organizationMembers } from '@mauntic/identity-domain';
+import { organizations, organizationMembers, sessions } from '@mauntic/identity-domain';
 import { eq, and } from 'drizzle-orm';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
@@ -28,37 +28,53 @@ export async function validateSessionFromHeaders(
       return { status: 401, body: { error: 'UNAUTHORIZED' } };
     }
 
-    const activeOrgId = session.session.activeOrganizationId;
+    let activeOrgId = session.session.activeOrganizationId;
+
+    // Auto-assign org when user has exactly one membership
     if (!activeOrgId) {
-      return { status: 400, body: { error: 'NO_ACTIVE_ORGANIZATION' } };
+      const memberships = await db
+        .select({ organizationId: organizationMembers.organizationId })
+        .from(organizationMembers)
+        .where(eq(organizationMembers.userId, session.user.id))
+        .limit(2);
+
+      if (memberships.length === 1) {
+        activeOrgId = memberships[0].organizationId;
+        // Persist so future requests skip this lookup
+        await db
+          .update(sessions)
+          .set({ activeOrganizationId: activeOrgId })
+          .where(eq(sessions.id, session.session.id));
+      } else {
+        return { status: 400, body: { error: 'NO_ACTIVE_ORGANIZATION' } };
+      }
     }
 
-    const [org] = await db
-      .select()
+    // Fetch org + membership in a single query
+    const result = await db
+      .select({
+        orgId: organizations.id,
+        orgName: organizations.name,
+        orgPlanId: organizations.planId,
+        memberRole: organizationMembers.role,
+      })
       .from(organizations)
-      .where(eq(organizations.id, activeOrgId))
-      .limit(1);
-
-    if (!org) {
-      return { status: 404, body: { error: 'ORGANIZATION_NOT_FOUND' } };
-    }
-
-    const [membership] = await db
-      .select()
-      .from(organizationMembers)
-      .where(
+      .innerJoin(
+        organizationMembers,
         and(
-          eq(organizationMembers.organizationId, activeOrgId),
+          eq(organizationMembers.organizationId, organizations.id),
           eq(organizationMembers.userId, session.user.id),
         ),
       )
+      .where(eq(organizations.id, activeOrgId))
       .limit(1);
 
-    if (!membership) {
+    const row = result[0];
+    if (!row) {
       return { status: 403, body: { error: 'NOT_ORGANIZATION_MEMBER' } };
     }
 
-    const plan = org.planId ? 'pro' : 'free';
+    const plan = row.orgPlanId ? 'pro' : 'free';
 
     return {
       status: 200,
@@ -69,15 +85,17 @@ export async function validateSessionFromHeaders(
           name: session.user.name || session.user.email,
         },
         organization: {
-          id: org.id,
-          name: org.name,
-          role: membership.role,
+          id: row.orgId,
+          name: row.orgName,
+          role: row.memberRole,
           plan,
         },
       },
     };
   } catch (error) {
-    console.error('Session validation error:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error('Session validation error:', message, stack);
     return { status: 500, body: { error: 'INTERNAL_ERROR' } };
   }
 }
