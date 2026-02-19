@@ -5,9 +5,30 @@ import {
   type JobHandler,
   type ScheduledJob,
 } from '@mauntic/process-lib';
+import { ResearchAgent } from '@mauntic/revops-domain/services/research-agent';
+import { SDRAgent, type SDRMode } from '@mauntic/revops-domain/services/sdr-agent';
+import type { LLMProvider } from '@mauntic/revops-domain/services/llm-provider';
 import pino from 'pino';
 
 const logger = pino({ name: 'revops-engine' });
+
+// ---------------------------------------------------------------------------
+// LLM Provider Factory (configured via env)
+// ---------------------------------------------------------------------------
+
+function createLLMProvider(): LLMProvider {
+  // Stub — actual provider selection based on env at runtime
+  // Will be replaced when full adapter wiring is done
+  return {
+    async complete(prompt, options) {
+      logger.warn('LLM provider not configured — returning stub response');
+      return { content: '{}', usage: { inputTokens: 0, outputTokens: 0 } };
+    },
+    async *stream() {
+      yield '';
+    },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Job Handlers
@@ -18,24 +39,43 @@ interface ResearchJobData {
   organizationId: string;
   contactId: string;
   type: 'company' | 'person';
+  contactData?: {
+    email?: string;
+    name?: string;
+    company?: string;
+    title?: string;
+    linkedinUrl?: string;
+  };
 }
 
 const researchWorker: JobHandler<ResearchJobData> = {
   name: 'revops:research',
   concurrency: 3,
   async process(job) {
-    const { jobId, organizationId, contactId, type } = job.data;
+    const { jobId, organizationId, contactId, type, contactData } = job.data;
     logger.info({ jobId, organizationId, contactId, type }, 'Processing research job');
 
-    // TODO: Wire up ResearchAgent
-    // 1. Fetch contact data from CRM
-    // 2. Call LLM with structured prompts for research type
-    // 3. Parse structured response
-    // 4. Score insights (relevance × freshness × uniqueness, threshold ≥ 0.7)
-    // 5. Save insights to research_insights table
-    // 6. Publish ResearchCompletedEvent
+    // TODO: Update job status to 'running' in DB
+    // TODO: Fetch contact data from CRM if not provided
 
-    return { success: true, jobId };
+    const agent = new ResearchAgent(createLLMProvider());
+    const result = await agent.research({
+      contactId,
+      organizationId,
+      type,
+      contactData: contactData ?? {},
+    });
+
+    logger.info(
+      { jobId, insightCount: result.insights.length },
+      'Research completed',
+    );
+
+    // TODO: Save insights to research_insights table
+    // TODO: Update job status to 'completed' with results
+    // TODO: Publish ResearchCompletedEvent
+
+    return { success: true, jobId, insightCount: result.insights.length };
   },
 };
 
@@ -44,25 +84,66 @@ interface SDRJobData {
   contactId: string;
   sequenceId: string;
   stepIndex: number;
-  mode: 'autopilot' | 'copilot' | 'learning';
+  mode: SDRMode;
+  contactData?: Record<string, unknown>;
+  leadScore?: number;
+  dataCompleteness?: number;
 }
 
 const sdrWorker: JobHandler<SDRJobData> = {
   name: 'revops:sdr',
   concurrency: 5,
   async process(job) {
-    const { organizationId, contactId, sequenceId, stepIndex, mode } = job.data;
+    const { organizationId, contactId, sequenceId, stepIndex, mode, contactData, leadScore, dataCompleteness } = job.data;
     logger.info({ organizationId, contactId, sequenceId, stepIndex, mode }, 'Executing sequence step');
 
-    // TODO: Wire up SDRAgent
-    // 1. Load sequence and contact
-    // 2. Execute step based on type (email, linkedin, call, etc.)
-    // 3. Respect daily limits and send windows
-    // 4. Handle mode-specific behavior (autopilot/copilot/learning)
-    // 5. Update enrollment current_step
-    // 6. Publish SequenceStepExecutedEvent
+    const agent = new SDRAgent(createLLMProvider(), {
+      mode,
+      minQualificationScore: 50,
+      minDataCompleteness: 0.5,
+      icpCriteria: {},
+    });
 
-    return { success: true, sequenceId, stepIndex };
+    // Qualify first if this is step 0
+    if (stepIndex === 0) {
+      const qualification = await agent.qualify({
+        contactId,
+        organizationId,
+        leadScore: leadScore ?? 0,
+        dataCompleteness: dataCompleteness ?? 0,
+        contactData: contactData ?? {},
+      });
+
+      logger.info({ contactId, recommendation: qualification.recommendation, score: qualification.qualificationScore }, 'Qualification result');
+
+      if (qualification.recommendation === 'enrich') {
+        // TODO: Publish enrichment request event
+        return { success: true, action: 'enrich_first', sequenceId, stepIndex };
+      }
+
+      if (qualification.recommendation === 'skip') {
+        // TODO: Update enrollment status to 'completed'
+        return { success: true, action: 'skipped', sequenceId, stepIndex };
+      }
+    }
+
+    // Mode-specific behavior
+    if (agent.shouldExecute()) {
+      // Autopilot: execute the step directly
+      // TODO: Load sequence step, execute via delivery channel
+      // TODO: Update enrollment current_step
+      // TODO: Publish SequenceStepExecutedEvent
+      logger.info({ mode, stepIndex }, 'Executing step in autopilot mode');
+    } else if (agent.shouldSuggest()) {
+      // Copilot: create suggestion for human approval
+      // TODO: Create suggestion record
+      logger.info({ mode, stepIndex }, 'Creating suggestion in copilot mode');
+    } else {
+      // Learning: log what would be done
+      logger.info({ mode, stepIndex }, 'Logging step in learning mode (no execution)');
+    }
+
+    return { success: true, sequenceId, stepIndex, mode };
   },
 };
 
@@ -80,7 +161,7 @@ const routingWorker: JobHandler<RoutingJobData> = {
     logger.info({ organizationId, contactId, dealId }, 'Processing lead routing');
 
     // TODO: Wire up RoutingRule.selectRep
-    // 1. Load enabled routing rules (priority-ordered)
+    // 1. Load enabled routing rules (priority-ordered) from DB
     // 2. Evaluate conditions against contact data
     // 3. Select rep via strategy (round_robin, weighted, etc.)
     // 4. Assign rep to deal/contact
@@ -103,7 +184,7 @@ const workflowWorker: JobHandler<WorkflowJobData> = {
     logger.info({ organizationId, trigger }, 'Evaluating workflow triggers');
 
     // TODO: Wire up WorkflowEngine.evaluate
-    // 1. Load enabled workflows matching trigger
+    // 1. Load enabled workflows matching trigger from DB
     // 2. Evaluate conditions
     // 3. Execute actions
     // 4. Record execution results
