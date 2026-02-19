@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { ClaudeLLMProvider } from '../adapters/claude-llm-provider.js';
+import { SDRAgent } from '@mauntic/revops-domain';
 import { findProspectsByOrganization, upsertProspect } from '../infrastructure/repositories/prospect-repository.js';
 import { findSequencesByOrganization, createSequence, enrollContact } from '../infrastructure/repositories/sequence-repository.js';
 
@@ -24,16 +26,34 @@ sdrRoutes.post('/api/v1/revops/prospects/:contactId/qualify', async (c) => {
   const { contactId } = c.req.param();
 
   try {
-    // TODO: Wire up SDRAgent.qualify for AI-powered qualification
-    const prospect = await upsertProspect(db, tenant.organizationId, {
-      contact_id: contactId,
-      qualification_score: 0,
-      icp_match: '0',
-      recommendation: 'manual_review',
-      data_completeness: '0',
+    const llm = new ClaudeLLMProvider(c.env.ANTHROPIC_API_KEY);
+    const sdrAgent = new SDRAgent(llm, {
+      mode: 'copilot',
+      minQualificationScore: 50,
+      minDataCompleteness: 0.6,
+      icpCriteria: {},
     });
 
-    return c.json(prospect);
+    const body = await c.req.json().catch(() => ({}));
+    const qualification = await sdrAgent.qualify({
+      contactId,
+      organizationId: tenant.organizationId,
+      leadScore: body.leadScore ?? 0,
+      dataCompleteness: body.dataCompleteness ?? 0,
+      contactData: body.contactData ?? {},
+    });
+
+    const prospect = await upsertProspect(db, tenant.organizationId, {
+      contact_id: contactId,
+      qualification_score: qualification.qualificationScore,
+      icp_match: String(qualification.icpMatch),
+      reasoning: qualification.reasoning,
+      recommendation: qualification.recommendation,
+      data_completeness: String(body.dataCompleteness ?? 0),
+      qualified_at: new Date(),
+    });
+
+    return c.json({ ...prospect, qualification });
   } catch (error) {
     console.error('Qualify prospect error:', error);
     return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to qualify prospect' }, 500);

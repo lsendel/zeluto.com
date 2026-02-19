@@ -1,6 +1,8 @@
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
   createDatabase,
+  createLoggerFromEnv,
+  logQueueMetric,
   fetchTenantState,
   cacheTenantState,
 } from '@mauntic/worker-lib';
@@ -13,6 +15,7 @@ interface QueueEnv {
   KV: KVNamespace;
   EVENTS: Queue;
   TENANT_CACHE?: DurableObjectNamespace;
+  LOGS_DATASET?: import('@cloudflare/workers-types').AnalyticsEngineDataset;
 }
 
 /**
@@ -24,8 +27,18 @@ export async function handleJourneyQueue(
   env: QueueEnv,
 ): Promise<void> {
   const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
+  const queueName = batch.queue ?? 'mauntic-journey-events';
+  const baseLogger = createLoggerFromEnv(
+    'journey-queue',
+    env as unknown as Record<string, unknown>,
+    {
+      requestId: batch.messages[0]?.id ?? crypto.randomUUID(),
+      baseFields: { queue: queueName },
+    },
+  );
 
   for (const msg of batch.messages) {
+    const startedAt = Date.now();
     const event = msg.body as Record<string, unknown>;
     const eventType = (event.type as string) ?? (event as any).payload?.type;
 
@@ -40,8 +53,11 @@ export async function handleJourneyQueue(
     }
     if (existing) {
       msg.ack();
+      logQueueMetric({ queue: queueName, messageId: msg.id, status: 'duplicate', eventType: eventType ?? 'unknown', organizationId: orgId ?? undefined });
       continue;
     }
+
+    const messageLogger = baseLogger.child({ messageId: msg.id, eventType, organizationId: orgId });
 
     try {
       switch (eventType) {
@@ -70,10 +86,23 @@ export async function handleJourneyQueue(
       } else {
         await env.KV.put(idempotencyKey, '1', { expirationTtl: 86400 });
       }
+      const durationMs = Date.now() - startedAt;
       msg.ack();
+      logQueueMetric({ queue: queueName, messageId: msg.id, status: 'ack', eventType: eventType ?? 'unknown', durationMs, organizationId: orgId ?? undefined });
+      messageLogger.info({ durationMs, event: 'queue.job.success' });
     } catch (error) {
-      console.error(`Failed to process event ${eventType}:`, error);
+      const durationMs = Date.now() - startedAt;
       msg.retry();
+      logQueueMetric({ queue: queueName, messageId: msg.id, status: 'retry', eventType: eventType ?? 'unknown', durationMs, organizationId: orgId ?? undefined });
+      messageLogger.error(
+        {
+          durationMs,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          event: 'queue.job.failure',
+        },
+        `Failed to process event ${eventType}`,
+      );
     }
   }
 }

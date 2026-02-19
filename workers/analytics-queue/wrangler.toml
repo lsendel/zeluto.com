@@ -12,8 +12,12 @@ binding = "WARMUP_R2"
 bucket_name = "mauntic-warmup-counters"
 preview_bucket_name = "mauntic-warmup-counters-dev"
 
+[[kv_namespaces]]
+binding = "KV"
+id = "107300e1a7004921b6b4fc22d098af9a"
+
 [triggers]
-crons = ["0 * * * *", "0 2 * * *", "0 3 1 * *", "0 0 * * *", "0 4 * * *", "0 5 * * *"]
+crons = ["0 * * * *", "0 2 * * *", "0 3 1 * *", "0 0 * * *", "0 4 * * *", "0 5 * * *", "*/30 * * * *"]
 
 [[queues.producers]]
 binding = "ANALYTICS_JOBS"

@@ -1,0 +1,12 @@
+name = "mauntic-tenant-cache"
+compatibility_date = "2026-02-01"
+compatibility_flags = ["nodejs_compat"]
+main = "src/index.ts"
+
+[[durable_objects.bindings]]
+name = "TENANT_CACHE"
+class_name = "TenantContextDurableObject"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["TenantContextDurableObject"]

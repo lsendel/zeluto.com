@@ -1,10 +1,11 @@
-name = "mauntic-campaign"
+name = "mauntic-delivery-queue"
 compatibility_date = "2026-02-01"
 compatibility_flags = ["nodejs_compat"]
-main = "src/http.ts"
+main = "../delivery/src/queue.ts"
+tsconfig = "../delivery/tsconfig.json"
 
 [[hyperdrive]]
-binding = "HYPERDRIVE"
+binding = "DB"
 id = "72ed37f34f16429088564b927eb093bc"
 
 [[kv_namespaces]]
@@ -16,22 +17,16 @@ name = "TENANT_CACHE"
 class_name = "TenantContextDurableObject"
 script_name = "mauntic-tenant-cache"
 
-[[services]]
-binding = "CRM"
-service = "mauntic-crm"
-
-[[services]]
-binding = "CRM_DISPATCH"
-service = "mauntic-crm"
-
-[vars]
-SERVICE_TENANT_USER_ID = "00000000-0000-0000-0000-000000000000"
-SERVICE_TENANT_USER_ROLE = "system"
-SERVICE_TENANT_PLAN = "enterprise"
-
 [[queues.producers]]
 binding = "EVENTS"
-queue = "mauntic-campaign-events"
+queue = "mauntic-delivery-events"
+
+[[queues.consumers]]
+queue = "mauntic-delivery-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "mauntic-delivery-events-dlq"
 
 [[analytics_engine_datasets]]
 binding = "LOGS_DATASET"

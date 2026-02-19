@@ -9,6 +9,22 @@ export const ActionEmailConfigSchema = z.object({
 
 export type ActionEmailConfig = z.infer<typeof ActionEmailConfigSchema>;
 
+export const ActionSmsConfigSchema = z.object({
+  type: z.literal('send_sms'),
+  templateId: z.string().uuid(),
+  fromNumber: z.string().optional(),
+});
+
+export type ActionSmsConfig = z.infer<typeof ActionSmsConfigSchema>;
+
+export const ActionPushConfigSchema = z.object({
+  type: z.literal('send_push'),
+  templateId: z.string().uuid(),
+  title: z.string(),
+});
+
+export type ActionPushConfig = z.infer<typeof ActionPushConfigSchema>;
+
 export const DelayDurationConfigSchema = z.object({
   type: z.literal('delay'),
   duration: z.number().positive(),
@@ -55,6 +71,8 @@ export type GateConfig = z.infer<typeof GateConfigSchema>;
 /** Union of all known step configurations. */
 export const StepConfigSchema = z.discriminatedUnion('type', [
   ActionEmailConfigSchema,
+  ActionSmsConfigSchema,
+  ActionPushConfigSchema,
   DelayDurationConfigSchema,
   SplitRandomConfigSchema,
   SplitConditionConfigSchema,

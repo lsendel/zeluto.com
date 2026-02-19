@@ -68,6 +68,18 @@ export async function enrollContact(
   return row;
 }
 
+export async function findEnrollmentById(
+  db: NeonHttpDatabase,
+  orgId: string,
+  id: string,
+): Promise<EnrollmentRow | null> {
+  const [row] = await db
+    .select()
+    .from(sequenceEnrollments)
+    .where(and(eq(sequenceEnrollments.id, id), eq(sequenceEnrollments.organization_id, orgId)));
+  return row ?? null;
+}
+
 export async function findEnrollmentsBySequence(
   db: NeonHttpDatabase,
   orgId: string,

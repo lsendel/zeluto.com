@@ -10,7 +10,11 @@ id = "72ed37f34f16429088564b927eb093bc"
 [[durable_objects.bindings]]
 name = "TENANT_CACHE"
 class_name = "TenantContextDurableObject"
-script_name = "mauntic-gateway"
+script_name = "mauntic-tenant-cache"
 
 [vars]
 APP_DOMAIN = "zeluto.com"
+
+[[analytics_engine_datasets]]
+binding = "LOGS_DATASET"
+dataset = "mauntic_logs"

@@ -40,8 +40,8 @@ export class DeliveryPipeline {
   constructor(private readonly deps: DeliveryPipelineDeps) {}
 
   async execute(input: DeliveryPipelineInput): Promise<DeliveryPipelineResult> {
-    // Step 1: Check suppression list (only for email channel)
-    if (input.channel === 'email') {
+    // Step 1: Check suppression list (email and SMS — push uses FCM token revocation)
+    if (input.channel === 'email' || input.channel === 'sms') {
       const isBlocked = await this.deps.suppressionRepo.isBlocked(
         input.organizationId,
         input.recipient,

@@ -1,4 +1,4 @@
-import { logQueueMetric, createDatabase, createLoggerFromEnv } from '@mauntic/worker-lib';
+import { logQueueMetric, createDatabase, createLoggerFromEnv, runDlqHealthCheck } from '@mauntic/worker-lib';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { ScheduledEvent, AnalyticsEngineDataset, R2Bucket } from '@cloudflare/workers-types';
 import { AnalyticsService, DrizzleAnalyticsRepository } from '@mauntic/analytics-domain';
@@ -26,6 +26,7 @@ export interface AnalyticsQueueEnv {
   ENABLE_ANALYTICS_CRON?: string;
   WARMUP_R2?: R2Bucket;
   WARMUP_KV?: KVNamespace;
+  KV?: KVNamespace;
   LOGS_DATASET?: AnalyticsEngineDataset;
 }
 
@@ -47,6 +48,7 @@ const CRON_TO_JOBS: Record<string, AnalyticsJobType[]> = {
   '0 4 * * *': ['analytics.score-distribution'],
   '0 5 * * *': ['analytics.enrichment-metrics'],
   '0 0 * * *': ['analytics.warmup-daily-reset'],
+  '*/30 * * * *': [], // DLQ health check handled directly in scheduled()
 };
 
 export async function queue(batch: MessageBatch, env: AnalyticsQueueEnv) {
@@ -148,6 +150,22 @@ export async function queue(batch: MessageBatch, env: AnalyticsQueueEnv) {
 
 export async function scheduled(event: ScheduledEvent, env: AnalyticsQueueEnv) {
   if (env.ENABLE_ANALYTICS_CRON && env.ENABLE_ANALYTICS_CRON !== 'true') {
+    return;
+  }
+
+  // DLQ health check runs every 30 minutes
+  if (event.cron === '*/30 * * * *') {
+    if (env.KV) {
+      await runDlqHealthCheck(env.KV, [
+        'mauntic-analytics-jobs-dlq',
+        'mauntic-campaign-events-dlq',
+        'mauntic-delivery-events-dlq',
+        'mauntic-journey-events-dlq',
+        'mauntic-lead-intelligence-events-dlq',
+        'mauntic-revops-events-dlq',
+        'mauntic-scoring-events-dlq',
+      ], {});
+    }
     return;
   }
 

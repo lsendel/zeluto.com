@@ -213,16 +213,22 @@ export class JourneyService {
 
     private async executeAction(config: Record<string, unknown>, data: any): Promise<Record<string, unknown>> {
         const action = config.action as string;
+        const channelMap: Record<string, string> = {
+            send_email: 'email',
+            send_sms: 'sms',
+            send_push: 'push',
+        };
+        const channel = channelMap[action];
 
-        if (action === 'send_email' || action === 'send_sms') {
+        if (channel) {
             const templateId = config.templateId as number ?? 0;
-            await this.emailQueue.add(action === 'send_email' ? 'send-email' : 'send-sms', {
+            await this.emailQueue.add(action.replace('send_', 'send-'), {
                 organizationId: data.organizationId,
                 contactId: data.contactId,
                 templateId,
                 journeyExecutionId: data.executionId,
                 stepId: data.stepId,
-                channel: action === 'send_email' ? 'email' : 'sms',
+                channel,
                 idempotencyKey: `journey:${data.executionId}:${data.stepId}`
             });
             return { action, templateId, enqueued: true };

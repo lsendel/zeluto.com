@@ -15,7 +15,7 @@ id = "107300e1a7004921b6b4fc22d098af9a"
 [[durable_objects.bindings]]
 name = "TENANT_CACHE"
 class_name = "TenantContextDurableObject"
-script_name = "mauntic-gateway"
+script_name = "mauntic-tenant-cache"
 
 [[queues.producers]]
 binding = "EVENTS"
@@ -27,3 +27,7 @@ max_batch_size = 10
 max_batch_timeout = 30
 max_retries = 3
 dead_letter_queue = "mauntic-journey-events-dlq"
+
+[[analytics_engine_datasets]]
+binding = "LOGS_DATASET"
+dataset = "mauntic_logs"

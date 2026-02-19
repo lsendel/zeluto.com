@@ -28,6 +28,7 @@ If either step fails, Cloudflare blocks the deployment and surfaces the logs in 
 
 | Worker (HTTP) | Path | Notes |
 | --- | --- | --- |
+| `mauntic-tenant-cache` | `workers/tenant-cache/wrangler.toml` | TenantContext Durable Object host. **Must deploy before all other workers.** |
 | `mauntic-gateway` | `workers/gateway/wrangler.toml` | Handles UI/API routing. |
 | `mauntic-identity` | `workers/identity/wrangler.toml` | Auth + organizations. |
 | `mauntic-billing` | `workers/billing/wrangler.toml` | Stripe webhooks, quota checks. |
@@ -47,6 +48,7 @@ Queue-only Workers (new pattern):
 | Worker (Queue) | Path | Notes |
 | --- | --- | --- |
 | `mauntic-campaign-queue` | `workers/campaign-queue/wrangler.toml` | Consumes `mauntic-campaign-events` (fan-out, metrics). |
+| `mauntic-delivery-queue` | `workers/delivery-queue/wrangler.toml` | Consumes `mauntic-delivery-events` (send/retry messages via DeliveryPipeline). |
 | `mauntic-journey-queue` | *(pending split)* | Will consume journey events once the HTTP/queue split is applied. |
 
 > Repeat the “queue companion” pattern for CRM, Journey, etc., as you split other mixed Workers.

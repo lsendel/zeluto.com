@@ -47,6 +47,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: mauntic-tenant-cache
+            config: workers/tenant-cache/wrangler.toml
           - name: mauntic-gateway
             config: workers/gateway/wrangler.toml
           - name: mauntic-identity
@@ -67,6 +69,8 @@ jobs:
             config: workers/journey-queue/wrangler.toml
           - name: mauntic-delivery
             config: workers/delivery/wrangler.toml
+          - name: mauntic-delivery-queue
+            config: workers/delivery-queue/wrangler.toml
           - name: mauntic-analytics
             config: workers/analytics/wrangler.toml
           - name: mauntic-integrations
@@ -125,6 +129,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: mauntic-tenant-cache
+            config: workers/tenant-cache/wrangler.toml
           - name: mauntic-gateway
             config: workers/gateway/wrangler.toml
           - name: mauntic-identity
@@ -145,6 +151,8 @@ jobs:
             config: workers/journey-queue/wrangler.toml
           - name: mauntic-delivery
             config: workers/delivery/wrangler.toml
+          - name: mauntic-delivery-queue
+            config: workers/delivery-queue/wrangler.toml
           - name: mauntic-analytics
             config: workers/analytics/wrangler.toml
           - name: mauntic-integrations

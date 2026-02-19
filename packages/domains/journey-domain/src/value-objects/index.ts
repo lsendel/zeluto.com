@@ -1,5 +1,7 @@
 export {
   ActionEmailConfigSchema,
+  ActionSmsConfigSchema,
+  ActionPushConfigSchema,
   DelayDurationConfigSchema,
   SplitRandomConfigSchema,
   SplitConditionConfigSchema,
@@ -7,6 +9,8 @@ export {
   GateConfigSchema,
   StepConfigSchema,
   type ActionEmailConfig,
+  type ActionSmsConfig,
+  type ActionPushConfig,
   type DelayDurationConfig,
   type SplitRandomConfig,
   type SplitConditionConfig,

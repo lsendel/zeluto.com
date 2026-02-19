@@ -17,6 +17,8 @@ export type Env = {
     DATABASE_URL: string;
     KV: KVNamespace;
     EVENTS: Queue;
+    ANTHROPIC_API_KEY: string;
+    OPENAI_API_KEY?: string;
   };
   Variables: {
     tenant: TenantContext;
