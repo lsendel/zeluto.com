@@ -7,6 +7,8 @@ import {
   eventAggregates,
   campaignDailyStats,
   journeyDailyStats,
+  dailyScoreDistribution,
+  enrichmentMetrics,
 } from '@mauntic/analytics-domain/drizzle';
 
 const logger = pino({ name: 'analytics-aggregator' });
@@ -288,6 +290,113 @@ const warmupResetHandler: JobHandler = {
 };
 
 // ---------------------------------------------------------------------------
+// Daily: Score distribution aggregation
+// ---------------------------------------------------------------------------
+
+const scoreDistributionHandler: JobHandler = {
+  name: 'analytics:score-distribution',
+  concurrency: 1,
+  async process(job: Job) {
+    logger.info('Starting daily score distribution aggregation...');
+
+    const db = getDb();
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    try {
+      const { lead_scores } = await import('@mauntic/scoring-domain/drizzle');
+
+      // Aggregate score distribution per organization
+      const distributions = await db
+        .select({
+          organizationId: lead_scores.organization_id,
+          avgScore: sql<string>`avg(${lead_scores.total_score})::numeric(5,2)`,
+          minScore: sql<number>`min(${lead_scores.total_score})`,
+          maxScore: sql<number>`max(${lead_scores.total_score})`,
+          p50: sql<number>`percentile_cont(0.5) within group (order by ${lead_scores.total_score})`,
+          p90: sql<number>`percentile_cont(0.9) within group (order by ${lead_scores.total_score})`,
+          p95: sql<number>`percentile_cont(0.95) within group (order by ${lead_scores.total_score})`,
+          totalContacts: sql<number>`count(*)::int`,
+        })
+        .from(lead_scores)
+        .groupBy(lead_scores.organization_id);
+
+      for (const dist of distributions) {
+        await db.insert(dailyScoreDistribution).values({
+          organizationId: dist.organizationId,
+          date: todayStr,
+          avgScore: dist.avgScore,
+          minScore: dist.minScore,
+          maxScore: dist.maxScore,
+          p50: dist.p50,
+          p90: dist.p90,
+          p95: dist.p95,
+          totalContacts: dist.totalContacts,
+        });
+      }
+
+      logger.info({ date: todayStr, orgs: distributions.length }, 'Score distribution aggregation completed');
+      return { success: true, date: todayStr, orgs: distributions.length };
+    } catch (error) {
+      logger.error({ error }, 'Score distribution aggregation failed');
+      throw error;
+    }
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Daily: Enrichment metrics aggregation
+// ---------------------------------------------------------------------------
+
+const enrichmentMetricsHandler: JobHandler = {
+  name: 'analytics:enrichment-metrics',
+  concurrency: 1,
+  async process(job: Job) {
+    logger.info('Starting daily enrichment metrics aggregation...');
+
+    const db = getDb();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    try {
+      const { enrichment_jobs } = await import('@mauntic/lead-intelligence-domain/drizzle');
+
+      const metrics = await db
+        .select({
+          organizationId: enrichment_jobs.organization_id,
+          totalEnriched: sql<number>`count(*)::int`,
+          successRate: sql<string>`(count(*) filter (where ${enrichment_jobs.status} = 'completed')::numeric / nullif(count(*), 0) * 100)::numeric(5,2)`,
+        })
+        .from(enrichment_jobs)
+        .where(
+          and(
+            gte(enrichment_jobs.created_at, yesterday),
+            lte(enrichment_jobs.created_at, new Date()),
+          ),
+        )
+        .groupBy(enrichment_jobs.organization_id);
+
+      for (const m of metrics) {
+        await db.insert(enrichmentMetrics).values({
+          organizationId: m.organizationId,
+          date: yesterdayStr,
+          totalEnriched: m.totalEnriched,
+          successRate: m.successRate ?? '0',
+          avgCost: '0',
+          avgFreshness: '0',
+        });
+      }
+
+      logger.info({ date: yesterdayStr, orgs: metrics.length }, 'Enrichment metrics aggregation completed');
+      return { success: true, date: yesterdayStr, orgs: metrics.length };
+    } catch (error) {
+      logger.error({ error }, 'Enrichment metrics aggregation failed');
+      throw error;
+    }
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -309,14 +418,22 @@ async function main() {
   await registerScheduledJobs('analytics:warmup-daily-reset', [
     { name: 'warmup-daily-reset', pattern: '0 0 * * *' }, // Daily at midnight
   ]);
+  await registerScheduledJobs('analytics:score-distribution', [
+    { name: 'daily-score-distribution', pattern: '0 4 * * *' }, // Daily at 4am
+  ]);
+  await registerScheduledJobs('analytics:enrichment-metrics', [
+    { name: 'daily-enrichment-metrics', pattern: '0 5 * * *' }, // Daily at 5am
+  ]);
 
   // Workers process the scheduled jobs
   const hourlyWorker = createWorker('analytics:aggregate-hourly', hourlyAggregationHandler);
   const dailyWorker = createWorker('analytics:generate-daily-reports', dailyReportHandler);
   const monthlyWorker = createWorker('analytics:monthly-usage-summary', monthlyUsageHandler);
   const warmupResetWorker = createWorker('analytics:warmup-daily-reset', warmupResetHandler);
+  const scoreDistWorker = createWorker('analytics:score-distribution', scoreDistributionHandler);
+  const enrichmentMetricsWorker = createWorker('analytics:enrichment-metrics', enrichmentMetricsHandler);
 
-  const allWorkers = [hourlyWorker, dailyWorker, monthlyWorker, warmupResetWorker];
+  const allWorkers = [hourlyWorker, dailyWorker, monthlyWorker, warmupResetWorker, scoreDistWorker, enrichmentMetricsWorker];
 
   allWorkers.forEach((worker) => {
     worker.on('completed', (job) => {

@@ -1,4 +1,4 @@
-import { pgSchema, uuid, varchar, timestamp, jsonb, integer, date } from 'drizzle-orm/pg-core';
+import { pgSchema, uuid, varchar, timestamp, jsonb, integer, date, numeric } from 'drizzle-orm/pg-core';
 
 export const analyticsSchema = pgSchema('analytics');
 
@@ -62,4 +62,49 @@ export const funnelReports = analyticsSchema.table('funnel_reports', {
   createdBy: uuid('created_by').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Daily score distribution (aggregated per org per day)
+export const dailyScoreDistribution = analyticsSchema.table('daily_score_distribution', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  date: date('date').notNull(),
+  avgScore: numeric('avg_score', { precision: 5, scale: 2 }).notNull(),
+  minScore: integer('min_score').notNull(),
+  maxScore: integer('max_score').notNull(),
+  p50: integer('p50').notNull(),
+  p90: integer('p90').notNull(),
+  p95: integer('p95').notNull(),
+  totalContacts: integer('total_contacts').notNull(),
+});
+
+// Engagement cohorts by lead grade
+export const engagementCohorts = analyticsSchema.table('engagement_cohorts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  date: date('date').notNull(),
+  grade: varchar('grade', { length: 5 }).notNull(), // A, B, C, D, F
+  count: integer('count').notNull(),
+  avgOpenRate: numeric('avg_open_rate', { precision: 5, scale: 2 }).notNull(),
+  avgClickRate: numeric('avg_click_rate', { precision: 5, scale: 2 }).notNull(),
+});
+
+// Score trends per contact over time
+export const scoreTrends = analyticsSchema.table('score_trends', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  contactId: uuid('contact_id').notNull(),
+  date: date('date').notNull(),
+  scoreValue: integer('score_value').notNull(),
+});
+
+// Enrichment metrics (daily per org)
+export const enrichmentMetrics = analyticsSchema.table('enrichment_metrics', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  date: date('date').notNull(),
+  totalEnriched: integer('total_enriched').notNull(),
+  successRate: numeric('success_rate', { precision: 5, scale: 2 }).notNull(),
+  avgCost: numeric('avg_cost', { precision: 8, scale: 4 }).notNull(),
+  avgFreshness: numeric('avg_freshness', { precision: 5, scale: 2 }).notNull(),
 });
