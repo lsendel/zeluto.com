@@ -84,6 +84,16 @@ export {
   ReportResultSchema,
 } from './analytics.contract';
 
+// Lead Intelligence contract & schemas
+export {
+  leadIntelligenceContract,
+  EnrichmentProviderSchema,
+  EnrichmentJobSchema,
+  LeadIntelligenceProviderHealthSchema,
+  WaterfallConfigSchema,
+  LeadIntelligenceDataQualityScoreSchema,
+} from './lead-intelligence.contract';
+
 // Integrations contract & schemas
 export {
   integrationsContract,
