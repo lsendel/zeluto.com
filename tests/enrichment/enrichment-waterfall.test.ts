@@ -20,7 +20,12 @@ describe('Enrichment Waterfall', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    mockProviderA.enrich.mockResolvedValue({});
+    mockProviderA.healthCheck.mockResolvedValue(true);
+    mockProviderB.enrich.mockResolvedValue({});
+    mockProviderB.healthCheck.mockResolvedValue(true);
+    mockCache.get.mockResolvedValue(null);
   });
 
   it('should enrich with first provider on success', async () => {
