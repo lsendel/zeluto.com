@@ -74,7 +74,7 @@ export const RevOpsPipelineMetricsSchema = z.object({
   totalDeals: z.number(),
   totalValue: z.number(),
   avgDealSize: z.number(),
-  stageBreakdown: z.record(z.number()),
+  stageBreakdown: z.record(z.string(), z.number()),
   winRate: z.number(),
 });
 

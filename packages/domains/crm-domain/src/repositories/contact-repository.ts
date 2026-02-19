@@ -10,8 +10,8 @@ export interface ContactRepository {
   findBySegment(
     orgId: string,
     segmentId: string,
-    pagination: { page: number; limit: number },
-  ): Promise<{ data: Contact[]; total: number }>;
+    pagination: { offset: number; limit: number },
+  ): Promise<{ data: Contact[]; total: number; nextOffset: number | null }>;
   save(contact: Contact): Promise<void>;
   saveMany(contacts: Contact[]): Promise<void>;
   delete(orgId: string, id: string): Promise<void>;

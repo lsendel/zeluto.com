@@ -10,7 +10,7 @@ export const RoutingRulePropsSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string(),
   strategy: RoutingStrategySchema,
-  conditions: z.record(z.unknown()).optional(),
+  conditions: z.record(z.string(), z.unknown()).optional(),
   targetReps: z.array(z.string()),
   priority: z.number().int().min(0),
   enabled: z.boolean(),

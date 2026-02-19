@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { InvariantViolation } from '@mauntic/domain-kernel';
+import { AggregateRoot, Result } from '@mauntic/domain-kernel';
+import {
+  JourneyExecutionCompletedEvent,
+  JourneyExecutionFailedEvent,
+  JourneyExecutionCanceledEvent,
+  JourneyExecutionStepChangedEvent
+} from '../events/journey-events.js';
 
 export const ExecutionStatusSchema = z.enum([
   'active',
@@ -24,8 +30,10 @@ export const JourneyExecutionPropsSchema = z.object({
 
 export type JourneyExecutionProps = z.infer<typeof JourneyExecutionPropsSchema>;
 
-export class JourneyExecution {
-  private constructor(private props: JourneyExecutionProps) {}
+export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
+  private constructor(props: JourneyExecutionProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -34,30 +42,30 @@ export class JourneyExecution {
     journeyVersionId: string;
     organizationId: string;
     contactId: string;
-  }): JourneyExecution {
-    return new JourneyExecution(
-      JourneyExecutionPropsSchema.parse({
-        id: crypto.randomUUID(),
-        journeyId: input.journeyId,
-        journeyVersionId: input.journeyVersionId,
-        organizationId: input.organizationId,
-        contactId: input.contactId,
-        status: 'active',
-        startedAt: new Date(),
-        completedAt: null,
-        currentStepId: null,
-      }),
-    );
+  }): Result<JourneyExecution> {
+    const id = crypto.randomUUID();
+    const props = JourneyExecutionPropsSchema.parse({
+      id,
+      journeyId: input.journeyId,
+      journeyVersionId: input.journeyVersionId,
+      organizationId: input.organizationId,
+      contactId: input.contactId,
+      status: 'active',
+      startedAt: new Date(),
+      completedAt: null,
+      currentStepId: null,
+    });
+    return Result.ok(new JourneyExecution(props));
   }
 
-  static reconstitute(props: JourneyExecutionProps): JourneyExecution {
-    return new JourneyExecution(JourneyExecutionPropsSchema.parse(props));
+  static reconstitute(props: JourneyExecutionProps): Result<JourneyExecution> {
+    return Result.ok(new JourneyExecution(JourneyExecutionPropsSchema.parse(props)));
   }
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
+  get executionId(): string {
+    return this.id;
   }
   get journeyId(): string {
     return this.props.journeyId;
@@ -86,44 +94,131 @@ export class JourneyExecution {
 
   // ---- Domain methods ----
 
-  moveToStep(stepId: string): void {
+  moveToStep(stepId: string): Result<void> {
     if (this.props.status !== 'active') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot move to step when execution status is "${this.props.status}"`,
       );
     }
     z.string().uuid().parse(stepId);
+
+    // Capture previous for event if needed, but not in payload?
+    const fromStepId = this.props.currentStepId;
+
     this.props.currentStepId = stepId;
+
+    this.addDomainEvent({
+      type: 'journey.ExecutionStepChanged',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.props.journeyId,
+        executionId: this.id,
+        contactId: this.props.contactId,
+        fromStepId,
+        toStepId: stepId,
+        changedAt: new Date().toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
-  complete(): void {
+  complete(): Result<void> {
     if (this.props.status !== 'active') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot complete execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'completed';
     this.props.completedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.ExecutionCompleted',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.props.journeyId,
+        executionId: this.id,
+        contactId: this.props.contactId,
+        completedAt: this.props.completedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
-  fail(): void {
+  fail(reason: string): Result<void> {
     if (this.props.status !== 'active') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot fail execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'failed';
     this.props.completedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.ExecutionFailed',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.props.journeyId,
+        executionId: this.id,
+        contactId: this.props.contactId,
+        reason,
+        failedAt: this.props.completedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
-  cancel(): void {
+  cancel(): Result<void> {
     if (this.props.status !== 'active') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot cancel execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'canceled';
     this.props.completedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.ExecutionCanceled',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.props.journeyId,
+        executionId: this.id,
+        contactId: this.props.contactId,
+        canceledAt: this.props.completedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
   /** Return a plain object suitable for persistence. */

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Entity, Result } from '@mauntic/domain-kernel';
 
 export const TriggerTypeSchema = z.enum([
   'event',
@@ -19,8 +20,10 @@ export const JourneyTriggerPropsSchema = z.object({
 
 export type JourneyTriggerProps = z.infer<typeof JourneyTriggerPropsSchema>;
 
-export class JourneyTrigger {
-  private constructor(private readonly props: JourneyTriggerProps) {}
+export class JourneyTrigger extends Entity<JourneyTriggerProps> {
+  private constructor(props: JourneyTriggerProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -29,26 +32,26 @@ export class JourneyTrigger {
     organizationId: string;
     type: TriggerType;
     config: Record<string, unknown>;
-  }): JourneyTrigger {
-    return new JourneyTrigger(
-      JourneyTriggerPropsSchema.parse({
-        id: crypto.randomUUID(),
-        journeyId: input.journeyId,
-        organizationId: input.organizationId,
-        type: input.type,
-        config: input.config,
-      }),
-    );
+  }): Result<JourneyTrigger> {
+    const id = crypto.randomUUID();
+    const props = JourneyTriggerPropsSchema.parse({
+      id,
+      journeyId: input.journeyId,
+      organizationId: input.organizationId,
+      type: input.type,
+      config: input.config,
+    });
+    return Result.ok(new JourneyTrigger(props));
   }
 
-  static reconstitute(props: JourneyTriggerProps): JourneyTrigger {
-    return new JourneyTrigger(JourneyTriggerPropsSchema.parse(props));
+  static reconstitute(props: JourneyTriggerProps): Result<JourneyTrigger> {
+    return Result.ok(new JourneyTrigger(JourneyTriggerPropsSchema.parse(props)));
   }
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
+  get triggerId(): string {
+    return this.id;
   }
   get journeyId(): string {
     return this.props.journeyId;

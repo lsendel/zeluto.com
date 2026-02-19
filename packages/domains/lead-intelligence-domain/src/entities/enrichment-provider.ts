@@ -17,7 +17,7 @@ export const EnrichmentProviderPropsSchema = z.object({
   avgLatencyMs: z.number().int().min(0),
   successRate: z.number().min(0).max(1),
   batchSupported: z.boolean(),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   enabled: z.boolean(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),

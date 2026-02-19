@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { InvariantViolation } from '@mauntic/domain-kernel';
+import { AggregateRoot, Result } from '@mauntic/domain-kernel';
 
 export const JourneyStatusSchema = z.enum([
   'draft',
@@ -23,8 +23,10 @@ export const JourneyPropsSchema = z.object({
 
 export type JourneyProps = z.infer<typeof JourneyPropsSchema>;
 
-export class Journey {
-  private constructor(private props: JourneyProps) {}
+export class Journey extends AggregateRoot<JourneyProps> {
+  private constructor(props: JourneyProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -33,33 +35,35 @@ export class Journey {
     name: string;
     description?: string | null;
     createdBy: string;
-  }): Journey {
+  }): Result<Journey> {
     if (!input.name || input.name.trim().length === 0) {
-      throw new InvariantViolation('Journey name is required');
+      return Result.fail('Journey name is required');
     }
 
-    return new Journey(
-      JourneyPropsSchema.parse({
-        id: crypto.randomUUID(),
-        organizationId: input.organizationId,
-        name: input.name.trim(),
-        description: input.description ?? null,
-        status: 'draft',
-        createdBy: input.createdBy,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
-    );
+    const id = crypto.randomUUID();
+    const props = JourneyPropsSchema.parse({
+      id,
+      organizationId: input.organizationId,
+      name: input.name.trim(),
+      description: input.description ?? null,
+      status: 'draft',
+      createdBy: input.createdBy,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const journey = new Journey(props);
+    return Result.ok(journey);
   }
 
-  static reconstitute(props: JourneyProps): Journey {
-    return new Journey(JourneyPropsSchema.parse(props));
+  static reconstitute(props: JourneyProps): Result<Journey> {
+    return Result.ok(new Journey(JourneyPropsSchema.parse(props)));
   }
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
+  get journeyId(): string {
+    return this.id;
   }
   get organizationId(): string {
     return this.props.organizationId;
@@ -85,10 +89,10 @@ export class Journey {
 
   // ---- Domain methods ----
 
-  update(input: { name?: string; description?: string | null }): void {
+  update(input: { name?: string; description?: string | null }): Result<void> {
     if (input.name !== undefined) {
       if (!input.name || input.name.trim().length === 0) {
-        throw new InvariantViolation('Journey name cannot be empty');
+        return Result.fail('Journey name cannot be empty');
       }
       this.props.name = input.name.trim();
     }
@@ -96,6 +100,7 @@ export class Journey {
       this.props.description = input.description;
     }
     this.props.updatedAt = new Date();
+    return Result.ok();
   }
 
   /**
@@ -103,50 +108,123 @@ export class Journey {
    * Invariant: the journey must have at least one trigger and at least one step
    * to be published. The caller must verify this before calling publish().
    */
-  publish(hasTriggers: boolean, hasSteps: boolean): void {
+  publish(hasTriggers: boolean, hasSteps: boolean): Result<void> {
     if (this.props.status !== 'draft') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot publish journey from status "${this.props.status}"; must be in "draft"`,
       );
     }
     if (!hasTriggers) {
-      throw new InvariantViolation('Cannot publish journey without triggers');
+      return Result.fail('Cannot publish journey without triggers');
     }
     if (!hasSteps) {
-      throw new InvariantViolation('Cannot publish journey without steps');
+      return Result.fail('Cannot publish journey without steps');
     }
     this.props.status = 'active';
     this.props.updatedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.JourneyPublished',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.id,
+        versionId: 'latest', // TODO: Pass version info if needed
+        publishedAt: this.props.updatedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
-  pause(): void {
+  pause(): Result<void> {
     if (this.props.status !== 'active') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot pause journey from status "${this.props.status}"; must be "active"`,
       );
     }
     this.props.status = 'paused';
     this.props.updatedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.JourneyPaused',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.id,
+        pausedAt: this.props.updatedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
-  resume(): void {
+  resume(): Result<void> {
     if (this.props.status !== 'paused') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot resume journey from status "${this.props.status}"; must be "paused"`,
       );
     }
     this.props.status = 'active';
     this.props.updatedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.JourneyResumed',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.id,
+        resumedAt: this.props.updatedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
-  archive(): void {
+  archive(): Result<void> {
     if (this.props.status !== 'active' && this.props.status !== 'paused') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot archive journey from status "${this.props.status}"; must be "active" or "paused"`,
       );
     }
     this.props.status = 'archived';
     this.props.updatedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'journey.JourneyArchived',
+      data: {
+        organizationId: this.props.organizationId,
+        journeyId: this.id,
+        archivedAt: this.props.updatedAt.toISOString(),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'journey',
+        timestamp: new Date().toISOString(),
+        correlationId: this.id,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
+    return Result.ok();
   }
 
   /** Return a plain object suitable for persistence. */

@@ -37,7 +37,7 @@ export const DealPropsSchema = z.object({
   closedAt: z.coerce.date().optional(),
   lostReason: z.string().optional(),
   notes: z.string().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });

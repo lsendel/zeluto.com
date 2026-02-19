@@ -29,6 +29,18 @@ export {
 } from './pause-campaign.js';
 
 export {
+  type ResumeCampaignCommand,
+  ResumeCampaignCommandSchema,
+  resumeCampaignCommand,
+} from './resume-campaign.js';
+
+export {
+  type DeleteCampaignCommand,
+  DeleteCampaignCommandSchema,
+  deleteCampaignCommand,
+} from './delete-campaign.js';
+
+export {
   type CancelCampaignCommand,
   CancelCampaignCommandSchema,
   cancelCampaignCommand,

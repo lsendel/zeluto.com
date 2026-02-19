@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { InvariantViolation } from '@mauntic/domain-kernel';
+import { Entity, Result } from '@mauntic/domain-kernel';
 
 export const StepExecutionStatusSchema = z.enum([
   'pending',
@@ -25,8 +25,10 @@ export const StepExecutionPropsSchema = z.object({
 
 export type StepExecutionProps = z.infer<typeof StepExecutionPropsSchema>;
 
-export class StepExecution {
-  private constructor(private props: StepExecutionProps) {}
+export class StepExecution extends Entity<StepExecutionProps> {
+  private constructor(props: StepExecutionProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -34,30 +36,30 @@ export class StepExecution {
     executionId: string;
     stepId: string;
     organizationId: string;
-  }): StepExecution {
-    return new StepExecution(
-      StepExecutionPropsSchema.parse({
-        id: crypto.randomUUID(),
-        executionId: input.executionId,
-        stepId: input.stepId,
-        organizationId: input.organizationId,
-        status: 'pending',
-        startedAt: null,
-        completedAt: null,
-        result: null,
-        error: null,
-      }),
-    );
+  }): Result<StepExecution> {
+    const id = crypto.randomUUID();
+    const props = StepExecutionPropsSchema.parse({
+      id,
+      executionId: input.executionId,
+      stepId: input.stepId,
+      organizationId: input.organizationId,
+      status: 'pending',
+      startedAt: null,
+      completedAt: null,
+      result: null,
+      error: null,
+    });
+    return Result.ok(new StepExecution(props));
   }
 
-  static reconstitute(props: StepExecutionProps): StepExecution {
-    return new StepExecution(StepExecutionPropsSchema.parse(props));
+  static reconstitute(props: StepExecutionProps): Result<StepExecution> {
+    return Result.ok(new StepExecution(StepExecutionPropsSchema.parse(props)));
   }
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
+  get stepExecutionId(): string {
+    return this.id;
   }
   get executionId(): string {
     return this.props.executionId;
@@ -86,46 +88,50 @@ export class StepExecution {
 
   // ---- Domain methods ----
 
-  start(): void {
+  start(): Result<void> {
     if (this.props.status !== 'pending') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot start step execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'running';
     this.props.startedAt = new Date();
+    return Result.ok();
   }
 
-  complete(result: Record<string, unknown>): void {
+  complete(result: Record<string, unknown>): Result<void> {
     if (this.props.status !== 'running') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot complete step execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'completed';
     this.props.result = result;
     this.props.completedAt = new Date();
+    return Result.ok();
   }
 
-  fail(error: string): void {
+  fail(error: string): Result<void> {
     if (this.props.status !== 'running') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot fail step execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'failed';
     this.props.error = error;
     this.props.completedAt = new Date();
+    return Result.ok();
   }
 
-  skip(): void {
+  skip(): Result<void> {
     if (this.props.status !== 'pending') {
-      throw new InvariantViolation(
+      return Result.fail(
         `Cannot skip step execution from status "${this.props.status}"`,
       );
     }
     this.props.status = 'skipped';
     this.props.completedAt = new Date();
+    return Result.ok();
   }
 
   /** Return a plain object suitable for persistence. */

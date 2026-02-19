@@ -14,7 +14,7 @@ export const IntentSignalPropsSchema = z.object({
   expiresAt: z.coerce.date().optional(),
   decayModel: DecayModelSchema,
   decayHours: z.number().int().min(0),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: z.coerce.date(),
 });
 

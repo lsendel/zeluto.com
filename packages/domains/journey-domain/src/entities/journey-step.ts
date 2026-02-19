@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Entity, Result } from '@mauntic/domain-kernel';
 
 export const StepTypeSchema = z.enum([
   'trigger',
@@ -23,8 +24,10 @@ export const JourneyStepPropsSchema = z.object({
 
 export type JourneyStepProps = z.infer<typeof JourneyStepPropsSchema>;
 
-export class JourneyStep {
-  private constructor(private props: JourneyStepProps) {}
+export class JourneyStep extends Entity<JourneyStepProps> {
+  private constructor(props: JourneyStepProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -35,28 +38,28 @@ export class JourneyStep {
     config: Record<string, unknown>;
     positionX: number;
     positionY: number;
-  }): JourneyStep {
-    return new JourneyStep(
-      JourneyStepPropsSchema.parse({
-        id: crypto.randomUUID(),
-        journeyVersionId: input.journeyVersionId,
-        organizationId: input.organizationId,
-        type: input.type,
-        config: input.config,
-        positionX: input.positionX,
-        positionY: input.positionY,
-      }),
-    );
+  }): Result<JourneyStep> {
+    const id = crypto.randomUUID();
+    const props = JourneyStepPropsSchema.parse({
+      id,
+      journeyVersionId: input.journeyVersionId,
+      organizationId: input.organizationId,
+      type: input.type,
+      config: input.config,
+      positionX: input.positionX,
+      positionY: input.positionY,
+    });
+    return Result.ok(new JourneyStep(props));
   }
 
-  static reconstitute(props: JourneyStepProps): JourneyStep {
-    return new JourneyStep(JourneyStepPropsSchema.parse(props));
+  static reconstitute(props: JourneyStepProps): Result<JourneyStep> {
+    return Result.ok(new JourneyStep(JourneyStepPropsSchema.parse(props)));
   }
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
+  get stepId(): string {
+    return this.id;
   }
   get journeyVersionId(): string {
     return this.props.journeyVersionId;
@@ -79,13 +82,15 @@ export class JourneyStep {
 
   // ---- Domain methods ----
 
-  updatePosition(x: number, y: number): void {
+  updatePosition(x: number, y: number): Result<void> {
     this.props.positionX = x;
     this.props.positionY = y;
+    return Result.ok();
   }
 
-  updateConfig(config: Record<string, unknown>): void {
+  updateConfig(config: Record<string, unknown>): Result<void> {
     this.props.config = config;
+    return Result.ok();
   }
 
   /** Return a plain object suitable for persistence. */

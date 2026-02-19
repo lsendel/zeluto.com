@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { Entity, Result } from '@mauntic/domain-kernel';
 
 export const JourneyVersionPropsSchema = z.object({
   id: z.string().uuid(),
@@ -16,8 +17,10 @@ export type JourneyVersionProps = z.infer<typeof JourneyVersionPropsSchema>;
  * Immutable snapshot of a journey definition at publish time.
  * In-flight executions remain pinned to their version.
  */
-export class JourneyVersion {
-  private constructor(private readonly props: JourneyVersionProps) {}
+export class JourneyVersion extends Entity<JourneyVersionProps> {
+  private constructor(props: JourneyVersionProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -26,28 +29,28 @@ export class JourneyVersion {
     organizationId: string;
     versionNumber: number;
     definition: Record<string, unknown>;
-  }): JourneyVersion {
-    return new JourneyVersion(
-      JourneyVersionPropsSchema.parse({
-        id: crypto.randomUUID(),
-        journeyId: input.journeyId,
-        organizationId: input.organizationId,
-        versionNumber: input.versionNumber,
-        definition: input.definition,
-        publishedAt: new Date(),
-        createdAt: new Date(),
-      }),
-    );
+  }): Result<JourneyVersion> {
+    const id = crypto.randomUUID();
+    const props = JourneyVersionPropsSchema.parse({
+      id,
+      journeyId: input.journeyId,
+      organizationId: input.organizationId,
+      versionNumber: input.versionNumber,
+      definition: input.definition,
+      publishedAt: new Date(),
+      createdAt: new Date(),
+    });
+    return Result.ok(new JourneyVersion(props));
   }
 
-  static reconstitute(props: JourneyVersionProps): JourneyVersion {
-    return new JourneyVersion(JourneyVersionPropsSchema.parse(props));
+  static reconstitute(props: JourneyVersionProps): Result<JourneyVersion> {
+    return Result.ok(new JourneyVersion(JourneyVersionPropsSchema.parse(props)));
   }
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
+  get versionId(): string {
+    return this.id;
   }
   get journeyId(): string {
     return this.props.journeyId;

@@ -85,7 +85,9 @@ export const organizationMembers = identitySchema.table('organization_members', 
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   role: varchar('role', { length: 20 }).default('member').notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
+  joinedAt: timestamp('joined_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // Organization invites
@@ -98,7 +100,11 @@ export const organizationInvites = identitySchema.table('organization_invites', 
   email: varchar('email', { length: 320 }).notNull(),
   role: varchar('role', { length: 20 }).default('member').notNull(),
   status: varchar('status', { length: 20 }).default('pending').notNull(),
-  inviterId: uuid('inviter_id').notNull(),
+  token: text('token').notNull().unique(),
+  invitedBy: uuid('invited_by')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
   expiresAt: timestamp('expires_at').notNull(),
+  acceptedAt: timestamp('accepted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

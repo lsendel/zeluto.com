@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { InvariantViolation } from '@mauntic/domain-kernel';
+import { AggregateRoot, InvariantViolation } from '@mauntic/domain-kernel';
 
 export const ContactStatusSchema = z.enum([
   'active',
@@ -27,8 +27,10 @@ export const ContactPropsSchema = z.object({
 
 export type ContactProps = z.infer<typeof ContactPropsSchema>;
 
-export class Contact {
-  private constructor(private props: ContactProps) {}
+export class Contact extends AggregateRoot<ContactProps> {
+  private constructor(props: ContactProps) {
+    super(props.id, props);
+  }
 
   // ---- Factory methods ----
 
@@ -47,22 +49,42 @@ export class Contact {
       }
     }
 
-    return new Contact(
-      ContactPropsSchema.parse({
+    const props = ContactPropsSchema.parse({
+      id: crypto.randomUUID(),
+      organizationId: input.organizationId,
+      email: input.email ?? null,
+      firstName: input.firstName ?? null,
+      lastName: input.lastName ?? null,
+      phone: input.phone ?? null,
+      status: 'active',
+      companyId: null,
+      customFields: input.customFields ?? {},
+      lastActivityAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const contact = new Contact(props);
+
+    contact.addDomainEvent({
+      type: 'crm.ContactCreated',
+      data: {
+        organizationId: Number(props.organizationId),
+        contactId: Number(props.id), // TODO: standardized ID types
+        email: props.email ?? undefined,
+        phone: props.phone ?? undefined,
+      },
+      metadata: {
         id: crypto.randomUUID(),
-        organizationId: input.organizationId,
-        email: input.email ?? null,
-        firstName: input.firstName ?? null,
-        lastName: input.lastName ?? null,
-        phone: input.phone ?? null,
-        status: 'active',
-        companyId: null,
-        customFields: input.customFields ?? {},
-        lastActivityAt: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
-    );
+        version: 1,
+        sourceContext: 'crm',
+        timestamp: new Date().toISOString(),
+        correlationId: props.id,
+        tenantContext: { organizationId: Number(props.organizationId) },
+      },
+    });
+
+    return contact;
   }
 
   static reconstitute(props: ContactProps): Contact {
@@ -71,9 +93,6 @@ export class Contact {
 
   // ---- Accessors ----
 
-  get id(): string {
-    return this.props.id;
-  }
   get organizationId(): string {
     return this.props.organizationId;
   }
@@ -140,6 +159,23 @@ export class Contact {
       this.props.customFields = { ...this.props.customFields, ...input.customFields };
     }
     this.props.updatedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'crm.ContactUpdated',
+      data: {
+        organizationId: Number(this.props.organizationId),
+        contactId: Number(this.props.id),
+        fields: Object.keys(input),
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'crm',
+        timestamp: new Date().toISOString(),
+        correlationId: this.props.id,
+        tenantContext: { organizationId: Number(this.props.organizationId) },
+      },
+    });
   }
 
   unsubscribe(): void {

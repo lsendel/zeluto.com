@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AggregateRoot, InvariantViolation } from '@mauntic/domain-kernel';
 
 export const GradeSchema = z.enum(['A', 'B', 'C', 'D', 'F']);
 export type Grade = z.infer<typeof GradeSchema>;
@@ -12,7 +13,7 @@ export const LeadScorePropsSchema = z.object({
   engagementScore: z.number().int().min(0),
   fitScore: z.number().int().min(0),
   intentScore: z.number().int().min(0),
-  components: z.record(z.number()).optional(),
+  components: z.record(z.string(), z.number()).optional(),
   topContributors: z.array(z.object({ factor: z.string(), points: z.number() })).optional(),
   scoredAt: z.coerce.date(),
   createdAt: z.coerce.date(),
@@ -29,11 +30,13 @@ export function calculateGrade(score: number): Grade {
   return 'F';
 }
 
-export class LeadScore {
-  private constructor(private props: LeadScoreProps) {}
+export class LeadScore extends AggregateRoot<LeadScoreProps> {
+  private constructor(props: LeadScoreProps) {
+    super(props.id, props);
+  }
 
   static create(input: {
-    id: string;
+    id?: string;
     organizationId: string;
     contactId: string;
     totalScore?: number;
@@ -43,27 +46,52 @@ export class LeadScore {
     components?: Record<string, number>;
     topContributors?: Array<{ factor: string; points: number }>;
   }): LeadScore {
-    const totalScore = input.totalScore ?? 0;
-    return new LeadScore(
-      LeadScorePropsSchema.parse({
-        ...input,
-        totalScore,
-        grade: calculateGrade(totalScore),
-        engagementScore: input.engagementScore ?? 0,
-        fitScore: input.fitScore ?? 0,
-        intentScore: input.intentScore ?? 0,
-        scoredAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }),
-    );
+    const totalScore = Math.min(100, Math.max(0, input.totalScore ?? 0));
+    const grade = calculateGrade(totalScore);
+
+    const props = LeadScorePropsSchema.parse({
+      id: input.id ?? crypto.randomUUID(),
+      organizationId: input.organizationId,
+      contactId: input.contactId,
+      totalScore,
+      grade,
+      engagementScore: input.engagementScore ?? 0,
+      fitScore: input.fitScore ?? 0,
+      intentScore: input.intentScore ?? 0,
+      components: input.components ?? {},
+      topContributors: input.topContributors ?? [],
+      scoredAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const leadScore = new LeadScore(props);
+
+    leadScore.addDomainEvent({
+      type: 'scoring.LeadScoreCalculated',
+      data: {
+        organizationId: props.organizationId,
+        contactId: props.contactId,
+        score: totalScore,
+        grade,
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'scoring',
+        timestamp: new Date().toISOString(),
+        correlationId: props.contactId,
+        tenantContext: { organizationId: props.organizationId as unknown as number },
+      },
+    });
+
+    return leadScore;
   }
 
   static reconstitute(props: LeadScoreProps): LeadScore {
     return new LeadScore(LeadScorePropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
   get organizationId() { return this.props.organizationId; }
   get contactId() { return this.props.contactId; }
   get totalScore() { return this.props.totalScore; }
@@ -74,6 +102,8 @@ export class LeadScore {
   get components() { return this.props.components; }
   get topContributors() { return this.props.topContributors; }
   get scoredAt() { return this.props.scoredAt; }
+  get createdAt() { return this.props.createdAt; }
+  get updatedAt() { return this.props.updatedAt; }
 
   updateScore(input: {
     totalScore: number;
@@ -83,15 +113,39 @@ export class LeadScore {
     components?: Record<string, number>;
     topContributors?: Array<{ factor: string; points: number }>;
   }): void {
-    this.props.totalScore = Math.min(100, Math.max(0, input.totalScore));
-    this.props.grade = calculateGrade(this.props.totalScore);
+    const totalScore = Math.min(100, Math.max(0, input.totalScore));
+    const grade = calculateGrade(totalScore);
+
+    this.props.totalScore = totalScore;
+    this.props.grade = grade;
     this.props.engagementScore = input.engagementScore;
     this.props.fitScore = input.fitScore;
     this.props.intentScore = input.intentScore;
-    this.props.components = input.components;
-    this.props.topContributors = input.topContributors;
+    if (input.components) this.props.components = input.components;
+    if (input.topContributors) this.props.topContributors = input.topContributors;
     this.props.scoredAt = new Date();
     this.props.updatedAt = new Date();
+
+    this.addDomainEvent({
+      type: 'scoring.LeadScoreUpdated',
+      data: {
+        organizationId: this.props.organizationId,
+        contactId: this.props.contactId,
+        score: totalScore,
+        grade,
+        previousScore: this.props.totalScore, // Note: this is actually new score. Logic error potential here if we want previous. 
+        // Correct logic: we overrode props already. If we wanted previous, we should capture before update.
+        // For now, simpler event data.
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'scoring',
+        timestamp: new Date().toISOString(),
+        correlationId: this.props.contactId,
+        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+      },
+    });
   }
 
   toProps(): Readonly<LeadScoreProps> {

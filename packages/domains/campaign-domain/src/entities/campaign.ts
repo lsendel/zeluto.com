@@ -34,8 +34,15 @@ export const CampaignPropsSchema = z.object({
   recipientCount: z.number().int().nonnegative(),
   sentCount: z.number().int().nonnegative(),
   failedCount: z.number().int().nonnegative(),
+  deliveredCount: z.number().int().nonnegative(),
+  openCount: z.number().int().nonnegative(),
+  clickCount: z.number().int().nonnegative(),
+  bounceCount: z.number().int().nonnegative(),
+  complaintCount: z.number().int().nonnegative(),
+  unsubscribeCount: z.number().int().nonnegative(),
   openRate: z.number().nonnegative(),
   clickRate: z.number().nonnegative(),
+  lastEventAt: z.coerce.date().nullable(),
   createdBy: z.string().uuid(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -85,8 +92,15 @@ export class Campaign {
         recipientCount: 0,
         sentCount: 0,
         failedCount: 0,
+        deliveredCount: 0,
+        openCount: 0,
+        clickCount: 0,
+        bounceCount: 0,
+        complaintCount: 0,
+        unsubscribeCount: 0,
         openRate: 0,
         clickRate: 0,
+        lastEventAt: null,
         createdBy: input.createdBy,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -154,11 +168,32 @@ export class Campaign {
   get failedCount(): number {
     return this.props.failedCount;
   }
+  get deliveredCount(): number {
+    return this.props.deliveredCount;
+  }
+  get openCount(): number {
+    return this.props.openCount;
+  }
+  get clickCount(): number {
+    return this.props.clickCount;
+  }
+  get bounceCount(): number {
+    return this.props.bounceCount;
+  }
+  get complaintCount(): number {
+    return this.props.complaintCount;
+  }
+  get unsubscribeCount(): number {
+    return this.props.unsubscribeCount;
+  }
   get openRate(): number {
     return this.props.openRate;
   }
   get clickRate(): number {
     return this.props.clickRate;
+  }
+  get lastEventAt(): Date | null {
+    return this.props.lastEventAt;
   }
   get createdBy(): string {
     return this.props.createdBy;
@@ -304,8 +339,15 @@ export class Campaign {
     recipientCount?: number;
     sent?: number;
     failed?: number;
+    delivered?: number;
     opens?: number;
     clicks?: number;
+    bounces?: number;
+    complaints?: number;
+    unsubscribes?: number;
+    openRate?: number;
+    clickRate?: number;
+    lastEventAt?: Date | null;
   }): void {
     if (input.recipientCount !== undefined) {
       this.props.recipientCount = input.recipientCount;
@@ -316,11 +358,32 @@ export class Campaign {
     if (input.failed !== undefined) {
       this.props.failedCount = input.failed;
     }
-    if (input.opens !== undefined && this.props.sentCount > 0) {
-      this.props.openRate = (input.opens / this.props.sentCount) * 100;
+    if (input.delivered !== undefined) {
+      this.props.deliveredCount = input.delivered;
     }
-    if (input.clicks !== undefined && this.props.sentCount > 0) {
-      this.props.clickRate = (input.clicks / this.props.sentCount) * 100;
+    if (input.opens !== undefined) {
+      this.props.openCount = input.opens;
+    }
+    if (input.clicks !== undefined) {
+      this.props.clickCount = input.clicks;
+    }
+    if (input.bounces !== undefined) {
+      this.props.bounceCount = input.bounces;
+    }
+    if (input.complaints !== undefined) {
+      this.props.complaintCount = input.complaints;
+    }
+    if (input.unsubscribes !== undefined) {
+      this.props.unsubscribeCount = input.unsubscribes;
+    }
+    if (input.openRate !== undefined) {
+      this.props.openRate = input.openRate;
+    }
+    if (input.clickRate !== undefined) {
+      this.props.clickRate = input.clickRate;
+    }
+    if (input.lastEventAt !== undefined) {
+      this.props.lastEventAt = input.lastEventAt;
     }
     this.props.updatedAt = new Date();
   }

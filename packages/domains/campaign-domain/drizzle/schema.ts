@@ -1,4 +1,4 @@
-import { pgSchema, uuid, varchar, text, timestamp, jsonb, integer, boolean, real } from 'drizzle-orm/pg-core';
+import { pgSchema, uuid, varchar, text, timestamp, jsonb, integer, boolean, real, index, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const campaignSchema = pgSchema('campaign');
 
@@ -19,8 +19,15 @@ export const campaigns = campaignSchema.table('campaigns', {
   recipientCount: integer('recipient_count').default(0).notNull(),
   sentCount: integer('sent_count').default(0).notNull(),
   failedCount: integer('failed_count').default(0).notNull(),
+  deliveredCount: integer('delivered_count').default(0).notNull(),
+  openCount: integer('open_count').default(0).notNull(),
+  clickCount: integer('click_count').default(0).notNull(),
+  bounceCount: integer('bounce_count').default(0).notNull(),
+  complaintCount: integer('complaint_count').default(0).notNull(),
+  unsubscribeCount: integer('unsubscribe_count').default(0).notNull(),
   openRate: real('open_rate').default(0).notNull(),
   clickRate: real('click_rate').default(0).notNull(),
+  lastEventAt: timestamp('last_event_at'),
   createdBy: uuid('created_by').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -57,7 +64,12 @@ export const campaignStats = campaignSchema.table('campaign_stats', {
   complained: integer('complained').default(0).notNull(),
   unsubscribed: integer('unsubscribed').default(0).notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  campaignOrgIdx: uniqueIndex('campaign_stats_campaign_org_idx').on(
+    table.campaignId,
+    table.organizationId,
+  ),
+}));
 
 // A/B tests
 export const abTests = campaignSchema.table('ab_tests', {
@@ -101,3 +113,53 @@ export const pointLog = campaignSchema.table('point_log', {
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// Campaign summaries (denormalized projections for fast listing/filtering)
+export const campaignSummaries = campaignSchema.table(
+  'campaign_summaries',
+  {
+    campaignId: uuid('campaign_id')
+      .primaryKey()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    organizationId: uuid('organization_id').notNull(),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    type: varchar('type', { length: 20 }).notNull(),
+    status: varchar('status', { length: 20 }).notNull(),
+    subject: varchar('subject', { length: 500 }),
+    templateId: uuid('template_id'),
+    segmentId: uuid('segment_id'),
+    createdBy: uuid('created_by').notNull(),
+    scheduledAt: timestamp('scheduled_at'),
+    startedAt: timestamp('started_at'),
+    completedAt: timestamp('completed_at'),
+    recipientCount: integer('recipient_count').default(0).notNull(),
+    sentCount: integer('sent_count').default(0).notNull(),
+    failedCount: integer('failed_count').default(0).notNull(),
+    deliveredCount: integer('delivered_count').default(0).notNull(),
+    openCount: integer('open_count').default(0).notNull(),
+    clickCount: integer('click_count').default(0).notNull(),
+    bounceCount: integer('bounce_count').default(0).notNull(),
+    complaintCount: integer('complaint_count').default(0).notNull(),
+    unsubscribeCount: integer('unsubscribe_count').default(0).notNull(),
+    openRate: real('open_rate').default(0).notNull(),
+    clickRate: real('click_rate').default(0).notNull(),
+    lastEventAt: timestamp('last_event_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    byOrgStatus: index('campaign_summaries_org_status_idx').on(
+      table.organizationId,
+      table.status,
+    ),
+    byOrgUpdated: index('campaign_summaries_org_updated_idx').on(
+      table.organizationId,
+      table.updatedAt,
+    ),
+    byOrgName: index('campaign_summaries_org_name_idx').on(
+      table.organizationId,
+      table.name,
+    ),
+  }),
+);

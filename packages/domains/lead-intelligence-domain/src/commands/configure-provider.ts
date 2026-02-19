@@ -9,7 +9,7 @@ export const ConfigureProviderCommandSchema = z.object({
   priority: z.number().int().min(0),
   costPerLookup: z.number().min(0),
   batchSupported: z.boolean().default(false),
-  config: z.record(z.unknown()).optional(),
+  config: z.record(z.string(), z.unknown()).optional(),
   enabled: z.boolean().default(true),
 });
 

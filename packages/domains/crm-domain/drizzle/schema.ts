@@ -6,7 +6,7 @@ export const crmSchema = pgSchema('crm');
 export const contacts = crmSchema.table('contacts', {
   id: uuid('id').primaryKey().defaultRandom(),
   organization_id: uuid('organization_id').notNull(),
-  email: varchar('email', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }),
   first_name: varchar('first_name', { length: 255 }),
   last_name: varchar('last_name', { length: 255 }),
   phone: varchar('phone', { length: 50 }),

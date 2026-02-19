@@ -15,7 +15,7 @@ export const LeadScoreSchema = z.object({
   engagementScore: z.number(),
   fitScore: z.number(),
   intentScore: z.number(),
-  components: z.record(z.number()).nullable(),
+  components: z.record(z.string(), z.number()).nullable(),
   topContributors: z.array(z.object({ factor: z.string(), points: z.number() })).nullable(),
   scoredAt: z.string(),
 });
