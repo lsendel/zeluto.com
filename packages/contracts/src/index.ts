@@ -104,6 +104,18 @@ export {
   ScoringConfigEntrySchema,
 } from './scoring.contract';
 
+// Revenue Operations contract & schemas
+export {
+  revopsContract,
+  RevOpsDealSchema,
+  RevOpsActivitySchema,
+  RevOpsForecastSchema,
+  RevOpsProspectSchema,
+  RevOpsSequenceSchema,
+  RevOpsInsightSchema,
+  RevOpsPipelineMetricsSchema,
+} from './revops.contract';
+
 // Integrations contract & schemas
 export {
   integrationsContract,
