@@ -55,11 +55,14 @@ export function authMiddleware(): MiddlewareHandler<Env> {
 
     try {
       // Forward request to Identity Worker to validate session
-      const identityResponse = await c.env.IDENTITY.fetch(
-        new Request('https://internal/api/auth/session', {
-          headers: c.req.raw.headers,
-        }),
-      );
+      let identityResponse = await fetchIdentitySessionViaDispatch(c);
+      if (!identityResponse) {
+        identityResponse = await c.env.IDENTITY.fetch(
+          new Request('https://internal/api/auth/session', {
+            headers: c.req.raw.headers,
+          }),
+        );
+      }
 
       if (!identityResponse.ok) {
         // Check if the user is authenticated but has no active organization
@@ -140,4 +143,41 @@ export function authMiddleware(): MiddlewareHandler<Env> {
       return c.redirect('/login');
     }
   };
+}
+
+async function fetchIdentitySessionViaDispatch(c: any): Promise<Response | null> {
+  const dispatch = c.env.IDENTITY_DISPATCH;
+  if (!dispatch) {
+    return null;
+  }
+
+  const forwardedHeaders: Array<[string, string]> = [];
+  c.req.raw.headers.forEach((value: string, key: string) => {
+    forwardedHeaders.push([key, value]);
+  });
+
+  const requestHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  const requestId = c.get('requestId');
+  if (requestId) {
+    requestHeaders['X-Request-Id'] = requestId;
+  }
+
+  try {
+    return await dispatch.fetch(
+      'https://identity.internal/__dispatch/identity/session/validate',
+      {
+        method: 'POST',
+        headers: requestHeaders,
+        body: JSON.stringify({ headers: forwardedHeaders }),
+      },
+    );
+  } catch (error) {
+    c.get('logger')?.warn(
+      { error: String(error) },
+      'Identity dispatch session validation failed, falling back to HTTP',
+    );
+    return null;
+  }
 }

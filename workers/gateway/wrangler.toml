@@ -5,11 +5,11 @@ main = "src/index.ts"
 workers_dev = true
 
 [[routes]]
-pattern = "17way.com"
+pattern = "zeluto.com"
 custom_domain = true
 
 [[routes]]
-pattern = "www.17way.com"
+pattern = "www.zeluto.com"
 custom_domain = true
 
 [[kv_namespaces]]
@@ -18,18 +18,27 @@ id = "107300e1a7004921b6b4fc22d098af9a"
 
 [[hyperdrive]]
 binding = "DB"
-id = "270bd3689e8846e7ae61d3e1674bfba0"
+id = "72ed37f34f16429088564b927eb093bc"
 
 [vars]
-APP_DOMAIN = "17way.com"
+APP_DOMAIN = "zeluto.com"
+STATIC_BASE_URL = "/assets"
 
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"
 class_name = "RateLimiter"
 
+[[durable_objects.bindings]]
+name = "TENANT_CACHE"
+class_name = "TenantContextDurableObject"
+
 [[migrations]]
 tag = "v1"
 new_classes = ["RateLimiter"]
+
+[[migrations]]
+tag = "v2"
+new_classes = ["TenantContextDurableObject"]
 
 # Service Bindings
 [[services]]
@@ -37,7 +46,15 @@ binding = "IDENTITY"
 service = "mauntic-identity"
 
 [[services]]
+binding = "IDENTITY_DISPATCH"
+service = "mauntic-identity"
+
+[[services]]
 binding = "BILLING"
+service = "mauntic-billing"
+
+[[services]]
+binding = "BILLING_DISPATCH"
 service = "mauntic-billing"
 
 [[services]]
@@ -45,11 +62,28 @@ binding = "CRM"
 service = "mauntic-crm"
 
 [[services]]
+binding = "CRM_DISPATCH"
+service = "mauntic-crm"
+
+[[r2_buckets]]
+binding = "STATIC_ASSETS"
+bucket_name = "mauntic-static-assets"
+preview_bucket_name = "mauntic-static-assets-dev"
+
+[[analytics_engine_datasets]]
+binding = "LOGS_DATASET"
+dataset = "mauntic_logs"
+
+[[services]]
 binding = "JOURNEY"
 service = "mauntic-journey"
 
 [[services]]
 binding = "DELIVERY"
+service = "mauntic-delivery"
+
+[[services]]
+binding = "DELIVERY_DISPATCH"
 service = "mauntic-delivery"
 
 [[services]]
@@ -62,6 +96,10 @@ service = "mauntic-content"
 
 [[services]]
 binding = "ANALYTICS"
+service = "mauntic-analytics"
+
+[[services]]
+binding = "ANALYTICS_DISPATCH"
 service = "mauntic-analytics"
 
 [[services]]

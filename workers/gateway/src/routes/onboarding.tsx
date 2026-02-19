@@ -6,6 +6,7 @@ import {
   SelectPlanView,
   SetupView,
 } from "../views/onboarding/index";
+import { getStaticBaseUrl } from "../utils/static-assets.js";
 
 /**
  * Onboarding routes for the SaaS signup flow
@@ -33,7 +34,7 @@ export function createOnboardingRoutes() {
       return c.redirect("/app/onboarding/org");
     }
 
-    return c.html(<SignupView />);
+    return c.html(<SignupView assetsBaseUrl={getStaticBaseUrl(c.env)} />);
   });
 
   // ========================================
@@ -53,7 +54,7 @@ export function createOnboardingRoutes() {
       return c.redirect("/app/onboarding/plan");
     }
 
-    return c.html(<CreateOrgView />);
+    return c.html(<CreateOrgView assetsBaseUrl={getStaticBaseUrl(c.env)} />);
   });
 
   // Handle organization creation
@@ -123,7 +124,7 @@ export function createOnboardingRoutes() {
       return c.redirect("/app/onboarding/org");
     }
 
-    return c.html(<SelectPlanView />);
+    return c.html(<SelectPlanView assetsBaseUrl={getStaticBaseUrl(c.env)} />);
   });
 
   // Handle plan selection
@@ -162,7 +163,11 @@ export function createOnboardingRoutes() {
     const verified = c.req.query("verified") === "true";
 
     return c.html(
-      <SetupView currentSetupStep={step || "domain"} domainVerified={verified} />
+      <SetupView
+        currentSetupStep={step || "domain"}
+        domainVerified={verified}
+        assetsBaseUrl={getStaticBaseUrl(c.env)}
+      />
     );
   });
 

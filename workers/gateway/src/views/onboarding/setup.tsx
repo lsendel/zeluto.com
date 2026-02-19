@@ -12,11 +12,13 @@ interface SetupStep {
 export interface SetupViewProps {
   currentSetupStep?: "domain" | "provider" | "contacts";
   domainVerified?: boolean;
+  assetsBaseUrl?: string;
 }
 
 export const SetupView: FC<SetupViewProps> = ({
   currentSetupStep = "domain",
   domainVerified = false,
+  assetsBaseUrl,
 }) => {
   const steps: SetupStep[] = [
     {
@@ -40,7 +42,7 @@ export const SetupView: FC<SetupViewProps> = ({
   ];
 
   return (
-    <OnboardingLayout title="Setup" currentStep={4}>
+    <OnboardingLayout title="Setup" currentStep={4} assetsBaseUrl={assetsBaseUrl}>
       <div>
         {/* Heading */}
         <div class="mb-8 text-center">

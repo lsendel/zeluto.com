@@ -1,5 +1,11 @@
 import type { Child, FC } from "@mauntic/ui-kit";
 
+function resolveAssetUrl(baseUrl: string | undefined, assetPath: string): string {
+  const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, "") : "";
+  const normalizedPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+  return `${normalizedBase}${normalizedPath}`;
+}
+
 export interface OnboardingLayoutProps {
   /** Page title */
   title?: string;
@@ -9,6 +15,8 @@ export interface OnboardingLayoutProps {
   children: Child;
   /** Additional head content */
   head?: Child;
+  /** Base URL for static assets */
+  assetsBaseUrl?: string;
 }
 
 interface Step {
@@ -28,14 +36,16 @@ export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
   currentStep,
   children,
   head,
+  assetsBaseUrl,
 }) => {
+  const stylesHref = resolveAssetUrl(assetsBaseUrl, "/styles/latest.css");
   return (
     <html lang="en" class="h-full bg-gray-50">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{title} | Mauntic</title>
-        <link rel="stylesheet" href="/styles/tailwind.css" />
+        <link rel="stylesheet" href={stylesHref} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
         {head}
       </head>

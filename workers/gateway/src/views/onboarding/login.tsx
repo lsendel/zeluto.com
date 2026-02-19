@@ -1,14 +1,24 @@
 import { Button, Input } from "@mauntic/ui-kit";
 import type { FC } from "@mauntic/ui-kit";
 
-export const LoginView: FC = () => {
+type LoginViewProps = {
+  assetsBaseUrl: string;
+};
+
+function resolveAssetUrl(baseUrl: string, assetPath: string): string {
+  const normalizedBase = baseUrl.replace(/\/$/, "");
+  const normalizedPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+  return `${normalizedBase}${normalizedPath}`;
+}
+
+export const LoginView: FC<LoginViewProps> = ({ assetsBaseUrl }) => {
   return (
     <html lang="en" class="h-full bg-gray-50">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Sign In | Mauntic</title>
-        <link rel="stylesheet" href="/styles/tailwind.css" />
+        <link rel="stylesheet" href={resolveAssetUrl(assetsBaseUrl, "/styles/latest.css")} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
       </head>
       <body class="h-full">

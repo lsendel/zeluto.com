@@ -2,9 +2,13 @@ import { OnboardingLayout } from "./layout";
 import { Button, Input } from "@mauntic/ui-kit";
 import type { FC } from "@mauntic/ui-kit";
 
-export const SignupView: FC = () => {
+type SignupViewProps = {
+  assetsBaseUrl: string;
+};
+
+export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
   return (
-    <OnboardingLayout title="Sign Up" currentStep={1}>
+    <OnboardingLayout title="Sign Up" currentStep={1} assetsBaseUrl={assetsBaseUrl}>
       <div class="rounded-xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
         {/* Heading */}
         <div class="mb-8 text-center">

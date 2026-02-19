@@ -76,9 +76,13 @@ const plans: Plan[] = [
   },
 ];
 
-export const SelectPlanView: FC = () => {
+type SelectPlanViewProps = {
+  assetsBaseUrl?: string;
+};
+
+export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
   return (
-    <OnboardingLayout title="Select Plan" currentStep={3}>
+    <OnboardingLayout title="Select Plan" currentStep={3} assetsBaseUrl={assetsBaseUrl}>
       <div>
         {/* Heading */}
         <div class="mb-8 text-center">

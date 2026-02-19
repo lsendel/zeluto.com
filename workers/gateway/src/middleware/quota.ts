@@ -71,6 +71,9 @@ export function quotaMiddleware(): MiddlewareHandler<Env> {
           headers: {
             'Content-Type': 'application/json',
             'X-Tenant-Context': btoa(JSON.stringify(tenantContext)),
+            ...(c.get('tenantContextCacheKey')
+              ? { 'X-Tenant-Context-Key': c.get('tenantContextCacheKey') }
+              : {}),
           },
           body: JSON.stringify({
             organizationId: tenantContext.organizationId,
