@@ -16,7 +16,7 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
             Create your account
           </h1>
           <p class="mt-2 text-sm text-gray-600">
-            Start your journey with Mauntic
+            Start your journey with Zeluto
           </p>
         </div>
 
@@ -25,8 +25,8 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
           <Button
             variant="secondary"
             class="w-full justify-center"
-            hx-post="/api/auth/sign-in/social"
-            hx-vals='{"provider": "google"}'
+            type="button"
+            onclick="fetch('/api/auth/sign-in/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'google',callbackURL:'/app/dashboard'})}).then(r=>r.json()).then(d=>{if(d.url)window.location.href=d.url})"
           >
             <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <path
@@ -52,8 +52,8 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
           <Button
             variant="secondary"
             class="w-full justify-center"
-            hx-post="/api/auth/sign-in/social"
-            hx-vals='{"provider": "github"}'
+            type="button"
+            onclick="fetch('/api/auth/sign-in/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'github',callbackURL:'/app/dashboard'})}).then(r=>r.json()).then(d=>{if(d.url)window.location.href=d.url})"
           >
             <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
               <path

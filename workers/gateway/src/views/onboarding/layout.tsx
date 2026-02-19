@@ -44,7 +44,7 @@ export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{title} | Mauntic</title>
+        <title>{title} | Zeluto</title>
         <link rel="stylesheet" href={stylesHref} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
         {head}
@@ -54,9 +54,9 @@ export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
           {/* Logo */}
           <div class="mb-8 flex items-center gap-2">
             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white font-bold text-lg">
-              M
+              Z
             </div>
-            <span class="text-2xl font-bold text-gray-900">Mauntic</span>
+            <span class="text-2xl font-bold text-gray-900">Zeluto</span>
           </div>
 
           {/* Step indicators */}

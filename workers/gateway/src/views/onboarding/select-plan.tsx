@@ -16,7 +16,7 @@ const plans: Plan[] = [
   {
     name: "free",
     displayName: "Free",
-    description: "Perfect for trying out Mauntic",
+    description: "Perfect for trying out Zeluto",
     priceMonthly: 0,
     priceYearly: 0,
     features: [

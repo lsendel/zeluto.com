@@ -17,7 +17,7 @@ export const LoginView: FC<LoginViewProps> = ({ assetsBaseUrl }) => {
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Sign In | Mauntic</title>
+        <title>Sign In | Zeluto</title>
         <link rel="stylesheet" href={resolveAssetUrl(assetsBaseUrl, "/styles/latest.css")} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
       </head>
@@ -26,9 +26,9 @@ export const LoginView: FC<LoginViewProps> = ({ assetsBaseUrl }) => {
           {/* Logo */}
           <div class="mb-8 flex items-center gap-2">
             <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-600 text-white font-bold text-lg">
-              M
+              Z
             </div>
-            <span class="text-2xl font-bold text-gray-900">Mauntic</span>
+            <span class="text-2xl font-bold text-gray-900">Zeluto</span>
           </div>
 
           <div class="w-full max-w-md">
@@ -39,7 +39,7 @@ export const LoginView: FC<LoginViewProps> = ({ assetsBaseUrl }) => {
                   Welcome back
                 </h1>
                 <p class="mt-2 text-sm text-gray-600">
-                  Sign in to your Mauntic account
+                  Sign in to your Zeluto account
                 </p>
               </div>
 
@@ -48,8 +48,8 @@ export const LoginView: FC<LoginViewProps> = ({ assetsBaseUrl }) => {
                 <Button
                   variant="secondary"
                   class="w-full justify-center"
-                  hx-post="/api/auth/sign-in/social"
-                  hx-vals='{"provider": "google"}'
+                  type="button"
+                  onclick="fetch('/api/auth/sign-in/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'google',callbackURL:'/app/dashboard'})}).then(r=>r.json()).then(d=>{if(d.url)window.location.href=d.url})"
                 >
                   <svg class="h-5 w-5 mr-2" viewBox="0 0 24 24">
                     <path
@@ -75,8 +75,8 @@ export const LoginView: FC<LoginViewProps> = ({ assetsBaseUrl }) => {
                 <Button
                   variant="secondary"
                   class="w-full justify-center"
-                  hx-post="/api/auth/sign-in/social"
-                  hx-vals='{"provider": "github"}'
+                  type="button"
+                  onclick="fetch('/api/auth/sign-in/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'github',callbackURL:'/app/dashboard'})}).then(r=>r.json()).then(d=>{if(d.url)window.location.href=d.url})"
                 >
                   <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                     <path

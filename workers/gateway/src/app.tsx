@@ -1381,6 +1381,7 @@ async function forwardToService(
       method: c.req.method,
       headers,
       body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
+      redirect: 'manual',
       // @ts-ignore - duplex is needed for streaming request bodies
       duplex: 'half',
     });

@@ -151,7 +151,7 @@ function buildNavGroups(currentPath?: string): NavGroup[] {
 }
 
 export const AppLayout: FC<AppLayoutProps> = ({
-  title = "Mauntic",
+  title = "Zeluto",
   currentPath,
   userName = "User",
   userEmail,
@@ -173,7 +173,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>{title} | Mauntic</title>
+        <title>{title} | Zeluto</title>
         <link rel="stylesheet" href={resolveAssetUrl(assetsBaseUrl, "/styles/latest.css")} />
         <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
         {head}
@@ -185,9 +185,9 @@ export const AppLayout: FC<AppLayoutProps> = ({
             {/* Logo */}
             <div class="flex h-16 items-center gap-2 border-b border-gray-200 px-6">
               <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white font-bold text-sm">
-                M
+                Z
               </div>
-              <span class="text-lg font-bold text-gray-900">Mauntic</span>
+              <span class="text-lg font-bold text-gray-900">Zeluto</span>
             </div>
 
             {/* Org switcher */}
