@@ -14,3 +14,10 @@ id = "107300e1a7004921b6b4fc22d098af9a"
 [[queues.producers]]
 binding = "EVENTS"
 queue = "mauntic-lead-intelligence-events"
+
+[[queues.consumers]]
+queue = "mauntic-lead-intelligence-events"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+dead_letter_queue = "mauntic-lead-intelligence-events-dlq"
