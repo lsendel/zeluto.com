@@ -800,6 +800,63 @@ export interface SignalAlertCreatedEvent extends DomainEvent<'scoring.SignalAler
 }> {}
 
 // ============================================================================
+// REVENUE OPERATIONS EVENTS
+// ============================================================================
+
+export interface DealCreatedEvent extends DomainEvent<'revops.DealCreated', {
+  organizationId: number;
+  dealId: string;
+  contactId: string;
+  accountId?: string;
+  value: number;
+  stage: string;
+}> {}
+
+export interface DealStageChangedEvent extends DomainEvent<'revops.DealStageChanged', {
+  organizationId: number;
+  dealId: string;
+  fromStage: string;
+  toStage: string;
+  changedBy?: string;
+}> {}
+
+export interface DealWonEvent extends DomainEvent<'revops.DealWon', {
+  organizationId: number;
+  dealId: string;
+  value: number;
+  wonAt: string;
+}> {}
+
+export interface DealLostEvent extends DomainEvent<'revops.DealLost', {
+  organizationId: number;
+  dealId: string;
+  reason: string;
+  lostAt: string;
+}> {}
+
+export interface ProspectQualifiedEvent extends DomainEvent<'revops.ProspectQualified', {
+  organizationId: number;
+  contactId: string;
+  qualificationScore: number;
+  recommendation: string;
+}> {}
+
+export interface SequenceStepExecutedEvent extends DomainEvent<'revops.SequenceStepExecuted', {
+  organizationId: number;
+  sequenceId: string;
+  contactId: string;
+  stepIndex: number;
+  stepType: string;
+}> {}
+
+export interface ResearchCompletedEvent extends DomainEvent<'revops.ResearchCompleted', {
+  organizationId: number;
+  contactId: string;
+  researchJobId: string;
+  insightCount: number;
+}> {}
+
+// ============================================================================
 // MISC EVENTS
 // ============================================================================
 
@@ -933,5 +990,13 @@ export type AnyDomainEvent =
   | ScoreThresholdCrossedEvent
   | IntentSignalDetectedEvent
   | SignalAlertCreatedEvent
+  // Revenue Operations Events
+  | DealCreatedEvent
+  | DealStageChangedEvent
+  | DealWonEvent
+  | DealLostEvent
+  | ProspectQualifiedEvent
+  | SequenceStepExecutedEvent
+  | ResearchCompletedEvent
   // Misc Events
   | PointsAwardedEvent;

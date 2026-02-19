@@ -58,7 +58,27 @@ export const PlanIdSchema = z.string().uuid() as unknown as z.ZodType<PlanId>;
 export const EnrichmentJobIdSchema = z.string().uuid() as unknown as z.ZodType<EnrichmentJobId>;
 export const EnrichmentProviderIdSchema = z.string().min(1) as unknown as z.ZodType<EnrichmentProviderId>;
 
+// Revenue Operations IDs
+export type DealId = Brand<string, 'DealId'>;
+export type ForecastId = Brand<string, 'ForecastId'>;
+export type RoutingRuleId = Brand<string, 'RoutingRuleId'>;
+export type SequenceId = Brand<string, 'SequenceId'>;
+export type ProspectId = Brand<string, 'ProspectId'>;
+export type ActivityId = Brand<string, 'ActivityId'>;
+export type WorkflowId = Brand<string, 'WorkflowId'>;
+export type ResearchJobId = Brand<string, 'ResearchJobId'>;
+
 // Scoring & Intent ID Schemas
 export const LeadScoreIdSchema = z.string().uuid() as unknown as z.ZodType<LeadScoreId>;
 export const IntentSignalIdSchema = z.string().uuid() as unknown as z.ZodType<IntentSignalId>;
 export const SignalAlertIdSchema = z.string().uuid() as unknown as z.ZodType<SignalAlertId>;
+
+// Revenue Operations ID Schemas
+export const DealIdSchema = z.string().uuid() as unknown as z.ZodType<DealId>;
+export const ForecastIdSchema = z.string().uuid() as unknown as z.ZodType<ForecastId>;
+export const RoutingRuleIdSchema = z.string().uuid() as unknown as z.ZodType<RoutingRuleId>;
+export const SequenceIdSchema = z.string().uuid() as unknown as z.ZodType<SequenceId>;
+export const ProspectIdSchema = z.string().uuid() as unknown as z.ZodType<ProspectId>;
+export const ActivityIdSchema = z.string().uuid() as unknown as z.ZodType<ActivityId>;
+export const WorkflowIdSchema = z.string().uuid() as unknown as z.ZodType<WorkflowId>;
+export const ResearchJobIdSchema = z.string().uuid() as unknown as z.ZodType<ResearchJobId>;
