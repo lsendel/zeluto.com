@@ -6,21 +6,31 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./layouts": { "import": "./dist/layouts/index.js", "types": "./dist/layouts/index.d.ts" },
-    "./components": { "import": "./dist/components/index.js", "types": "./dist/components/index.d.ts" },
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./layouts": {
+      "import": "./dist/layouts/index.js",
+      "types": "./dist/layouts/index.d.ts"
+    },
+    "./components": {
+      "import": "./dist/components/index.js",
+      "types": "./dist/components/index.d.ts"
+    },
     "./styles": "./src/styles/tailwind.css"
   },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "build:css": "mkdir -p dist && tailwindcss -c tailwind.config.ts -i src/styles/tailwind.css -o dist/ui-kit.css --minify"
+    "build:css": "mkdir -p dist && tailwindcss -i src/styles/tailwind.css -o dist/ui-kit.css --minify"
   },
   "dependencies": {
     "hono": "catalog:"
   },
   "devDependencies": {
-    "typescript": "catalog:",
-    "tailwindcss": "catalog:"
+    "@tailwindcss/cli": "^4.2.0",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:"
   }
 }

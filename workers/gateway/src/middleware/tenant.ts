@@ -21,6 +21,7 @@ const TENANT_OPTIONAL_PREFIXES = [
   '/app/onboarding',
   '/api/v1/onboarding',
   '/api/v1/me',
+  '/assets/',
 ];
 
 function shouldSkipTenantContext(path: string): boolean {

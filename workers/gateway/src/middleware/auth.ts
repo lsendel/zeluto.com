@@ -33,6 +33,7 @@ const PUBLIC_PREFIXES = [
   '/api/v1/billing/webhooks/stripe',
   '/public/',
   '/app/signup',
+  '/assets/',
 ];
 
 function isPublicPath(path: string): boolean {
