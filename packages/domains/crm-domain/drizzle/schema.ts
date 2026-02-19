@@ -1,4 +1,4 @@
-import { pgSchema, uuid, varchar, text, timestamp, jsonb, integer, boolean } from 'drizzle-orm/pg-core';
+import { pgSchema, uuid, varchar, text, timestamp, jsonb, integer, boolean, numeric } from 'drizzle-orm/pg-core';
 
 export const crmSchema = pgSchema('crm');
 
@@ -14,6 +14,13 @@ export const contacts = crmSchema.table('contacts', {
   stage: varchar('stage', { length: 50 }).default('subscriber'), // subscriber/lead/mql/sql/opportunity/customer/evangelist/other
   custom_fields: jsonb('custom_fields'),
   last_activity_at: timestamp('last_activity_at'),
+  // Enrichment & scoring fields
+  lead_score: numeric('lead_score', { precision: 5, scale: 2 }),
+  lead_grade: varchar('lead_grade', { length: 1 }),
+  intent_score: numeric('intent_score', { precision: 5, scale: 2 }),
+  enrichment_status: varchar('enrichment_status', { length: 20 }),
+  last_enriched_at: timestamp('last_enriched_at'),
+  data_quality_score: numeric('data_quality_score', { precision: 3, scale: 2 }),
   created_at: timestamp('created_at').notNull().defaultNow(),
   updated_at: timestamp('updated_at').notNull().defaultNow(),
 }, (table) => ({
