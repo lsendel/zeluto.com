@@ -1,0 +1,25 @@
+{
+  "name": "@mauntic/revops",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@mauntic/contracts": "workspace:*",
+    "@mauntic/revops-domain": "workspace:*",
+    "@mauntic/domain-kernel": "workspace:*",
+    "@mauntic/ui-kit": "workspace:*",
+    "@mauntic/worker-lib": "workspace:*",
+    "@neondatabase/serverless": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "typescript": "catalog:",
+    "wrangler": "^4.65.0"
+  }
+}
