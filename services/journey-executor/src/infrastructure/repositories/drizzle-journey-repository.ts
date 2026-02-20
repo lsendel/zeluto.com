@@ -42,6 +42,12 @@ export interface IJourneyRepository {
     Array<{ trigger: JourneyTrigger; journey: Journey }>
   >;
 
+  findActiveExecution(
+    organizationId: string,
+    journeyId: string,
+    contactId: string,
+  ): Promise<JourneyExecution | null>;
+
   findStaleExecutions(olderThan: Date): Promise<JourneyExecution[]>;
 
   logExecution(
@@ -97,6 +103,39 @@ export class DrizzleJourneyRepository implements IJourneyRepository {
           eq(journey_executions.organization_id, organizationId),
         ),
       );
+
+    if (!row) return null;
+
+    return JourneyExecution.reconstitute({
+      id: row.id,
+      journeyId: row.journey_id,
+      journeyVersionId: row.journey_version_id,
+      organizationId: row.organization_id,
+      contactId: row.contact_id,
+      status: row.status as any,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      currentStepId: row.current_step_id,
+    }).getValue();
+  }
+
+  async findActiveExecution(
+    organizationId: string,
+    journeyId: string,
+    contactId: string,
+  ): Promise<JourneyExecution | null> {
+    const [row] = await this.db
+      .select()
+      .from(journey_executions)
+      .where(
+        and(
+          eq(journey_executions.organization_id, organizationId),
+          eq(journey_executions.journey_id, journeyId),
+          eq(journey_executions.contact_id, contactId),
+          eq(journey_executions.status, 'active'),
+        ),
+      )
+      .limit(1);
 
     if (!row) return null;
 

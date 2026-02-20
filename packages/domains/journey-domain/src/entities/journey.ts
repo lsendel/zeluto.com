@@ -132,7 +132,7 @@ export class Journey extends AggregateRoot<JourneyProps> {
       data: {
         organizationId: this.props.organizationId,
         journeyId: this.id,
-        versionId: 'latest', // TODO: Pass version info if needed
+        versionId: this.id,
         publishedAt: this.props.updatedAt.toISOString(),
       },
       metadata: {
