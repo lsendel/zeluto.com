@@ -82,32 +82,44 @@ export function createOnboardingRoutes() {
       return c.json({ error: "NAME_AND_SLUG_REQUIRED" }, 400);
     }
 
-    // Create organization via Identity Worker
-    const identityResponse = await c.env.IDENTITY.fetch(
-      new Request("https://internal/api/v1/identity/organizations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Id": user.id,
-          "X-Request-Id": c.get("requestId") ?? crypto.randomUUID(),
+    // Create organization via Identity Worker's onboarding dispatch endpoint
+    // (bypasses tenant middleware since user doesn't have an org yet)
+    const dispatch = c.env.IDENTITY_DISPATCH ?? c.env.IDENTITY;
+    const identityResponse = await dispatch.fetch(
+      new Request(
+        "https://identity.internal/__dispatch/identity/onboarding/create-org",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-Id": c.get("requestId") ?? crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            name: orgName,
+            slug,
+            creatorUserId: user.id,
+          }),
         },
-        body: JSON.stringify({ name: orgName, slug }),
-      }),
+      ),
     );
 
     if (!identityResponse.ok) {
-      const error = (await identityResponse.json()) as { error?: string; message?: string };
+      const error = (await identityResponse.json()) as {
+        error?: string;
+        code?: string;
+        message?: string;
+      };
       return c.json(
         {
-          error: error.error ?? "ORG_CREATION_FAILED",
+          error: error.code ?? error.error ?? "ORG_CREATION_FAILED",
           message: error.message ?? "Failed to create organization",
         },
         identityResponse.status as 400 | 409 | 500,
       );
     }
 
-    // Redirect to plan selection step
-    return c.redirect("/app/onboarding/plan");
+    // Return JSON success for HTMX (client-side JS handles redirect)
+    return c.json({ success: true, redirect: "/app/onboarding/plan" });
   });
 
   // ========================================
@@ -172,7 +184,116 @@ export function createOnboardingRoutes() {
   });
 
   // ========================================
-  // Helper: Generate slug from org name
+  // API: Create organization (clean path for /api/v1/onboarding/create-org)
+  // ========================================
+  app.post("/create-org", async (c) => {
+    const user = c.get("user");
+    if (!user) {
+      return c.json({ error: "UNAUTHORIZED" }, 401);
+    }
+
+    const contentType = c.req.header("Content-Type") ?? "";
+    let orgName: string | undefined;
+    let slug: string | undefined;
+
+    if (contentType.includes("application/json")) {
+      const body = (await c.req.json()) as { name?: string; slug?: string };
+      orgName = body.name;
+      slug = body.slug;
+    } else {
+      const formData = await c.req.parseBody();
+      if (typeof formData?.["name"] === "string") orgName = formData["name"];
+      if (typeof formData?.["slug"] === "string") slug = formData["slug"];
+    }
+
+    if (!orgName || !slug) {
+      return c.json({ error: "NAME_AND_SLUG_REQUIRED" }, 400);
+    }
+
+    const dispatch = c.env.IDENTITY_DISPATCH ?? c.env.IDENTITY;
+    const identityResponse = await dispatch.fetch(
+      new Request(
+        "https://identity.internal/__dispatch/identity/onboarding/create-org",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Request-Id": c.get("requestId") ?? crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            name: orgName,
+            slug,
+            creatorUserId: user.id,
+          }),
+        },
+      ),
+    );
+
+    if (!identityResponse.ok) {
+      const error = (await identityResponse.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+        message?: string;
+      };
+      return c.json(
+        {
+          error: error.code ?? error.error ?? "ORG_CREATION_FAILED",
+          message: error.message ?? "Failed to create organization",
+        },
+        identityResponse.status as 400 | 409 | 500,
+      );
+    }
+
+    return c.json({ success: true, redirect: "/app/onboarding/plan" });
+  });
+
+  // ========================================
+  // API: Generate slug (clean path for /api/v1/onboarding/generate-slug)
+  // ========================================
+  app.get("/generate-slug", (c) => {
+    const name = c.req.query("name");
+    if (!name) {
+      return c.html(
+        <div id="slug-input">
+          <input
+            name="slug"
+            type="text"
+            placeholder="organization-slug"
+            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <p class="mt-1 text-sm text-gray-500">Used in your organization URL</p>
+        </div>
+      );
+    }
+
+    const slug = name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/--+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    return c.html(
+      <div id="slug-input">
+        <label for="input-slug" class="mb-1 block text-sm font-medium text-gray-700">
+          Organization slug
+          <span class="ml-1 text-red-500">*</span>
+        </label>
+        <input
+          id="input-slug"
+          name="slug"
+          type="text"
+          value={slug}
+          required
+          class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
+        />
+        <p class="mt-1 text-sm text-gray-500">Used in your organization URL</p>
+      </div>
+    );
+  });
+
+  // ========================================
+  // Helper: Generate slug from org name (legacy path)
   // ========================================
   app.get("/onboarding/generate-slug", (c) => {
     const name = c.req.query("name");
@@ -220,7 +341,7 @@ export function createOnboardingRoutes() {
   // ========================================
   // Helper: Select plan (free)
   // ========================================
-  app.post("/onboarding/select-plan", async (c) => {
+  const handleSelectPlan = async (c: any) => {
     const user = c.get("user");
     const organization = c.get("organization");
 
@@ -262,41 +383,60 @@ export function createOnboardingRoutes() {
         })
       );
 
+      // Return JSON if api call, otherwise redirect for HTML form
+      if (c.req.header("Accept")?.includes("application/json")) {
+        return c.json({ success: true, redirect: "/app/onboarding/setup" });
+      }
       return c.redirect("/app/onboarding/setup");
     }
 
     return c.redirect("/app/onboarding/plan");
-  });
+  };
+
+  app.post("/onboarding/select-plan", handleSelectPlan);
+  app.post("/select-plan", handleSelectPlan);
 
   // ========================================
   // Helper: Skip provider setup
   // ========================================
-  app.post("/onboarding/skip-provider", (c) => {
+  const handleSkipProvider = (c: any) => {
     return c.html(
-      <SetupView currentSetupStep="contacts" domainVerified={false} />
+      <SetupView
+        currentSetupStep="contacts"
+        domainVerified={false}
+        isFragment={true}
+      />
     );
-  });
+  };
+  app.post("/onboarding/skip-provider", handleSkipProvider);
+  app.post("/skip-provider", handleSkipProvider);
 
   // ========================================
   // Helper: Skip contacts import
   // ========================================
-  app.post("/onboarding/skip-contacts", (c) => {
+  const handleSkipContacts = (c: any) => {
     return c.html(
-      <SetupView currentSetupStep="contacts" domainVerified={false} />
+      <SetupView
+        currentSetupStep="contacts"
+        domainVerified={false}
+        isFragment={true}
+      />
     );
-  });
+  };
+  app.post("/onboarding/skip-contacts", handleSkipContacts);
+  app.post("/skip-contacts", handleSkipContacts);
 
   // ========================================
   // Helper: Skip entire setup
   // ========================================
-  app.post("/onboarding/skip-setup", (c) => {
-    return c.redirect("/app/dashboard");
-  });
+  const handleSkipSetup = (c: any) => c.redirect("/app/dashboard");
+  app.post("/onboarding/skip-setup", handleSkipSetup);
+  app.post("/skip-setup", handleSkipSetup);
 
   // ========================================
   // Complete onboarding
   // ========================================
-  app.post("/onboarding/complete", async (c) => {
+  const handleCompleteOnboarding = async (c: any) => {
     const user = c.get("user");
     const organization = c.get("organization");
 
@@ -375,7 +515,10 @@ export function createOnboardingRoutes() {
         500,
       );
     }
-  });
+  };
+
+  app.post("/onboarding/complete", handleCompleteOnboarding);
+  app.post("/complete", handleCompleteOnboarding);
 
   return app;
 }

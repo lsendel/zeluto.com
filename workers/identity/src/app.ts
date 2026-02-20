@@ -11,6 +11,7 @@ import userRoutes from './interface/user-routes.js';
 import orgRoutes from './interface/org-routes.js';
 import { validateSessionFromHeaders } from './application/session-service.js';
 import identityDispatchRoutes from './interface/dispatch-routes.js';
+import { createOrg } from './application/commands/create-org.js';
 
 type AppEnv = {
   Bindings: Env;
@@ -67,6 +68,38 @@ app.post('/__dispatch/identity/session/validate', async (c) => {
 
   const result = await validateSessionFromHeaders(c.env, headerBag);
   return c.json(result.body, result.status);
+});
+
+// Onboarding: create first organization (no tenant context needed)
+app.post('/__dispatch/identity/onboarding/create-org', async (c) => {
+  const body = (await c.req.json().catch(() => null)) as {
+    name?: string;
+    slug?: string;
+    creatorUserId?: string;
+  } | null;
+
+  if (!body?.name || !body.slug || !body.creatorUserId) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'name, slug, and creatorUserId are required' },
+      400,
+    );
+  }
+
+  const db = createDatabase(c.env);
+  try {
+    const org = await createOrg(db, {
+      name: body.name,
+      slug: body.slug,
+      creatorUserId: body.creatorUserId,
+    });
+    return c.json({ id: org.id, name: org.name, slug: org.slug }, 201);
+  } catch (error) {
+    console.error('Onboarding create-org failed:', error);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create organization' },
+      500,
+    );
+  }
 });
 
 app.route('/__dispatch/identity', identityDispatchRoutes);

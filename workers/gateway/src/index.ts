@@ -56,3 +56,4 @@ export default {
 };
 
 export { RateLimiter } from './rate-limiter.js';
+export { TenantContextDurableObject } from '@mauntic/worker-lib';

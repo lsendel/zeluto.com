@@ -13,12 +13,14 @@ export interface SetupViewProps {
   currentSetupStep?: "domain" | "provider" | "contacts";
   domainVerified?: boolean;
   assetsBaseUrl?: string;
+  isFragment?: boolean;
 }
 
 export const SetupView: FC<SetupViewProps> = ({
   currentSetupStep = "domain",
   domainVerified = false,
   assetsBaseUrl,
+  isFragment = false,
 }) => {
   const steps: SetupStep[] = [
     {
@@ -41,94 +43,99 @@ export const SetupView: FC<SetupViewProps> = ({
     },
   ];
 
-  return (
-    <OnboardingLayout title="Setup" currentStep={4} assetsBaseUrl={assetsBaseUrl}>
-      <div>
-        {/* Heading */}
-        <div class="mb-8 text-center">
-          <h1 class="text-2xl font-bold tracking-tight text-gray-900">
-            Set up your account
-          </h1>
-          <p class="mt-2 text-sm text-gray-600">
-            Configure your workspace to start sending emails
-          </p>
-        </div>
+  const content = (
+    <div>
+      {/* Heading */}
+      <div class="mb-8 text-center">
+        <h1 class="text-2xl font-bold tracking-tight text-gray-900">
+          Set up your account
+        </h1>
+        <p class="mt-2 text-sm text-gray-600">
+          Configure your workspace to start sending emails
+        </p>
+      </div>
 
-        {/* Setup Steps */}
-        <div class="space-y-4 mb-8">
-          {steps.map((step, idx) => (
-            <Card
-              class={
-                step.id === currentSetupStep
-                  ? "border-brand-500 ring-2 ring-brand-500"
-                  : ""
-              }
-            >
-              <div class="flex items-start gap-4">
-                <div
-                  class={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                    step.completed
-                      ? "bg-brand-600 text-white"
-                      : step.id === currentSetupStep
+      {/* Setup Steps */}
+      <div class="space-y-4 mb-8">
+        {steps.map((step, idx) => (
+          <Card
+            class={
+              step.id === currentSetupStep
+                ? "border-brand-500 ring-2 ring-brand-500"
+                : ""
+            }
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${step.completed
+                    ? "bg-brand-600 text-white"
+                    : step.id === currentSetupStep
                       ? "bg-brand-100 text-brand-600"
                       : "bg-gray-100 text-gray-400"
                   }`}
-                >
-                  {step.completed ? (
-                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-                  ) : (
-                    idx + 1
-                  )}
-                </div>
-                <div class="flex-1">
-                  <h3 class="text-sm font-semibold text-gray-900">
-                    {step.title}
-                  </h3>
-                  <p class="mt-1 text-sm text-gray-600">{step.description}</p>
-
-                  {/* Step Content */}
-                  {step.id === currentSetupStep && (
-                    <div class="mt-4">
-                      {step.id === "domain" && (
-                        <DomainSetupForm verified={domainVerified} />
-                      )}
-                      {step.id === "provider" && <ProviderSetupForm />}
-                      {step.id === "contacts" && <ContactsImportForm />}
-                    </div>
-                  )}
-                </div>
+              >
+                {step.completed ? (
+                  <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  idx + 1
+                )}
               </div>
-            </Card>
-          ))}
-        </div>
+              <div class="flex-1">
+                <h3 class="text-sm font-semibold text-gray-900">
+                  {step.title}
+                </h3>
+                <p class="mt-1 text-sm text-gray-600">{step.description}</p>
 
-        {/* Complete Setup */}
-        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
-          <Button
-            variant="ghost"
-            hx-post="/api/v1/onboarding/skip-setup"
-            hx-target="#onboarding-content"
-            hx-swap="innerHTML"
-          >
-            Skip for now
-          </Button>
-          <form
-            hx-post="/api/v1/onboarding/complete"
-            hx-target="body"
-            hx-swap="innerHTML"
-          >
-            <Button type="submit" variant="primary">
-              Complete Setup
-            </Button>
-          </form>
-        </div>
+                {/* Step Content */}
+                {step.id === currentSetupStep && (
+                  <div class="mt-4">
+                    {step.id === "domain" && (
+                      <DomainSetupForm verified={domainVerified} />
+                    )}
+                    {step.id === "provider" && <ProviderSetupForm />}
+                    {step.id === "contacts" && <ContactsImportForm />}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
+
+      {/* Complete Setup */}
+      <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+        <Button
+          variant="ghost"
+          hx-post="/api/v1/onboarding/skip-setup"
+          hx-target="#onboarding-content"
+          hx-swap="innerHTML"
+        >
+          Skip for now
+        </Button>
+        <form
+          hx-post="/api/v1/onboarding/complete"
+          hx-target="body"
+          hx-swap="innerHTML"
+        >
+          <Button type="submit" variant="primary">
+            Complete Setup
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+
+  return isFragment ? (
+    content
+  ) : (
+    <OnboardingLayout title="Setup" currentStep={4} assetsBaseUrl={assetsBaseUrl}>
+      {content}
     </OnboardingLayout>
   );
 };

@@ -7,6 +7,7 @@ tsconfig = "../revops/tsconfig.json"
 [[hyperdrive]]
 binding = "DB"
 id = "72ed37f34f16429088564b927eb093bc"
+localConnectionString = "postgresql://neondb_owner:npg_8KTCgZUb1Dvl@ep-jolly-pine-ai35q07s-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
 [[kv_namespaces]]
 binding = "KV"

@@ -76,12 +76,18 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
           </div>
         </div>
 
+        {/* Error message */}
+        <div
+          id="signup-error"
+          class="hidden mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+        ></div>
+
         {/* Email/Password Form */}
         <form
           hx-post="/api/auth/sign-up/email"
-          hx-target="#onboarding-content"
-          hx-swap="innerHTML"
+          hx-swap="none"
           hx-indicator=".loading"
+          hx-on--after-request="if(!event.detail.successful){document.getElementById('signup-error').textContent='Signup failed. Email may already be in use.';document.getElementById('signup-error').classList.remove('hidden')}else{window.location.href='/app/onboarding/org'}"
         >
           <div class="space-y-4">
             <Input

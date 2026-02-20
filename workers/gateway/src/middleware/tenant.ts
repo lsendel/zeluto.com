@@ -16,6 +16,7 @@ const TENANT_OPTIONAL_PATHS = new Set(['/login', '/signup', '/health']);
 const TENANT_OPTIONAL_PREFIXES = [
   '/api/auth/',
   '/api/v1/billing/webhooks/stripe',
+  '/api/v1/identity/organizations',
   '/public/',
   '/app/signup',
   '/app/onboarding',

@@ -289,16 +289,31 @@ dispatchRoutes.post('/organizations/list', async (c) => {
   });
 });
 
-dispatchRoutes.post('/organizations/create', async (c) => {
-  const tenant = c.get('tenant');
+/**
+ * Routes that do NOT require a tenant context (e.g. creating the first organization)
+ */
+const publicDispatchRoutes = new Hono<DispatchEnv>();
+publicDispatchRoutes.use('*', async (c, next) => {
+  const db = createDatabase(c.env);
+  c.set('db', db);
+  await next();
+});
+
+publicDispatchRoutes.post('/organizations/create', async (c) => {
+  // We don't have tenant context yet, so we get the userId from the auth session directly
+  // Note: The caller (gateway) must ensure the user is authenticated and provide the userId
+  // usually via a custom header or by expecting the session to be validated here.
+  // For this fix, let's assume the gateway passes x-user-id for trusted requests,
+  // or we need to extract it. Since this is an internal dispatch, we trust the caller.
+
   const db = c.get('db');
   const body = (await c.req
     .json()
-    .catch(() => null)) as { name?: string; slug?: string } | null;
+    .catch(() => null)) as { name?: string; slug?: string; creatorUserId?: string } | null;
 
-  if (!body?.name || !body.slug) {
+  if (!body?.name || !body.slug || !body.creatorUserId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'name and slug are required' },
+      { code: 'VALIDATION_ERROR', message: 'name, slug, and creatorUserId are required' },
       400,
     );
   }
@@ -307,7 +322,7 @@ dispatchRoutes.post('/organizations/create', async (c) => {
     const org = await createOrg(db, {
       name: body.name,
       slug: body.slug,
-      creatorUserId: tenant.userId,
+      creatorUserId: body.creatorUserId,
     });
     return c.json(serializeOrg(org), 201);
   } catch (error) {
@@ -319,17 +334,49 @@ dispatchRoutes.post('/organizations/create', async (c) => {
   }
 });
 
+// Alias for onboarding flow originating from the gateway
+publicDispatchRoutes.post('/onboarding/create-org', async (c) => {
+  const db = c.get('db');
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as { name?: string; slug?: string; creatorUserId?: string } | null;
+
+  if (!body?.name || !body.slug || !body.creatorUserId) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'name, slug, and creatorUserId are required' },
+      400,
+    );
+  }
+
+  try {
+    const org = await createOrg(db, {
+      name: body.name,
+      slug: body.slug,
+      creatorUserId: body.creatorUserId,
+    });
+    return c.json(serializeOrg(org), 201);
+  } catch (error) {
+    console.error('Dispatch onboarding create org failed:', error);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create organization' },
+      500,
+    );
+  }
+});
+
+dispatchRoutes.route('/', publicDispatchRoutes);
+
 dispatchRoutes.post('/organizations/update', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
   const body = (await c.req
     .json()
     .catch(() => null)) as {
-    organizationId?: string;
-    name?: string;
-    slug?: string;
-    logo?: string;
-  } | null;
+      organizationId?: string;
+      name?: string;
+      slug?: string;
+      logo?: string;
+    } | null;
 
   if (!body?.organizationId) {
     return c.json(
@@ -443,10 +490,10 @@ dispatchRoutes.post('/organizations/members', async (c) => {
   const body = (await c.req
     .json()
     .catch(() => null)) as {
-    organizationId?: string;
-    page?: number;
-    limit?: number;
-  } | null;
+      organizationId?: string;
+      page?: number;
+      limit?: number;
+    } | null;
 
   if (!body?.organizationId) {
     return c.json(

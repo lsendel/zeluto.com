@@ -20,12 +20,18 @@ export const CreateOrgView: FC<CreateOrgViewProps> = ({ assetsBaseUrl }) => {
           </p>
         </div>
 
+        {/* Error message */}
+        <div
+          id="create-org-error"
+          class="hidden mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700"
+        ></div>
+
         {/* Form */}
         <form
-          hx-post="/api/v1/identity/organizations"
-          hx-target="#onboarding-content"
-          hx-swap="innerHTML"
+          hx-post="/api/v1/onboarding/create-org"
+          hx-swap="none"
           hx-indicator=".loading"
+          hx-on--after-request="if(!event.detail.successful){document.getElementById('create-org-error').textContent='Failed to create organization. Please try again.';document.getElementById('create-org-error').classList.remove('hidden')}else{window.location.href='/app/onboarding/plan'}"
         >
           <div class="space-y-5">
             <Input
