@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
   planLimits,
@@ -26,6 +26,7 @@ export class QuotaChecker {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.organizationId, organizationId))
+      .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
     if (!subscription) {
@@ -146,6 +147,7 @@ export class QuotaChecker {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.organizationId, organizationId))
+      .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
     if (!subscription) {
