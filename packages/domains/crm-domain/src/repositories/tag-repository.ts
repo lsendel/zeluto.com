@@ -3,6 +3,7 @@ import type { Tag } from '../entities/tag.js';
 
 export interface TagRepository {
   findById(orgId: OrganizationId, id: string): Promise<Tag | null>;
+  findByName(orgId: OrganizationId, name: string): Promise<Tag | null>;
   findByOrganization(
     orgId: OrganizationId,
     pagination: { page: number; limit: number },

@@ -4,6 +4,7 @@ import type {
   SegmentId,
 } from '@mauntic/domain-kernel';
 import type { Segment } from '../entities/segment.js';
+import type { FilterCriteria } from '../services/segment-filter-engine.js';
 
 export interface SegmentRepository {
   findById(orgId: OrganizationId, id: SegmentId): Promise<Segment | null>;
@@ -23,4 +24,8 @@ export interface SegmentRepository {
     segmentId: SegmentId,
     contactIds: ContactId[],
   ): Promise<void>;
+  countMatchingContacts(
+    orgId: OrganizationId,
+    filterCriteria: FilterCriteria,
+  ): Promise<number>;
 }
