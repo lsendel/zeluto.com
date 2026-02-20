@@ -1,10 +1,16 @@
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type { DomainEvent } from '@mauntic/domain-kernel';
 import {
+  intentSignals,
+  leadScores,
+  signalAlerts,
+} from '@mauntic/scoring-domain/drizzle';
+import {
   createDatabase,
   createLoggerFromEnv,
   logQueueMetric,
 } from '@mauntic/worker-lib';
+import { and, eq, lt, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
   type ScoringContext,
@@ -105,7 +111,7 @@ export async function handleScoringQueue(
           break;
         }
         case 'scoring.BatchRecompute': {
-          await runBatchRecompute(db, payload.scheduledFor);
+          await runBatchRecompute(db, env, payload.scheduledFor);
           break;
         }
         case 'scoring.SignalDecay': {
@@ -189,34 +195,82 @@ function extractMetadata(
 
 async function runBatchRecompute(
   db: NeonHttpDatabase,
+  env: ScoringQueueEnv,
   scheduledFor?: string,
 ): Promise<void> {
+  // Paginate through all lead scores globally and re-enqueue individual calculations
+  let offset = 0;
+  const batchSize = 100;
+  let totalEnqueued = 0;
+
+  while (true) {
+    const rows = await db
+      .select({
+        organization_id: leadScores.organization_id,
+        contact_id: leadScores.contact_id,
+      })
+      .from(leadScores)
+      .limit(batchSize)
+      .offset(offset);
+    if (rows.length === 0) break;
+
+    const messages = rows.map((row) => ({
+      body: {
+        type: 'scoring.CalculateScore' as const,
+        data: {
+          organizationId: row.organization_id,
+          contactId: row.contact_id,
+        },
+      },
+    }));
+
+    for (let i = 0; i < messages.length; i += 100) {
+      await env.EVENTS.sendBatch(messages.slice(i, i + 100) as any);
+    }
+
+    totalEnqueued += rows.length;
+    offset += batchSize;
+    if (rows.length < batchSize) break;
+  }
+
   console.info(
-    { scheduledFor, worker: 'scoring-queue' },
-    'Batch scoring placeholder executed (implement aggregation logic)',
+    { scheduledFor, totalEnqueued, worker: 'scoring-queue' },
+    'Batch recompute: enqueued individual score calculations',
   );
-  // TODO: Wire up @mauntic/scoring-domain repositories for actual batch recompute.
-  void db;
 }
 
 async function runSignalDecay(
   db: NeonHttpDatabase,
   scheduledFor?: string,
 ): Promise<void> {
+  // Delete all expired intent signals globally (cross-organization maintenance)
+  const result = await db
+    .delete(intentSignals)
+    .where(lt(intentSignals.expires_at, new Date()));
+  const deleted = result.rowCount ?? 0;
   console.info(
-    { scheduledFor, worker: 'scoring-queue' },
-    'Signal decay placeholder executed (implement decay cleanup)',
+    { scheduledFor, deletedCount: deleted, worker: 'scoring-queue' },
+    'Signal decay: cleaned up expired intent signals',
   );
-  void db;
 }
 
 async function runAlertExpiry(
   db: NeonHttpDatabase,
   scheduledFor?: string,
 ): Promise<void> {
+  // Mark all overdue open alerts as expired globally (cross-organization maintenance)
+  const result = await db
+    .update(signalAlerts)
+    .set({ status: 'expired' })
+    .where(
+      and(
+        eq(signalAlerts.status, 'open'),
+        lt(signalAlerts.deadline, new Date()),
+      ),
+    );
+  const expiredCount = result.rowCount ?? 0;
   console.info(
-    { scheduledFor, worker: 'scoring-queue' },
-    'Alert expiry placeholder executed (implement alert checks)',
+    { scheduledFor, expiredCount, worker: 'scoring-queue' },
+    'Alert expiry: marked overdue alerts as expired',
   );
-  void db;
 }
