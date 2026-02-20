@@ -3,6 +3,10 @@ import {
   getDaysSinceStart,
   getWarmupLimit,
   renderTemplate,
+  TwilioProvider,
+  type TwilioProviderConfig,
+  FcmProvider,
+  type FcmProviderConfig,
 } from '@mauntic/delivery-domain';
 import {
   delivery_events,
@@ -453,8 +457,40 @@ const smsHandler: JobHandler = {
       throw new Error('No active SMS provider configured');
     }
 
-    // TODO: Send via Twilio or other SMS provider
-    logger.info({ jobId: job.id, deliveryId, phoneNumber }, 'SMS sent');
+    // Decrypt provider config
+    let providerSettings: Record<string, unknown>;
+    const rawConfig = providerConfig.config;
+    if (typeof rawConfig === 'string' && rawConfig.includes(':')) {
+      const encryptionKey = process.env.ENCRYPTION_KEY ?? '';
+      const decrypted = await decryptConfig(rawConfig, encryptionKey);
+      providerSettings = JSON.parse(decrypted);
+    } else {
+      providerSettings = rawConfig as Record<string, unknown>;
+    }
+
+    const twilioProvider = new TwilioProvider(providerSettings as unknown as TwilioProviderConfig);
+    const sendResult = await twilioProvider.send({
+      to: phoneNumber,
+      from: (providerSettings.fromNumber as string) ?? '',
+      body,
+    });
+
+    if (!sendResult.success) {
+      logger.error({ deliveryId, error: sendResult.error }, 'SMS delivery failed');
+      if (deliveryJobId && contactId) {
+        await recordDeliveryEvent(db, organizationId, {
+          jobId: deliveryJobId,
+          contactId,
+          channel: 'sms',
+          eventType: 'failed',
+          metadata: { provider: providerConfig.provider_type, error: sendResult.error },
+        });
+        await updateJobCounts(db, organizationId, deliveryJobId, false);
+      }
+      throw new Error(sendResult.error ?? 'SMS delivery failed');
+    }
+
+    logger.info({ jobId: job.id, deliveryId, phoneNumber, externalId: sendResult.externalId }, 'SMS sent');
 
     // Record event
     if (deliveryJobId && contactId) {
@@ -463,6 +499,7 @@ const smsHandler: JobHandler = {
         contactId,
         channel: 'sms',
         eventType: 'sent',
+        providerMessageId: sendResult.externalId,
         metadata: { provider: providerConfig.provider_type },
       });
       await updateJobCounts(db, organizationId, deliveryJobId, true);
@@ -477,10 +514,22 @@ const smsHandler: JobHandler = {
 // Push handler
 // ---------------------------------------------------------------------------
 
-const pushHandler: JobHandler = {
+interface PushJobData {
+  deliveryId: string;
+  deviceToken: string;
+  organizationId: string;
+  contactId?: string;
+  jobId?: string;
+  title?: string;
+  body?: string;
+  data?: Record<string, unknown>;
+  badge?: number;
+}
+
+const pushHandler: JobHandler<PushJobData> = {
   name: 'delivery:send-push',
   concurrency: 10,
-  async process(job: Job) {
+  async process(job: Job<PushJobData>) {
     logger.info({ jobId: job.id }, 'Processing push notification');
     const {
       deliveryId,
@@ -507,8 +556,42 @@ const pushHandler: JobHandler = {
       throw new Error('No active push provider configured');
     }
 
-    // TODO: Send via FCM or other push provider
-    logger.info({ jobId: job.id, deliveryId }, 'Push notification sent');
+    // Decrypt provider config
+    let providerSettings: Record<string, unknown>;
+    const rawConfig = providerConfig.config;
+    if (typeof rawConfig === 'string' && rawConfig.includes(':')) {
+      const encryptionKey = process.env.ENCRYPTION_KEY ?? '';
+      const decrypted = await decryptConfig(rawConfig, encryptionKey);
+      providerSettings = JSON.parse(decrypted);
+    } else {
+      providerSettings = rawConfig as Record<string, unknown>;
+    }
+
+    const fcmProvider = new FcmProvider(providerSettings as unknown as FcmProviderConfig);
+    const sendResult = await fcmProvider.send({
+      deviceToken,
+      title: job.data.title ?? '',
+      body: job.data.body ?? '',
+      data: job.data.data,
+      badge: job.data.badge,
+    });
+
+    if (!sendResult.success) {
+      logger.error({ deliveryId, error: sendResult.error }, 'Push delivery failed');
+      if (deliveryJobId && contactId) {
+        await recordDeliveryEvent(db, organizationId, {
+          jobId: deliveryJobId,
+          contactId,
+          channel: 'push',
+          eventType: 'failed',
+          metadata: { provider: providerConfig.provider_type, error: sendResult.error },
+        });
+        await updateJobCounts(db, organizationId, deliveryJobId, false);
+      }
+      throw new Error(sendResult.error ?? 'Push delivery failed');
+    }
+
+    logger.info({ jobId: job.id, deliveryId, externalId: sendResult.externalId }, 'Push notification sent');
 
     // Record event
     if (deliveryJobId && contactId) {
@@ -517,6 +600,7 @@ const pushHandler: JobHandler = {
         contactId,
         channel: 'push',
         eventType: 'sent',
+        providerMessageId: sendResult.externalId,
         metadata: { provider: providerConfig.provider_type },
       });
       await updateJobCounts(db, organizationId, deliveryJobId, true);

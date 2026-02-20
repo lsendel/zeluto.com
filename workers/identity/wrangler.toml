@@ -21,6 +21,10 @@ script_name = "mauntic-tenant-cache"
 APP_DOMAIN = "zeluto.com"
 BETTER_AUTH_URL = "https://zeluto.com"
 
+[[queues.producers]]
+queue = "mauntic-events"
+binding = "EVENTS"
+
 [[analytics_engine_datasets]]
 binding = "LOGS_DATASET"
 dataset = "mauntic_logs"

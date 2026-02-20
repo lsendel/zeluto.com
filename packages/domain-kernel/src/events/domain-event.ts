@@ -6,7 +6,7 @@ export interface DomainEventMetadata {
   correlationId: string;
   causationId?: string;
   tenantContext: {
-    organizationId: number;
+    organizationId: number | string;
   };
 }
 

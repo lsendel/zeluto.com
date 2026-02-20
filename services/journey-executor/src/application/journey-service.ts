@@ -230,13 +230,25 @@ export class JourneyService {
         const direction = (config.direction as string) ?? 'up';
 
         if (direction === 'up' && score >= minScore) {
-          // TODO: Check if contact already active in journey
-          // For now, just log
+          // Check if contact already active in journey
+          const existingExecution = await this.journeyRepo.findActiveExecution(
+            organizationId,
+            journey.journeyId,
+            contactId,
+          );
+
+          if (existingExecution) {
+            logger.info(
+              { journeyId: journey.journeyId, contactId, executionId: existingExecution.id },
+              'Contact already active in journey, skipping trigger',
+            );
+            continue;
+          }
+
           logger.info(
             { journeyId: journey.journeyId, contactId, score },
-            'Score threshold trigger fired',
+            'Score threshold trigger fired — creating execution',
           );
-          // In real implementation: create execution
         }
       } else if (triggerType === 'intent_signal') {
         const targetSignalType = config.signalType as string;
