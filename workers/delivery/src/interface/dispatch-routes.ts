@@ -36,6 +36,10 @@ import {
   findAllSuppressions,
   isEmailSuppressed,
 } from '../infrastructure/repositories/suppression-repository.js';
+import {
+  type VerifiableDnsRecord,
+  verifyDnsRecords,
+} from '../services/dns-verification.js';
 
 export const deliveryDispatchRoutes = new Hono<Env>();
 
@@ -325,23 +329,18 @@ deliveryDispatchRoutes.post('/sending-domains/verify', async (c) => {
     return c.json(domain);
   }
 
-  const dnsRecords =
-    (domain.dns_records as Array<{
-      type: string;
-      name: string;
-      value: string;
-      verified: boolean;
-    }>) ?? [];
-  const verifiedRecords = dnsRecords.map((r) => ({ ...r, verified: true }));
+  const dnsRecords = (domain.dns_records as VerifiableDnsRecord[] | null) ?? [];
+  const verifiedRecords = await verifyDnsRecords(dnsRecords);
+  const allVerified = verifiedRecords.every((record) => record.verified);
 
   const updated = await updateSendingDomain(
     db,
     tenant.organizationId,
     body.id,
     {
-      status: 'verified',
+      status: allVerified ? 'verified' : 'pending',
       dns_records: verifiedRecords,
-      verified_at: new Date(),
+      ...(allVerified ? { verified_at: new Date() } : {}),
     },
   );
 
@@ -352,7 +351,13 @@ deliveryDispatchRoutes.post('/sending-domains/verify', async (c) => {
     );
   }
 
-  return c.json(updated);
+  return c.json({
+    ...updated,
+    verification: {
+      allVerified,
+      missingRecords: verifiedRecords.filter((record) => !record.verified),
+    },
+  });
 });
 
 deliveryDispatchRoutes.post('/sending-domains/dns-records', async (c) => {

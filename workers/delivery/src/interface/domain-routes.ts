@@ -8,6 +8,10 @@ import {
   findSendingDomainByName,
   updateSendingDomain,
 } from '../infrastructure/repositories/sending-domain-repository.js';
+import {
+  type VerifiableDnsRecord,
+  verifyDnsRecords,
+} from '../services/dns-verification.js';
 
 export const domainRoutes = new Hono<Env>();
 
@@ -116,22 +120,15 @@ domainRoutes.post('/api/v1/delivery/sending-domains/:id/verify', async (c) => {
       return c.json(domain);
     }
 
-    // In a real implementation, we would verify DNS records here.
-    // For now, mark all records as verified and update the domain status.
     const dnsRecords =
-      (domain.dns_records as Array<{
-        type: string;
-        name: string;
-        value: string;
-        verified: boolean;
-      }>) ?? [];
-
-    const verifiedRecords = dnsRecords.map((r) => ({ ...r, verified: true }));
+      (domain.dns_records as VerifiableDnsRecord[] | null) ?? [];
+    const verifiedRecords = await verifyDnsRecords(dnsRecords);
+    const allVerified = verifiedRecords.every((record) => record.verified);
 
     const updated = await updateSendingDomain(db, tenant.organizationId, id, {
-      status: 'verified',
+      status: allVerified ? 'verified' : 'pending',
       dns_records: verifiedRecords,
-      verified_at: new Date(),
+      ...(allVerified ? { verified_at: new Date() } : {}),
     });
 
     if (!updated) {
@@ -141,7 +138,13 @@ domainRoutes.post('/api/v1/delivery/sending-domains/:id/verify', async (c) => {
       );
     }
 
-    return c.json(updated);
+    return c.json({
+      ...updated,
+      verification: {
+        allVerified,
+        missingRecords: verifiedRecords.filter((record) => !record.verified),
+      },
+    });
   } catch (error) {
     console.error('Verify sending domain error:', error);
     return c.json(
