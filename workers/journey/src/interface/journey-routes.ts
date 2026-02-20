@@ -1,22 +1,27 @@
+import { asJourneyId } from '@mauntic/domain-kernel';
+import type { JourneyStatus } from '@mauntic/journey-domain';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import {
-  createJourney,
-  deleteJourney,
-  findAllJourneys,
-  findJourneyById,
-  updateJourney,
-} from '../infrastructure/repositories/journey-repository.js';
+import { JourneyService } from '../application/journey-service.js';
+import { DrizzleJourneyRepository } from '../infrastructure/repositories/drizzle-journey-repository.js';
+import { DrizzleJourneyTriggerRepository } from '../infrastructure/repositories/drizzle-trigger-repository.js';
+import { DrizzleJourneyVersionRepository } from '../infrastructure/repositories/drizzle-version-repository.js';
 import {
   findConnectionsByStepIds,
   findStepsByVersionId,
 } from '../infrastructure/repositories/step-repository.js';
-import { findTriggersByJourneyId } from '../infrastructure/repositories/trigger-repository.js';
-import {
-  createVersion,
-  findLatestVersion,
-  getNextVersionNumber,
-} from '../infrastructure/repositories/version-repository.js';
+
+function getService(db: NeonHttpDatabase) {
+  const journeyRepo = new DrizzleJourneyRepository(db);
+  const versionRepo = new DrizzleJourneyVersionRepository(db);
+  const triggerRepo = new DrizzleJourneyTriggerRepository(db);
+  return {
+    service: new JourneyService(journeyRepo, versionRepo, triggerRepo),
+    versionRepo,
+    triggerRepo,
+  };
+}
 
 export const journeyRoutes = new Hono<Env>();
 
@@ -30,15 +35,16 @@ journeyRoutes.get('/api/v1/journey/journeys', async (c) => {
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
 
   try {
-    const result = await findAllJourneys(db, tenant.organizationId, {
+    const { service } = getService(db);
+    const result = await service.list(tenant.organizationId, {
       page: pageNum,
       limit: limitNum,
       search: search || undefined,
-      status: status || undefined,
+      status: (status as JourneyStatus) || undefined,
     });
 
     return c.json({
-      data: result.data,
+      data: result.data.map((j) => j.toProps()),
       total: result.total,
       page: pageNum,
       limit: limitNum,
@@ -71,14 +77,22 @@ journeyRoutes.post('/api/v1/journey/journeys', async (c) => {
       );
     }
 
-    const journey = await createJourney(db, tenant.organizationId, {
+    const { service } = getService(db);
+    const result = await service.create({
+      organizationId: tenant.organizationId,
       name: body.name,
       description: body.description ?? null,
-      status: 'draft',
-      created_by: tenant.userId,
+      createdBy: tenant.userId,
     });
 
-    return c.json(journey, 201);
+    if (result.isFailure) {
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: result.getError() },
+        400,
+      );
+    }
+
+    return c.json(result.getValue().toProps(), 201);
   } catch (error) {
     console.error('Create journey error:', error);
     return c.json(
@@ -92,24 +106,19 @@ journeyRoutes.post('/api/v1/journey/journeys', async (c) => {
 journeyRoutes.get('/api/v1/journey/journeys/:id', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const id = c.req.param('id');
+  const id = asJourneyId(c.req.param('id'));
 
   try {
-    const journey = await findJourneyById(db, tenant.organizationId, id);
+    const { service, versionRepo, triggerRepo } = getService(db);
+    const journey = await service.getById(tenant.organizationId, id);
     if (!journey) {
       return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
     }
 
-    const latestVersion = await findLatestVersion(
-      db,
-      tenant.organizationId,
-      id,
-    );
-    const triggers = await findTriggersByJourneyId(
-      db,
-      tenant.organizationId,
-      id,
-    );
+    const [latestVersion, triggers] = await Promise.all([
+      versionRepo.findLatestByJourney(tenant.organizationId, id),
+      triggerRepo.findByJourney(tenant.organizationId, id),
+    ]);
 
     let steps: unknown[] = [];
     let connections: unknown[] = [];
@@ -117,18 +126,18 @@ journeyRoutes.get('/api/v1/journey/journeys/:id', async (c) => {
       steps = await findStepsByVersionId(
         db,
         tenant.organizationId,
-        latestVersion.id,
+        latestVersion.versionId,
       );
-      const stepIds = steps.map((s: any) => s.id);
+      const stepIds = (steps as any[]).map((s) => s.id);
       connections = await findConnectionsByStepIds(db, stepIds);
     }
 
     return c.json({
-      ...journey,
+      ...journey.toProps(),
       latestVersion: latestVersion
-        ? { ...latestVersion, steps, connections }
+        ? { ...latestVersion.toProps(), steps, connections }
         : null,
-      triggers,
+      triggers: triggers.map((t) => t.toProps()),
     });
   } catch (error) {
     console.error('Get journey error:', error);
@@ -143,7 +152,7 @@ journeyRoutes.get('/api/v1/journey/journeys/:id', async (c) => {
 journeyRoutes.patch('/api/v1/journey/journeys/:id', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const id = c.req.param('id');
+  const id = asJourneyId(c.req.param('id'));
 
   try {
     const body = await c.req.json<{
@@ -151,22 +160,17 @@ journeyRoutes.patch('/api/v1/journey/journeys/:id', async (c) => {
       description?: string | null;
     }>();
 
-    const updateData: Record<string, unknown> = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined)
-      updateData.description = body.description;
-
-    const journey = await updateJourney(
-      db,
-      tenant.organizationId,
-      id,
-      updateData,
-    );
-    if (!journey) {
-      return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
+    const { service } = getService(db);
+    const result = await service.update(tenant.organizationId, id, body);
+    if (result.isFailure) {
+      const error = result.getError();
+      if (error === 'Journey not found') {
+        return c.json({ code: 'NOT_FOUND', message: error }, 404);
+      }
+      return c.json({ code: 'VALIDATION_ERROR', message: error }, 400);
     }
 
-    return c.json(journey);
+    return c.json(result.getValue().toProps());
   } catch (error) {
     console.error('Update journey error:', error);
     return c.json(
@@ -180,12 +184,13 @@ journeyRoutes.patch('/api/v1/journey/journeys/:id', async (c) => {
 journeyRoutes.delete('/api/v1/journey/journeys/:id', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const id = c.req.param('id');
+  const id = asJourneyId(c.req.param('id'));
 
   try {
-    const deleted = await deleteJourney(db, tenant.organizationId, id);
-    if (!deleted) {
-      return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
+    const { service } = getService(db);
+    const result = await service.remove(tenant.organizationId, id);
+    if (result.isFailure) {
+      return c.json({ code: 'NOT_FOUND', message: result.getError() }, 404);
     }
     return c.json({ success: true });
   } catch (error) {
@@ -201,64 +206,43 @@ journeyRoutes.delete('/api/v1/journey/journeys/:id', async (c) => {
 journeyRoutes.post('/api/v1/journey/journeys/:id/publish', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const id = c.req.param('id');
+  const id = asJourneyId(c.req.param('id'));
 
   try {
-    const journey = await findJourneyById(db, tenant.organizationId, id);
-    if (!journey) {
-      return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
-    }
+    const { service, versionRepo } = getService(db);
 
-    if (journey.status !== 'draft' && journey.status !== 'paused') {
-      return c.json(
-        {
-          code: 'VALIDATION_ERROR',
-          message: 'Only draft or paused journeys can be published',
-        },
-        400,
-      );
-    }
-
-    // Create a new version snapshot
-    const latestVersion = await findLatestVersion(
-      db,
-      tenant.organizationId,
-      id,
-    );
-    const nextVersionNum = await getNextVersionNumber(
-      db,
+    // Build the definition from the latest version's steps
+    const latestVersion = await versionRepo.findLatestByJourney(
       tenant.organizationId,
       id,
     );
 
-    // Build the definition from existing steps or use the latest version's definition
     let definition: Record<string, unknown> = {};
     if (latestVersion) {
       const steps = await findStepsByVersionId(
         db,
         tenant.organizationId,
-        latestVersion.id,
+        latestVersion.versionId,
       );
       const stepIds = steps.map((s) => s.id);
       const connections = await findConnectionsByStepIds(db, stepIds);
       definition = { steps, connections };
     }
 
-    const newVersion = await createVersion(db, tenant.organizationId, {
-      journey_id: id,
-      version_number: nextVersionNum,
-      definition,
-      published_at: new Date(),
-    });
+    const result = await service.publish(tenant.organizationId, id, definition);
 
-    // Activate the journey
-    const updated = await updateJourney(db, tenant.organizationId, id, {
-      status: 'active',
-    });
+    if (result.isFailure) {
+      const error = result.getError();
+      if (error === 'Journey not found') {
+        return c.json({ code: 'NOT_FOUND', message: error }, 404);
+      }
+      return c.json({ code: 'VALIDATION_ERROR', message: error }, 400);
+    }
 
+    const { journey, version } = result.getValue();
     return c.json({
-      ...updated,
-      publishedVersion: newVersion,
+      ...journey.toProps(),
+      publishedVersion: version.toProps(),
     });
   } catch (error) {
     console.error('Publish journey error:', error);
@@ -273,29 +257,20 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/publish', async (c) => {
 journeyRoutes.post('/api/v1/journey/journeys/:id/pause', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const id = c.req.param('id');
+  const id = asJourneyId(c.req.param('id'));
 
   try {
-    const journey = await findJourneyById(db, tenant.organizationId, id);
-    if (!journey) {
-      return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
+    const { service } = getService(db);
+    const result = await service.pause(tenant.organizationId, id);
+    if (result.isFailure) {
+      const error = result.getError();
+      if (error === 'Journey not found') {
+        return c.json({ code: 'NOT_FOUND', message: error }, 404);
+      }
+      return c.json({ code: 'VALIDATION_ERROR', message: error }, 400);
     }
 
-    if (journey.status !== 'active') {
-      return c.json(
-        {
-          code: 'VALIDATION_ERROR',
-          message: 'Only active journeys can be paused',
-        },
-        400,
-      );
-    }
-
-    const updated = await updateJourney(db, tenant.organizationId, id, {
-      status: 'paused',
-    });
-
-    return c.json(updated);
+    return c.json(result.getValue().toProps());
   } catch (error) {
     console.error('Pause journey error:', error);
     return c.json(
@@ -309,29 +284,20 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/pause', async (c) => {
 journeyRoutes.post('/api/v1/journey/journeys/:id/resume', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const id = c.req.param('id');
+  const id = asJourneyId(c.req.param('id'));
 
   try {
-    const journey = await findJourneyById(db, tenant.organizationId, id);
-    if (!journey) {
-      return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
+    const { service } = getService(db);
+    const result = await service.resume(tenant.organizationId, id);
+    if (result.isFailure) {
+      const error = result.getError();
+      if (error === 'Journey not found') {
+        return c.json({ code: 'NOT_FOUND', message: error }, 404);
+      }
+      return c.json({ code: 'VALIDATION_ERROR', message: error }, 400);
     }
 
-    if (journey.status !== 'paused') {
-      return c.json(
-        {
-          code: 'VALIDATION_ERROR',
-          message: 'Only paused journeys can be resumed',
-        },
-        400,
-      );
-    }
-
-    const updated = await updateJourney(db, tenant.organizationId, id, {
-      status: 'active',
-    });
-
-    return c.json(updated);
+    return c.json(result.getValue().toProps());
   } catch (error) {
     console.error('Resume journey error:', error);
     return c.json(
