@@ -198,6 +198,18 @@ This Fly.io service has been replaced by the Cloudflare analytics queue worker; 
 
 ## Scripts
 
+## Production E2E Test User
+
+Use the following credentials for Playwright runs that exercise the production dashboards. Set them as environment variables before invoking `pnpm playwright test`:
+
+| Variable | Value | Notes |
+| --- | --- | --- |
+| `PRODUCTION_E2E_BASE_URL` | `https://zeluto.com` | Production gateway URL |
+| `PRODUCTION_E2E_ADMIN_EMAIL` | `qa.e2e.bot@zeluto.com` | Dedicated QA account created on 2026-02-20 |
+| `PRODUCTION_E2E_ADMIN_PASSWORD` | `QAE2E!2026` | Rotated whenever the QA bot password changes |
+
+The user `QA E2E Bot` owns the organization **QA E2E Org** on the free plan and is safe to reuse for regression smoke tests.
+
 ### Migration Scripts (`scripts/migration/`)
 
 | Variable | Description |

@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-import { organizations, organizationMembers } from '@mauntic/identity-domain';
+import { eq, sql } from 'drizzle-orm';
+import { organizations } from '@mauntic/identity-domain';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const CreateOrgInput = z.object({
@@ -54,11 +54,9 @@ async function ensureUniqueSlug(db: DrizzleDb, baseSlug: string): Promise<string
 export async function createOrg(db: DrizzleDb, input: CreateOrgInput) {
   const parsed = CreateOrgInput.parse(input);
 
-  // Generate or validate slug
   const baseSlug = parsed.slug ? generateSlug(parsed.slug) : generateSlug(parsed.name);
   const slug = await ensureUniqueSlug(db, baseSlug);
 
-  // Create the organization
   const [org] = await db
     .insert(organizations)
     .values({
@@ -67,12 +65,14 @@ export async function createOrg(db: DrizzleDb, input: CreateOrgInput) {
     })
     .returning();
 
-  // Add the creator as owner
-  await db.insert(organizationMembers).values({
-    organizationId: org.id,
-    userId: parsed.creatorUserId,
-    role: 'owner',
-  });
+  // Insert membership while setting the RLS context within the same statement
+  await db.execute(sql`
+    WITH __ctx AS (
+      SELECT set_config('app.organization_id', ${org.id}::text, true)
+    )
+    INSERT INTO "identity"."organization_members" (organization_id, user_id, role)
+    VALUES (${org.id}, ${parsed.creatorUserId}, 'owner')
+  `);
 
   return org;
 }
