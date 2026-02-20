@@ -95,20 +95,38 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
   const stripe = c.get('stripe');
 
   const body = await c.req.json<{
-    planId: string;
+    planId?: string;
+    planName?: string;
     billingPeriod: 'monthly' | 'yearly';
     successUrl?: string;
     cancelUrl?: string;
   }>();
 
-  if (!body.planId || !body.billingPeriod) {
+  if (!body.billingPeriod || (!body.planId && !body.planName)) {
     return c.json(
       {
         code: 'VALIDATION_ERROR',
-        message: 'planId and billingPeriod are required',
+        message: 'billingPeriod and either planId or planName are required',
       },
       400,
     );
+  }
+
+  // Resolve plan name to ID if needed
+  let planId = body.planId;
+  if (!planId && body.planName) {
+    const [plan] = await db
+      .select({ id: plans.id })
+      .from(plans)
+      .where(eq(plans.name, body.planName))
+      .limit(1);
+    if (!plan) {
+      return c.json(
+        { code: 'NOT_FOUND', message: `Plan "${body.planName}" not found` },
+        404,
+      );
+    }
+    planId = plan.id;
   }
 
   const interval = body.billingPeriod === 'yearly' ? 'year' : 'month';
@@ -122,7 +140,7 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
   try {
     const session = await manager.createCheckoutSession(
       tenant.organizationId,
-      body.planId,
+      planId!,
       interval,
       successUrl,
       cancelUrl,
