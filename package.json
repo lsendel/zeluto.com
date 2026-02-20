@@ -11,7 +11,8 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "static:build": "pnpm --filter @mauntic/ui-kit run build:css && mkdir -p dist/static && cp packages/ui-kit/dist/ui-kit.css dist/static/styles.css",
-    "static:upload": "pnpm run static:build && node ./scripts/upload-static-assets.mjs"
+    "static:upload": "pnpm run static:build && node ./scripts/upload-static-assets.mjs",
+    "test:e2e": "playwright test --config tests/e2e/playwright.config.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,9 +21,10 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@neondatabase/serverless": "catalog:",
+    "@playwright/test": "^1.58.2",
     "@types/node": "catalog:",
-    "wrangler": "^4.67.0",
     "turbo": "^2.8.10",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "wrangler": "^4.67.0"
   }
 }
