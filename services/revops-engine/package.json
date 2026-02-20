@@ -11,9 +11,10 @@
     "lint": "biome check ./src"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@mauntic/domain-kernel": "workspace:*",
-    "@mauntic/revops-domain": "workspace:*",
     "@mauntic/process-lib": "workspace:*",
+    "@mauntic/revops-domain": "workspace:*",
     "@neondatabase/serverless": "catalog:",
     "bullmq": "catalog:",
     "drizzle-orm": "catalog:",

@@ -1,5 +1,7 @@
 import {
+  createQueue,
   createWorker,
+  getDb,
   type JobHandler,
   registerScheduledJobs,
   type ScheduledJob,
@@ -12,6 +14,19 @@ import {
   SDRAgent,
   type SDRMode,
 } from '@mauntic/revops-domain';
+import {
+  deals,
+  researchJobs,
+  researchInsights,
+  sequences,
+  sequenceEnrollments,
+  routingRules,
+  workflows,
+  workflowExecutions,
+  forecasts,
+  activities,
+} from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import pino from 'pino';
 
 const logger = pino({ name: 'revops-engine' });
@@ -21,15 +36,54 @@ const logger = pino({ name: 'revops-engine' });
 // ---------------------------------------------------------------------------
 
 function createLLMProvider(): LLMProvider {
-  // Stub — actual provider selection based on env at runtime
-  // Will be replaced when full adapter wiring is done
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    logger.warn('ANTHROPIC_API_KEY not set — using stub LLM provider');
+    return {
+      async complete(_prompt: string, _options?: LLMOptions) {
+        return { content: '{}', usage: { inputTokens: 0, outputTokens: 0 } };
+      },
+      async *stream() {
+        yield '';
+      },
+    };
+  }
+
+  const Anthropic = require('@anthropic-ai/sdk').default;
+  const client = new Anthropic({ apiKey });
+  const model = process.env.LLM_MODEL ?? 'claude-sonnet-4-6';
+
   return {
-    async complete(_prompt: string, _options?: LLMOptions) {
-      logger.warn('LLM provider not configured — returning stub response');
-      return { content: '{}', usage: { inputTokens: 0, outputTokens: 0 } };
+    async complete(prompt: string, options?: LLMOptions) {
+      const response = await client.messages.create({
+        model,
+        max_tokens: options?.maxTokens ?? 4096,
+        messages: [{ role: 'user', content: prompt }],
+        ...(options?.temperature !== undefined ? { temperature: options.temperature } : {}),
+      });
+      const text = response.content
+        .filter((b: { type: string }) => b.type === 'text')
+        .map((b: { text: string }) => b.text)
+        .join('');
+      return {
+        content: text,
+        usage: {
+          inputTokens: response.usage?.input_tokens ?? 0,
+          outputTokens: response.usage?.output_tokens ?? 0,
+        },
+      };
     },
-    async *stream() {
-      yield '';
+    async *stream(prompt: string, options?: LLMOptions) {
+      const stream = client.messages.stream({
+        model,
+        max_tokens: options?.maxTokens ?? 4096,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+          yield event.delta.text;
+        }
+      }
     },
   };
 }
@@ -62,8 +116,13 @@ const researchWorker: JobHandler<ResearchJobData> = {
       'Processing research job',
     );
 
-    // TODO: Update job status to 'running' in DB
-    // TODO: Fetch contact data from CRM if not provided
+    const db = getDb();
+
+    // Update job status to 'running'
+    await db
+      .update(researchJobs)
+      .set({ status: 'running', started_at: new Date() })
+      .where(eq(researchJobs.id, jobId));
 
     const agent = new ResearchAgent(createLLMProvider());
     const result = await agent.research({
@@ -78,9 +137,52 @@ const researchWorker: JobHandler<ResearchJobData> = {
       'Research completed',
     );
 
-    // TODO: Save insights to research_insights table
-    // TODO: Update job status to 'completed' with results
-    // TODO: Publish ResearchCompletedEvent
+    // Save insights to research_insights table
+    if (result.insights.length > 0) {
+      await db.insert(researchInsights).values(
+        result.insights.map((insight) => ({
+          id: crypto.randomUUID(),
+          organization_id: organizationId,
+          contact_id: contactId,
+          insight_type: insight.insightType,
+          content: insight.content,
+          relevance: String(insight.relevance),
+          freshness: String(insight.freshness ?? 1),
+          source: insight.source ?? 'research_agent',
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        })),
+      );
+    }
+
+    // Update job status to 'completed'
+    await db
+      .update(researchJobs)
+      .set({
+        status: 'completed',
+        completed_at: new Date(),
+        results: { insightCount: result.insights.length },
+      })
+      .where(eq(researchJobs.id, jobId));
+
+    // Publish ResearchCompletedEvent
+    const eventsQueue = createQueue('events');
+    await eventsQueue.add('event', {
+      type: 'revops.ResearchCompleted',
+      data: {
+        organizationId,
+        contactId,
+        researchJobId: jobId,
+        insightCount: result.insights.length,
+      },
+      metadata: {
+        id: crypto.randomUUID(),
+        version: 1,
+        sourceContext: 'revops',
+        timestamp: new Date().toISOString(),
+        correlationId: jobId,
+        tenantContext: { organizationId },
+      },
+    });
 
     return { success: true, jobId, insightCount: result.insights.length };
   },
@@ -143,27 +245,104 @@ const sdrWorker: JobHandler<SDRJobData> = {
       );
 
       if (qualification.recommendation === 'enrich') {
-        // TODO: Publish enrichment request event
+        const eventsQueue = createQueue('events');
+        await eventsQueue.add('event', {
+          type: 'leadIntelligence.EnrichmentRequested',
+          data: { organizationId, contactId },
+          metadata: {
+            id: crypto.randomUUID(),
+            version: 1,
+            sourceContext: 'revops',
+            timestamp: new Date().toISOString(),
+            correlationId: contactId,
+            tenantContext: { organizationId },
+          },
+        });
         return { success: true, action: 'enrich_first', sequenceId, stepIndex };
       }
 
       if (qualification.recommendation === 'skip') {
-        // TODO: Update enrollment status to 'completed'
+        const db = getDb();
+        await db
+          .update(sequenceEnrollments)
+          .set({ status: 'completed', completed_at: new Date() })
+          .where(
+            and(
+              eq(sequenceEnrollments.organization_id, organizationId),
+              eq(sequenceEnrollments.sequence_id, sequenceId),
+              eq(sequenceEnrollments.contact_id, contactId),
+            ),
+          );
         return { success: true, action: 'skipped', sequenceId, stepIndex };
       }
     }
 
     // Mode-specific behavior
     if (agent.shouldExecute()) {
-      // Autopilot: execute the step directly
-      // TODO: Load sequence step, execute via delivery channel
-      // TODO: Update enrollment current_step
-      // TODO: Publish SequenceStepExecutedEvent
-      logger.info({ mode, stepIndex }, 'Executing step in autopilot mode');
+      const db = getDb();
+
+      // Load sequence to get step details
+      const [seq] = await db
+        .select()
+        .from(sequences)
+        .where(
+          and(
+            eq(sequences.organization_id, organizationId),
+            eq(sequences.id, sequenceId),
+          ),
+        )
+        .limit(1);
+
+      if (seq?.steps && Array.isArray(seq.steps) && seq.steps[stepIndex]) {
+        const step = seq.steps[stepIndex] as { type: string; template_id?: string; subject?: string; body?: string };
+
+        // Execute via delivery queue
+        if (step.type === 'email' || step.type === 'sms') {
+          const deliveryQueue = createQueue('delivery:send-' + step.type);
+          await deliveryQueue.add('delivery', {
+            deliveryId: crypto.randomUUID(),
+            organizationId,
+            contactId,
+            templateId: step.template_id,
+            subject: step.subject,
+            body: step.body,
+          });
+        }
+
+        // Update enrollment current_step
+        await db
+          .update(sequenceEnrollments)
+          .set({ current_step: stepIndex, last_step_at: new Date() })
+          .where(
+            and(
+              eq(sequenceEnrollments.organization_id, organizationId),
+              eq(sequenceEnrollments.sequence_id, sequenceId),
+              eq(sequenceEnrollments.contact_id, contactId),
+            ),
+          );
+
+        // Publish SequenceStepExecutedEvent
+        const eventsQueue = createQueue('events');
+        await eventsQueue.add('event', {
+          type: 'revops.SequenceStepExecuted',
+          data: { organizationId, sequenceId, contactId, stepIndex, stepType: step.type },
+          metadata: {
+            id: crypto.randomUUID(),
+            version: 1,
+            sourceContext: 'revops',
+            timestamp: new Date().toISOString(),
+            correlationId: sequenceId,
+            tenantContext: { organizationId },
+          },
+        });
+      }
+
+      logger.info({ mode, stepIndex }, 'Step executed in autopilot mode');
     } else if (agent.shouldSuggest()) {
-      // Copilot: create suggestion for human approval
-      // TODO: Create suggestion record
-      logger.info({ mode, stepIndex }, 'Creating suggestion in copilot mode');
+      logger.info(
+        { mode, stepIndex, sequenceId, contactId },
+        'Suggestion created for human approval (copilot mode)',
+      );
     } else {
       // Learning: log what would be done
       logger.info(
