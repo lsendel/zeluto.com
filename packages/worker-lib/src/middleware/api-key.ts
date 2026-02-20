@@ -1,4 +1,5 @@
 import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+import { asOrganizationId, asUserId } from '@mauntic/domain-kernel';
 import type { MiddlewareHandler } from 'hono';
 
 export interface ApiKeyData {
@@ -97,8 +98,8 @@ export function apiKeyMiddleware(
 
     // Set tenant context from API key data
     const tenantContext: TenantContext = {
-      organizationId: keyData.organizationId,
-      userId: keyData.userId,
+      organizationId: asOrganizationId(keyData.organizationId),
+      userId: asUserId(keyData.userId),
       userRole: keyData.userRole,
       plan: keyData.plan,
     };

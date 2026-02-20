@@ -1,4 +1,4 @@
-import type { TenantContext } from '@mauntic/domain-kernel';
+import { type TenantContext, asOrganizationId, asUserId } from '@mauntic/domain-kernel';
 import {
   createDatabase,
   errorHandler,
@@ -52,11 +52,11 @@ export function createApp() {
   app.use('/api/v1/delivery/tracking/*', async (c, next) => {
     // Set a dummy tenant for tracking routes since they resolve org from stored events.
     c.set('tenant', {
-      organizationId: '',
-      userId: '',
+      organizationId: asOrganizationId(''),
+      userId: asUserId(''),
       userRole: 'admin',
       plan: 'pro',
-    } as TenantContext);
+    } satisfies TenantContext);
     await next();
   });
 
