@@ -1,9 +1,10 @@
+import type { OrganizationId, ContactId } from '@mauntic/domain-kernel';
 import type { LeadScore } from '../entities/lead-score.js';
 
 export interface LeadScoreRepository {
-  findByContact(orgId: string, contactId: string): Promise<LeadScore | null>;
+  findByContact(orgId: OrganizationId, contactId: ContactId): Promise<LeadScore | null>;
   findByOrganization(
-    orgId: string,
+    orgId: OrganizationId,
     options?: {
       minScore?: number;
       grade?: string;
@@ -11,7 +12,7 @@ export interface LeadScoreRepository {
       offset?: number;
     },
   ): Promise<LeadScore[]>;
-  findLeaderboard(orgId: string, limit: number): Promise<LeadScore[]>;
+  findLeaderboard(orgId: OrganizationId, limit: number): Promise<LeadScore[]>;
   save(score: LeadScore): Promise<void>;
-  delete(orgId: string, contactId: string): Promise<void>;
+  delete(orgId: OrganizationId, contactId: ContactId): Promise<void>;
 }

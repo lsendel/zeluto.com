@@ -1,5 +1,6 @@
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type { DomainEvent } from '@mauntic/domain-kernel';
+import { asOrganizationId, asContactId } from '@mauntic/domain-kernel';
 import {
   createDatabase,
   createLoggerFromEnv,
@@ -95,8 +96,8 @@ export async function handleScoringQueue(
         case 'scoring.CalculateScore': {
           const { organizationId, contactId, context } = payload.data;
           const result = await service.calculateScore(
-            String(organizationId),
-            String(contactId),
+            asOrganizationId(String(organizationId)),
+            asContactId(String(contactId)),
             context ?? {},
           );
           if (result.isFailure) {

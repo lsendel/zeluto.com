@@ -1,12 +1,13 @@
+import type { OrganizationId, ContactId, SignalAlertId } from '@mauntic/domain-kernel';
 import type { SignalAlert } from '../entities/signal-alert.js';
 
 export interface SignalAlertRepository {
-  findById(orgId: string, id: string): Promise<SignalAlert | null>;
+  findById(orgId: OrganizationId, id: SignalAlertId): Promise<SignalAlert | null>;
   findByOrganization(
-    orgId: string,
+    orgId: OrganizationId,
     options?: { status?: string; priority?: string; limit?: number },
   ): Promise<SignalAlert[]>;
-  findByContact(orgId: string, contactId: string): Promise<SignalAlert[]>;
-  findOverdue(orgId: string): Promise<SignalAlert[]>;
+  findByContact(orgId: OrganizationId, contactId: ContactId): Promise<SignalAlert[]>;
+  findOverdue(orgId: OrganizationId): Promise<SignalAlert[]>;
   save(alert: SignalAlert): Promise<void>;
 }

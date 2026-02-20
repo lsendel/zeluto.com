@@ -1,13 +1,14 @@
+import type { OrganizationId, ContactId, IntentSignalId } from '@mauntic/domain-kernel';
 import type { IntentSignal } from '../entities/intent-signal.js';
 
 export interface IntentSignalRepository {
-  findById(orgId: string, id: string): Promise<IntentSignal | null>;
-  findByContact(orgId: string, contactId: string): Promise<IntentSignal[]>;
+  findById(orgId: OrganizationId, id: IntentSignalId): Promise<IntentSignal | null>;
+  findByContact(orgId: OrganizationId, contactId: ContactId): Promise<IntentSignal[]>;
   findActiveByContact(
-    orgId: string,
-    contactId: string,
+    orgId: OrganizationId,
+    contactId: ContactId,
   ): Promise<IntentSignal[]>;
-  findByType(orgId: string, signalType: string): Promise<IntentSignal[]>;
+  findByType(orgId: OrganizationId, signalType: string): Promise<IntentSignal[]>;
   save(signal: IntentSignal): Promise<void>;
-  deleteExpired(orgId: string): Promise<number>;
+  deleteExpired(orgId: OrganizationId): Promise<number>;
 }

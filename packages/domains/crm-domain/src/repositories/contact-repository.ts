@@ -1,19 +1,20 @@
+import type { ContactId, OrganizationId, SegmentId } from '@mauntic/domain-kernel';
 import type { Contact } from '../entities/contact.js';
 
 export interface ContactRepository {
-  findById(orgId: string, id: string): Promise<Contact | null>;
-  findByEmail(orgId: string, email: string): Promise<Contact | null>;
+  findById(orgId: OrganizationId, id: ContactId): Promise<Contact | null>;
+  findByEmail(orgId: OrganizationId, email: string): Promise<Contact | null>;
   findByOrganization(
-    orgId: string,
+    orgId: OrganizationId,
     pagination: { page: number; limit: number; search?: string },
   ): Promise<{ data: Contact[]; total: number }>;
   findBySegment(
-    orgId: string,
-    segmentId: string,
+    orgId: OrganizationId,
+    segmentId: SegmentId,
     pagination: { offset: number; limit: number },
   ): Promise<{ data: Contact[]; total: number; nextOffset: number | null }>;
   save(contact: Contact): Promise<void>;
   saveMany(contacts: Contact[]): Promise<void>;
-  delete(orgId: string, id: string): Promise<void>;
-  countByOrganization(orgId: string): Promise<number>;
+  delete(orgId: OrganizationId, id: ContactId): Promise<void>;
+  countByOrganization(orgId: OrganizationId): Promise<number>;
 }

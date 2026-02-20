@@ -1,3 +1,5 @@
+import type { TenantContext } from '@mauntic/domain-kernel';
+import { asContactId } from '@mauntic/domain-kernel';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { ContactService } from '../application/contact-service.js';
@@ -6,8 +8,8 @@ import { DrizzleContactRepository } from '../infrastructure/repositories/drizzle
 
 export const contactRoutes = new Hono();
 
-function getTenant(c: any) {
-  return c.get('tenant') as { organizationId: string; userId: string };
+function getTenant(c: any): TenantContext {
+  return c.get('tenant') as TenantContext;
 }
 
 function getDb(c: any): NeonHttpDatabase {
@@ -75,7 +77,7 @@ contactRoutes.get('/api/v1/crm/contacts/:id', async (c) => {
   const id = c.req.param('id');
 
   const repo = new DrizzleContactRepository(db);
-  const contact = await repo.findById(tenant.organizationId, id);
+  const contact = await repo.findById(tenant.organizationId, asContactId(id));
 
   if (!contact) {
     return c.json({ code: 'NOT_FOUND', message: 'Contact not found' }, 404);
@@ -92,7 +94,7 @@ contactRoutes.patch('/api/v1/crm/contacts/:id', async (c) => {
 
   const service = getContactService(c);
 
-  const result = await service.update(tenant.organizationId, id, {
+  const result = await service.update(tenant.organizationId, asContactId(id), {
     email: body.email,
     firstName: body.firstName,
     lastName: body.lastName,
@@ -118,7 +120,7 @@ contactRoutes.delete('/api/v1/crm/contacts/:id', async (c) => {
 
   const service = getContactService(c);
 
-  const result = await service.delete(tenant.organizationId, id, tenant.userId);
+  const result = await service.delete(tenant.organizationId, asContactId(id), tenant.userId);
   if (result.isFailure) {
     return c.json({ code: 'NOT_FOUND', message: result.getError() }, 404);
   }

@@ -1,4 +1,5 @@
 import { Contact, type ContactRepository } from '@mauntic/crm-domain'; // Using contract interface
+import { asContactId, asOrganizationId, asUserId } from '@mauntic/domain-kernel';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContactService } from '../application/contact-service.js';
 import type { DomainEventPublisher } from '../application/domain-event-publisher.js';
@@ -33,7 +34,7 @@ describe('ContactService', () => {
   describe('create', () => {
     it('should create a contact successfully', async () => {
       const input = {
-        organizationId: crypto.randomUUID(),
+        organizationId: asOrganizationId(crypto.randomUUID()),
         email: 'test@example.com',
         firstName: 'John',
         lastName: 'Doe',
@@ -55,7 +56,7 @@ describe('ContactService', () => {
 
     it('should fail if email already exists', async () => {
       const input = {
-        organizationId: crypto.randomUUID(),
+        organizationId: asOrganizationId(crypto.randomUUID()),
         email: 'duplicate@example.com',
       };
 
@@ -73,7 +74,7 @@ describe('ContactService', () => {
 
     it('should handle validation errors', async () => {
       const input = {
-        organizationId: crypto.randomUUID(),
+        organizationId: asOrganizationId(crypto.randomUUID()),
         email: 'invalid-email', // Invalid format
       };
 
@@ -93,8 +94,8 @@ describe('ContactService', () => {
 
   describe('update', () => {
     it('should update a contact successfully', async () => {
-      const orgId = crypto.randomUUID();
-      const contactId = crypto.randomUUID();
+      const orgId = asOrganizationId(crypto.randomUUID());
+      const contactId = asContactId(crypto.randomUUID());
 
       // Mock existing contact
       const existingContact = Contact.create({
@@ -122,7 +123,7 @@ describe('ContactService', () => {
     it('should fail if contact not found', async () => {
       vi.mocked(mockRepo.findById).mockResolvedValue(null);
 
-      const result = await service.update('org-id', 'missing-id', {
+      const result = await service.update(asOrganizationId('org-id'), asContactId('missing-id'), {
         firstName: 'Jane',
       });
 
@@ -133,8 +134,8 @@ describe('ContactService', () => {
 
   describe('delete', () => {
     it('should delete a contact', async () => {
-      const orgId = crypto.randomUUID();
-      const id = crypto.randomUUID();
+      const orgId = asOrganizationId(crypto.randomUUID());
+      const id = asContactId(crypto.randomUUID());
       const existingContact = Contact.create({
         organizationId: orgId,
         email: 'del@example.com',
@@ -142,7 +143,7 @@ describe('ContactService', () => {
 
       vi.mocked(mockRepo.findById).mockResolvedValue(existingContact);
 
-      const result = await service.delete(orgId, id, 'user-123');
+      const result = await service.delete(orgId, id, asUserId('user-123'));
 
       expect(result.isSuccess).toBe(true);
       expect(mockRepo.delete).toHaveBeenCalledWith(orgId, id);
@@ -151,7 +152,7 @@ describe('ContactService', () => {
     it('should fail if contact not found', async () => {
       vi.mocked(mockRepo.findById).mockResolvedValue(null);
 
-      const result = await service.delete('org-1', 'missing', 'user-123');
+      const result = await service.delete(asOrganizationId('org-1'), asContactId('missing'), asUserId('user-123'));
 
       expect(result.isFailure).toBe(true);
       expect(result.getError()).toBe('Contact not found');

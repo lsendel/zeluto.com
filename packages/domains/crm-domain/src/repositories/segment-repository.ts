@@ -1,21 +1,22 @@
+import type { ContactId, OrganizationId, SegmentId } from '@mauntic/domain-kernel';
 import type { Segment } from '../entities/segment.js';
 
 export interface SegmentRepository {
-  findById(orgId: string, id: string): Promise<Segment | null>;
+  findById(orgId: OrganizationId, id: SegmentId): Promise<Segment | null>;
   findByOrganization(
-    orgId: string,
+    orgId: OrganizationId,
     pagination: { page: number; limit: number },
   ): Promise<{ data: Segment[]; total: number }>;
   save(segment: Segment): Promise<void>;
-  delete(orgId: string, id: string): Promise<void>;
+  delete(orgId: OrganizationId, id: SegmentId): Promise<void>;
   addContacts(
-    orgId: string,
-    segmentId: string,
-    contactIds: string[],
+    orgId: OrganizationId,
+    segmentId: SegmentId,
+    contactIds: ContactId[],
   ): Promise<void>;
   removeContacts(
-    orgId: string,
-    segmentId: string,
-    contactIds: string[],
+    orgId: OrganizationId,
+    segmentId: SegmentId,
+    contactIds: ContactId[],
   ): Promise<void>;
 }

@@ -1,3 +1,4 @@
+import type { OrganizationId, ContactId } from '@mauntic/domain-kernel';
 import { type AlertPriority, SignalAlert } from '../entities/signal-alert.js';
 import type { SignalAlertRepository } from '../repositories/signal-alert-repository.js';
 
@@ -34,8 +35,8 @@ export class SignalRouter {
   }
 
   async routeSignal(
-    orgId: string,
-    contactId: string,
+    orgId: OrganizationId,
+    contactId: ContactId,
     signalType: string,
   ): Promise<SignalAlert | null> {
     const priority = this.getPriority(signalType);
@@ -62,7 +63,7 @@ export class SignalRouter {
     return alert;
   }
 
-  async expireOverdueAlerts(orgId: string): Promise<number> {
+  async expireOverdueAlerts(orgId: OrganizationId): Promise<number> {
     const overdue = await this.alertRepo.findOverdue(orgId);
     let count = 0;
     for (const alert of overdue) {

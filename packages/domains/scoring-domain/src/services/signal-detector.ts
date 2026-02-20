@@ -1,4 +1,4 @@
-import type { AnyDomainEvent } from '@mauntic/domain-kernel';
+import type { AnyDomainEvent, OrganizationId } from '@mauntic/domain-kernel';
 import { IntentSignal } from '../entities/intent-signal.js';
 import type { SignalConfigRepository } from '../repositories/signal-config-repository.js';
 
@@ -64,7 +64,7 @@ export class SignalDetector {
   constructor(private readonly signalConfigRepo: SignalConfigRepository) {}
 
   async detect(
-    orgId: string,
+    orgId: OrganizationId,
     event: AnyDomainEvent,
   ): Promise<DetectedSignal | null> {
     const mapping = EVENT_SIGNAL_MAP[event.type];
@@ -121,7 +121,7 @@ export class SignalDetector {
   }
 
   async createSignal(
-    orgId: string,
+    orgId: OrganizationId,
     detected: DetectedSignal,
   ): Promise<IntentSignal> {
     const config = await this.signalConfigRepo.findBySignalType(

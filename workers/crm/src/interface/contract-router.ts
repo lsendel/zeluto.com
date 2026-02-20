@@ -7,6 +7,7 @@ import {
   tags,
 } from '@mauntic/crm-domain/drizzle';
 import type { TenantContext } from '@mauntic/domain-kernel';
+import { asContactId } from '@mauntic/domain-kernel';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { ContactService } from '../application/contact-service.js';
@@ -152,7 +153,7 @@ export const crmRouter: any = {
         const repo = new DrizzleContactRepository(db);
         const contact = await repo.findById(
           tenant.organizationId,
-          String(params.id),
+          asContactId(String(params.id)),
         );
 
         if (!contact) {
@@ -169,7 +170,7 @@ export const crmRouter: any = {
         const service = getContactService(ctx);
         const result = await service.update(
           ctx.tenant.organizationId,
-          String(params.id),
+          asContactId(String(params.id)),
           {
             email: body.email,
             firstName: body.firstName,
@@ -200,7 +201,7 @@ export const crmRouter: any = {
         const service = getContactService(ctx);
         const result = await service.delete(
           ctx.tenant.organizationId,
-          String(params.id),
+          asContactId(String(params.id)),
           ctx.tenant.userId,
         );
 
@@ -249,7 +250,7 @@ export const crmRouter: any = {
         const repo = new DrizzleContactRepository(db);
         const contact = await repo.findById(
           tenant.organizationId,
-          String(params.id),
+          asContactId(String(params.id)),
         );
 
         if (!contact) {

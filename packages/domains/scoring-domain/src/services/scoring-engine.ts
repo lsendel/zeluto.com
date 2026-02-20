@@ -1,3 +1,4 @@
+import type { OrganizationId, ContactId } from '@mauntic/domain-kernel';
 import { LeadScore } from '../entities/lead-score.js';
 import { ScoreHistory } from '../entities/score-history.js';
 import type { IntentSignalRepository } from '../repositories/intent-signal-repository.js';
@@ -22,8 +23,8 @@ export class ScoringEngine {
   constructor(private readonly options: ScoringEngineOptions) {}
 
   async scoreContact(
-    orgId: string,
-    contactId: string,
+    orgId: OrganizationId,
+    contactId: ContactId,
     features: ContactFeatures,
   ): Promise<{
     result: ScoringResult;
@@ -101,7 +102,7 @@ export class ScoringEngine {
     return { result, previousScore, thresholdsCrossed };
   }
 
-  async recordHistorySnapshot(orgId: string, contactId: string): Promise<void> {
+  async recordHistorySnapshot(orgId: OrganizationId, contactId: ContactId): Promise<void> {
     const score = await this.options.leadScoreRepo.findByContact(
       orgId,
       contactId,

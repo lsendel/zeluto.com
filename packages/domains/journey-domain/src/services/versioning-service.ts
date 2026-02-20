@@ -1,4 +1,5 @@
 import { Result } from '@mauntic/domain-kernel';
+import type { JourneyId, JourneyVersionId, OrganizationId } from '@mauntic/domain-kernel';
 import { JourneyVersion } from '../entities/journey-version.js';
 import type { JourneyVersionRepository } from '../repositories/journey-version-repository.js';
 
@@ -36,8 +37,8 @@ export class VersioningService {
    * The version number is incremented from the latest existing version.
    */
   async createVersion(
-    journeyId: string,
-    organizationId: string,
+    journeyId: JourneyId,
+    organizationId: OrganizationId,
     definition: JourneyDefinition,
   ): Promise<Result<JourneyVersion>> {
     const latest = await this.versionRepo.findLatestByJourney(
@@ -66,8 +67,8 @@ export class VersioningService {
    * Get the latest published version for new executions.
    */
   async getLatestVersion(
-    organizationId: string,
-    journeyId: string,
+    organizationId: OrganizationId,
+    journeyId: JourneyId,
   ): Promise<JourneyVersion | null> {
     return this.versionRepo.findLatestByJourney(organizationId, journeyId);
   }
@@ -76,8 +77,8 @@ export class VersioningService {
    * Get a specific version for an in-flight execution.
    */
   async getVersionById(
-    organizationId: string,
-    versionId: string,
+    organizationId: OrganizationId,
+    versionId: JourneyVersionId,
   ): Promise<JourneyVersion | null> {
     return this.versionRepo.findById(organizationId, versionId);
   }

@@ -32,6 +32,9 @@ export type EnrichmentProviderId = Brand<string, 'EnrichmentProviderId'>;
 export type LeadScoreId = Brand<string, 'LeadScoreId'>;
 export type IntentSignalId = Brand<string, 'IntentSignalId'>;
 export type SignalAlertId = Brand<string, 'SignalAlertId'>;
+export type ScoringConfigId = Brand<string, 'ScoringConfigId'>;
+export type SignalConfigId = Brand<string, 'SignalConfigId'>;
+export type ScoreHistoryId = Brand<string, 'ScoreHistoryId'>;
 
 export const ContactIdSchema = z
   .string()
@@ -110,6 +113,15 @@ export const IntentSignalIdSchema = z
 export const SignalAlertIdSchema = z
   .string()
   .uuid() as unknown as z.ZodType<SignalAlertId>;
+export const ScoringConfigIdSchema = z
+  .string()
+  .uuid() as unknown as z.ZodType<ScoringConfigId>;
+export const SignalConfigIdSchema = z
+  .string()
+  .uuid() as unknown as z.ZodType<SignalConfigId>;
+export const ScoreHistoryIdSchema = z
+  .string()
+  .uuid() as unknown as z.ZodType<ScoreHistoryId>;
 
 // Revenue Operations ID Schemas
 export const DealIdSchema = z.string().uuid() as unknown as z.ZodType<DealId>;
@@ -164,6 +176,9 @@ export function asEnrichmentProviderId(id: string): EnrichmentProviderId { retur
 export function asLeadScoreId(id: string): LeadScoreId { return id as LeadScoreId; }
 export function asIntentSignalId(id: string): IntentSignalId { return id as IntentSignalId; }
 export function asSignalAlertId(id: string): SignalAlertId { return id as SignalAlertId; }
+export function asScoringConfigId(id: string): ScoringConfigId { return id as ScoringConfigId; }
+export function asSignalConfigId(id: string): SignalConfigId { return id as SignalConfigId; }
+export function asScoreHistoryId(id: string): ScoreHistoryId { return id as ScoreHistoryId; }
 export function asDealId(id: string): DealId { return id as DealId; }
 export function asForecastId(id: string): ForecastId { return id as ForecastId; }
 export function asRoutingRuleId(id: string): RoutingRuleId { return id as RoutingRuleId; }
