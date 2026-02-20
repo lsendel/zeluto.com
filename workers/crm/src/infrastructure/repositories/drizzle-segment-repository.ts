@@ -1,4 +1,8 @@
-import { Segment, type SegmentRepository } from '@mauntic/crm-domain';
+import {
+  type FilterCriteria,
+  Segment,
+  type SegmentRepository,
+} from '@mauntic/crm-domain';
 import {
   contacts,
   segment_contacts,
@@ -11,6 +15,7 @@ import type {
 } from '@mauntic/domain-kernel';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { buildFilterWhere } from '../../services/filter-engine.js';
 
 export class DrizzleSegmentRepository implements SegmentRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
@@ -22,9 +27,7 @@ export class DrizzleSegmentRepository implements SegmentRepository {
     const [row] = await this.db
       .select()
       .from(segments)
-      .where(
-        and(eq(segments.id, id), eq(segments.organization_id, orgId)),
-      )
+      .where(and(eq(segments.id, id), eq(segments.organization_id, orgId)))
       .limit(1);
     return row ? this.mapToEntity(row) : null;
   }
@@ -93,9 +96,7 @@ export class DrizzleSegmentRepository implements SegmentRepository {
       .where(eq(segment_contacts.segment_id, id));
     await this.db
       .delete(segments)
-      .where(
-        and(eq(segments.id, id), eq(segments.organization_id, orgId)),
-      );
+      .where(and(eq(segments.id, id), eq(segments.organization_id, orgId)));
   }
 
   async addContacts(
@@ -157,6 +158,18 @@ export class DrizzleSegmentRepository implements SegmentRepository {
           inArray(segment_contacts.contact_id, contactIds),
         ),
       );
+  }
+
+  async countMatchingContacts(
+    orgId: OrganizationId,
+    filterCriteria: FilterCriteria,
+  ): Promise<number> {
+    const where = buildFilterWhere(filterCriteria as any, orgId);
+    const result = await this.db
+      .select({ total: count() })
+      .from(contacts)
+      .where(where);
+    return result[0]?.total ?? 0;
   }
 
   private mapToEntity(row: typeof segments.$inferSelect): Segment {

@@ -14,9 +14,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
     const [row] = await this.db
       .select()
       .from(companies)
-      .where(
-        and(eq(companies.id, id), eq(companies.organization_id, orgId)),
-      )
+      .where(and(eq(companies.id, id), eq(companies.organization_id, orgId)))
       .limit(1);
     return row ? this.mapToEntity(row) : null;
   }
@@ -29,10 +27,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
       .select()
       .from(companies)
       .where(
-        and(
-          eq(companies.domain, domain),
-          eq(companies.organization_id, orgId),
-        ),
+        and(eq(companies.domain, domain), eq(companies.organization_id, orgId)),
       )
       .limit(1);
     return row ? this.mapToEntity(row) : null;
@@ -49,10 +44,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
     if (search) {
       const pattern = `%${search}%`;
       conditions.push(
-        or(
-          ilike(companies.name, pattern),
-          ilike(companies.domain, pattern),
-        )!,
+        or(ilike(companies.name, pattern), ilike(companies.domain, pattern))!,
       );
     }
 
@@ -115,9 +107,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
   async delete(orgId: OrganizationId, id: CompanyId): Promise<void> {
     await this.db
       .delete(companies)
-      .where(
-        and(eq(companies.id, id), eq(companies.organization_id, orgId)),
-      );
+      .where(and(eq(companies.id, id), eq(companies.organization_id, orgId)));
   }
 
   private mapToEntity(row: typeof companies.$inferSelect): Company {

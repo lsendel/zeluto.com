@@ -1,4 +1,8 @@
-import { Field, type FieldEntityType, type FieldRepository } from '@mauntic/crm-domain';
+import {
+  Field,
+  type FieldEntityType,
+  type FieldRepository,
+} from '@mauntic/crm-domain';
 import { fields } from '@mauntic/crm-domain/drizzle';
 import type { OrganizationId } from '@mauntic/domain-kernel';
 import { and, eq } from 'drizzle-orm';
@@ -7,14 +11,30 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 export class DrizzleFieldRepository implements FieldRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
-  async findById(
-    orgId: OrganizationId,
-    id: string,
-  ): Promise<Field | null> {
+  async findById(orgId: OrganizationId, id: string): Promise<Field | null> {
     const [row] = await this.db
       .select()
       .from(fields)
       .where(and(eq(fields.id, id), eq(fields.organization_id, orgId)))
+      .limit(1);
+    return row ? this.mapToEntity(row) : null;
+  }
+
+  async findByName(
+    orgId: OrganizationId,
+    entityType: FieldEntityType,
+    name: string,
+  ): Promise<Field | null> {
+    const [row] = await this.db
+      .select()
+      .from(fields)
+      .where(
+        and(
+          eq(fields.organization_id, orgId),
+          eq(fields.entity_type, entityType),
+          eq(fields.name, name),
+        ),
+      )
       .limit(1);
     return row ? this.mapToEntity(row) : null;
   }
@@ -84,7 +104,12 @@ export class DrizzleFieldRepository implements FieldRepository {
       entityType: row.entity_type as FieldEntityType,
       name: row.name,
       label: row.label,
-      fieldType: row.field_type as 'text' | 'number' | 'date' | 'select' | 'multiselect',
+      fieldType: row.field_type as
+        | 'text'
+        | 'number'
+        | 'date'
+        | 'select'
+        | 'multiselect',
       options: (row.options as string[] | null) ?? null,
       isRequired: row.is_required,
       sortOrder: row.sort_order,

@@ -7,14 +7,20 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 export class DrizzleTagRepository implements TagRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
-  async findById(
-    orgId: OrganizationId,
-    id: string,
-  ): Promise<Tag | null> {
+  async findById(orgId: OrganizationId, id: string): Promise<Tag | null> {
     const [row] = await this.db
       .select()
       .from(tags)
       .where(and(eq(tags.id, id), eq(tags.organization_id, orgId)))
+      .limit(1);
+    return row ? this.mapToEntity(row) : null;
+  }
+
+  async findByName(orgId: OrganizationId, name: string): Promise<Tag | null> {
+    const [row] = await this.db
+      .select()
+      .from(tags)
+      .where(and(eq(tags.organization_id, orgId), eq(tags.name, name)))
       .limit(1);
     return row ? this.mapToEntity(row) : null;
   }
@@ -68,9 +74,7 @@ export class DrizzleTagRepository implements TagRepository {
   }
 
   async delete(orgId: OrganizationId, id: string): Promise<void> {
-    await this.db
-      .delete(contact_tags)
-      .where(eq(contact_tags.tag_id, id));
+    await this.db.delete(contact_tags).where(eq(contact_tags.tag_id, id));
     await this.db
       .delete(tags)
       .where(and(eq(tags.id, id), eq(tags.organization_id, orgId)));

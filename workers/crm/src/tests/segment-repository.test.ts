@@ -11,9 +11,7 @@ describe('Segment entity', () => {
       type: 'dynamic',
       filterCriteria: {
         operator: 'and',
-        conditions: [
-          { field: 'status', operator: 'eq', value: 'active' },
-        ],
+        conditions: [{ field: 'status', operator: 'eq', value: 'active' }],
       },
       contactCount: 42,
       createdAt: new Date(),

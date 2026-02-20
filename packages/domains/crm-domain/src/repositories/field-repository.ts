@@ -3,6 +3,11 @@ import type { Field, FieldEntityType } from '../entities/field.js';
 
 export interface FieldRepository {
   findById(orgId: OrganizationId, id: string): Promise<Field | null>;
+  findByName(
+    orgId: OrganizationId,
+    entityType: FieldEntityType,
+    name: string,
+  ): Promise<Field | null>;
   findByOrganization(
     orgId: OrganizationId,
     entityType?: FieldEntityType,
