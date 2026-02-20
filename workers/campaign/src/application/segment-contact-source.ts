@@ -40,14 +40,12 @@ interface SegmentQueryResponse {
  * Keeps the fan-out pipeline pluggable so we can swap in a real HTTP-backed fetcher later.
  */
 export class StubSegmentContactSource implements SegmentContactSource {
-  async fetchPage(
-    _params: {
-      organizationId: string;
-      segmentId: string;
-      cursor?: string;
-      limit: number;
-    },
-  ): Promise<SegmentContactPage> {
+  async fetchPage(_params: {
+    organizationId: string;
+    segmentId: string;
+    cursor?: string;
+    limit: number;
+  }): Promise<SegmentContactPage> {
     return { contacts: [] };
   }
 }
@@ -179,7 +177,9 @@ export class HttpSegmentContactSource implements SegmentContactSource {
       }
       const payload = (await response.json()) as SegmentQueryResponse;
       return {
-        contacts: payload.contacts.map((contact) => ({ contactId: contact.id })),
+        contacts: payload.contacts.map((contact) => ({
+          contactId: contact.id,
+        })),
         nextCursor: payload.nextCursor ?? undefined,
         total: payload.total,
       };

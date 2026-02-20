@@ -8,12 +8,13 @@ export interface JourneyListProps {
   limit: number;
 }
 
-const statusBadge: Record<string, { bg: string; text: string; label: string }> = {
-  draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
-  active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
-  paused: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Paused' },
-  archived: { bg: 'bg-red-100', text: 'text-red-700', label: 'Archived' },
-};
+const statusBadge: Record<string, { bg: string; text: string; label: string }> =
+  {
+    draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
+    active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
+    paused: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Paused' },
+    archived: { bg: 'bg-red-100', text: 'text-red-700', label: 'Archived' },
+  };
 
 function formatDate(d: Date | string | null): string {
   if (!d) return '-';
@@ -129,16 +130,28 @@ export const JourneyListView: FC<JourneyListProps> = ({
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Name
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Status
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Updated
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Actions
                 </th>
               </tr>
@@ -146,7 +159,10 @@ export const JourneyListView: FC<JourneyListProps> = ({
             <tbody class="divide-y divide-gray-200 bg-white">
               {journeys.length === 0 ? (
                 <tr>
-                  <td colspan={4} class="px-6 py-12 text-center text-sm text-gray-500">
+                  <td
+                    colspan={4}
+                    class="px-6 py-12 text-center text-sm text-gray-500"
+                  >
                     No journeys found. Create your first journey to get started.
                   </td>
                 </tr>
@@ -166,7 +182,9 @@ export const JourneyListView: FC<JourneyListProps> = ({
                           {j.name}
                         </a>
                         {j.description && (
-                          <p class="text-xs text-gray-500 mt-0.5 truncate max-w-xs">{j.description}</p>
+                          <p class="text-xs text-gray-500 mt-0.5 truncate max-w-xs">
+                            {j.description}
+                          </p>
                         )}
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">

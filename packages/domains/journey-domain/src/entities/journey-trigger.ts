@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { Entity, Result } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const TriggerTypeSchema = z.enum([
   'event',
@@ -45,7 +45,9 @@ export class JourneyTrigger extends Entity<JourneyTriggerProps> {
   }
 
   static reconstitute(props: JourneyTriggerProps): Result<JourneyTrigger> {
-    return Result.ok(new JourneyTrigger(JourneyTriggerPropsSchema.parse(props)));
+    return Result.ok(
+      new JourneyTrigger(JourneyTriggerPropsSchema.parse(props)),
+    );
   }
 
   // ---- Accessors ----

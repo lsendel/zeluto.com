@@ -100,7 +100,9 @@ export class WebhookEndpoint {
   }
 
   isSubscribedTo(eventType: string): boolean {
-    return this.props.events.includes(eventType) || this.props.events.includes('*');
+    return (
+      this.props.events.includes(eventType) || this.props.events.includes('*')
+    );
   }
 
   shouldAutoDisable(): boolean {

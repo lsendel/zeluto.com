@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
+import { validateSessionFromHeaders } from '../application/session-service.js';
+import { createAuth } from '../infrastructure/better-auth.js';
 import type { Env } from '../infrastructure/database.js';
 import { createDatabase } from '../infrastructure/database.js';
-import { createAuth } from '../infrastructure/better-auth.js';
-import { validateSessionFromHeaders } from '../application/session-service.js';
 
 const authRoutes = new Hono<{ Bindings: Env }>();
 

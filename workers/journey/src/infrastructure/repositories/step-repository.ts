@@ -1,5 +1,8 @@
-import { eq, and } from 'drizzle-orm';
-import { journey_steps, journey_step_connections } from '@mauntic/journey-domain/drizzle';
+import {
+  journey_step_connections,
+  journey_steps,
+} from '@mauntic/journey-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type StepRow = typeof journey_steps.$inferSelect;
@@ -17,7 +20,9 @@ export async function findStepById(
   const [step] = await db
     .select()
     .from(journey_steps)
-    .where(and(eq(journey_steps.id, id), eq(journey_steps.organization_id, orgId)));
+    .where(
+      and(eq(journey_steps.id, id), eq(journey_steps.organization_id, orgId)),
+    );
   return step ?? null;
 }
 
@@ -53,12 +58,16 @@ export async function updateStep(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Omit<StepInsert, 'id' | 'organization_id' | 'journey_version_id'>>,
+  data: Partial<
+    Omit<StepInsert, 'id' | 'organization_id' | 'journey_version_id'>
+  >,
 ): Promise<StepRow | null> {
   const [step] = await db
     .update(journey_steps)
     .set(data)
-    .where(and(eq(journey_steps.id, id), eq(journey_steps.organization_id, orgId)))
+    .where(
+      and(eq(journey_steps.id, id), eq(journey_steps.organization_id, orgId)),
+    )
     .returning();
   return step ?? null;
 }
@@ -70,7 +79,9 @@ export async function deleteStep(
 ): Promise<boolean> {
   const result = await db
     .delete(journey_steps)
-    .where(and(eq(journey_steps.id, id), eq(journey_steps.organization_id, orgId)))
+    .where(
+      and(eq(journey_steps.id, id), eq(journey_steps.organization_id, orgId)),
+    )
     .returning({ id: journey_steps.id });
   return result.length > 0;
 }

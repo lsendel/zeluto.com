@@ -14,7 +14,9 @@ export class ServiceBindingClient {
     const headers = new Headers(this.options.defaultHeaders);
     if (init?.headers) {
       const provided = new Headers(init.headers as HeadersInit);
-      provided.forEach((value, key) => headers.set(key, value));
+      provided.forEach((value, key) => {
+        headers.set(key, value);
+      });
     }
     const request = new Request(url, {
       ...init,

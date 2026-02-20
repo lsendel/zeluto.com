@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ./src"
   },
   "dependencies": {
     "@mauntic/campaign-domain": "workspace:*",

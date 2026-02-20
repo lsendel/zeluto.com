@@ -1,5 +1,5 @@
-import { sql } from 'drizzle-orm';
 import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+import { sql } from 'drizzle-orm';
 
 export async function withTransaction<T>(
   db: any,
@@ -7,7 +7,9 @@ export async function withTransaction<T>(
   fn: (tx: any) => Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx: any) => {
-    await tx.execute(sql`SET LOCAL app.organization_id = ${tenantContext.organizationId}`);
+    await tx.execute(
+      sql`SET LOCAL app.organization_id = ${tenantContext.organizationId}`,
+    );
     return fn(tx);
   });
 }

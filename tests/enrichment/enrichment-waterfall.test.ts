@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EnrichmentOrchestrator } from '@mauntic/lead-intelligence-domain/services/enrichment-orchestrator';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('Enrichment Waterfall', () => {
   const mockProviderA = {
@@ -51,7 +50,7 @@ describe('Enrichment Waterfall', () => {
     mockProviderA.enrich.mockRejectedValue(new Error('API error'));
     mockProviderB.enrich.mockResolvedValue({
       email: 'john@acme.com',
-      confidence: 0.80,
+      confidence: 0.8,
     });
 
     const result = await enrichWithWaterfall(
@@ -97,7 +96,10 @@ describe('Enrichment Waterfall', () => {
   });
 
   it('should process batch enrichment for multiple contacts', async () => {
-    mockProviderA.enrich.mockResolvedValue({ email: 'test@example.com', confidence: 0.9 });
+    mockProviderA.enrich.mockResolvedValue({
+      email: 'test@example.com',
+      confidence: 0.9,
+    });
 
     const contacts = ['c1', 'c2', 'c3'];
     const results = await Promise.all(
@@ -120,7 +122,11 @@ async function enrichWithWaterfall(
   providers: Array<{ name: string; enrich: Function }>,
   request: { contactId: string; fields: string[] },
   cache: { get: Function; set: Function },
-): Promise<{ success: boolean; data?: Record<string, unknown>; error?: string }> {
+): Promise<{
+  success: boolean;
+  data?: Record<string, unknown>;
+  error?: string;
+}> {
   // Check cache
   const cached = await cache.get(request.contactId);
   if (cached) return { success: true, data: cached };
@@ -131,9 +137,7 @@ async function enrichWithWaterfall(
       const data = await provider.enrich(request);
       await cache.set(request.contactId, data);
       return { success: true, data };
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   return { success: false, error: 'All providers failed' };

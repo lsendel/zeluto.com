@@ -9,6 +9,8 @@ export const ListCompaniesQuerySchema = z.object({
 
 export type ListCompaniesQuery = z.infer<typeof ListCompaniesQuerySchema>;
 
-export function listCompaniesQuery(input: ListCompaniesQuery): ListCompaniesQuery {
+export function listCompaniesQuery(
+  input: ListCompaniesQuery,
+): ListCompaniesQuery {
   return ListCompaniesQuerySchema.parse(input);
 }

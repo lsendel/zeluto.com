@@ -1,4 +1,8 @@
-import type { DeliveryProvider, EmailPayload, DeliveryResult } from '@mauntic/domain-kernel/delivery';
+import type {
+  DeliveryProvider,
+  DeliveryResult,
+  EmailPayload,
+} from '@mauntic/domain-kernel/delivery';
 
 export interface PostfixProviderConfig {
   mailApiUrl: string;
@@ -47,7 +51,8 @@ export class PostfixProvider implements DeliveryProvider<'email'> {
 
       return {
         success: false,
-        error: result.error ?? `Postfix sidecar returned status ${response.status}`,
+        error:
+          result.error ?? `Postfix sidecar returned status ${response.status}`,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

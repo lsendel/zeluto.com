@@ -1,13 +1,13 @@
+import { decryptConfig, encryptConfig } from '@mauntic/delivery-domain';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
+  createProviderConfig,
+  deleteProviderConfig,
   findAllProviderConfigs,
   findProviderConfigById,
-  createProviderConfig,
   updateProviderConfig,
-  deleteProviderConfig,
 } from '../infrastructure/repositories/provider-config-repository.js';
-import { encryptConfig, decryptConfig } from '@mauntic/delivery-domain';
 
 export const providerRoutes = new Hono<Env>();
 
@@ -28,7 +28,10 @@ providerRoutes.get('/api/v1/delivery/providers', async (c) => {
     return c.json(redacted);
   } catch (error) {
     console.error('List providers error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list providers' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list providers' },
+      500,
+    );
   }
 });
 
@@ -41,7 +44,10 @@ providerRoutes.get('/api/v1/delivery/providers/:id', async (c) => {
   try {
     const config = await findProviderConfigById(db, tenant.organizationId, id);
     if (!config) {
-      return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Provider config not found' },
+        404,
+      );
     }
 
     // Decrypt config for display
@@ -61,7 +67,10 @@ providerRoutes.get('/api/v1/delivery/providers/:id', async (c) => {
     return c.json({ ...config, config: decryptedConfig });
   } catch (error) {
     console.error('Get provider error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get provider' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get provider' },
+      500,
+    );
   }
 });
 
@@ -81,7 +90,10 @@ providerRoutes.post('/api/v1/delivery/providers', async (c) => {
 
     if (!body.channel || !body.providerType || !body.config) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'channel, providerType, and config are required' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'channel, providerType, and config are required',
+        },
         400,
       );
     }
@@ -89,7 +101,10 @@ providerRoutes.post('/api/v1/delivery/providers', async (c) => {
     const validChannels = ['email', 'sms', 'push', 'webhook'];
     if (!validChannels.includes(body.channel)) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: `channel must be one of: ${validChannels.join(', ')}` },
+        {
+          code: 'VALIDATION_ERROR',
+          message: `channel must be one of: ${validChannels.join(', ')}`,
+        },
         400,
       );
     }
@@ -111,7 +126,10 @@ providerRoutes.post('/api/v1/delivery/providers', async (c) => {
     return c.json({ ...config, config: { redacted: true } }, 201);
   } catch (error) {
     console.error('Create provider error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create provider' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create provider' },
+      500,
+    );
   }
 });
 
@@ -128,9 +146,16 @@ providerRoutes.patch('/api/v1/delivery/providers/:id', async (c) => {
       config?: Record<string, unknown>;
     }>();
 
-    const existing = await findProviderConfigById(db, tenant.organizationId, id);
+    const existing = await findProviderConfigById(
+      db,
+      tenant.organizationId,
+      id,
+    );
     if (!existing) {
-      return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Provider config not found' },
+        404,
+      );
     }
 
     const updateData: Record<string, unknown> = {};
@@ -153,13 +178,19 @@ providerRoutes.patch('/api/v1/delivery/providers/:id', async (c) => {
     );
 
     if (!config) {
-      return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Provider config not found' },
+        404,
+      );
     }
 
     return c.json({ ...config, config: { redacted: true } });
   } catch (error) {
     console.error('Update provider error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update provider' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update provider' },
+      500,
+    );
   }
 });
 
@@ -172,12 +203,18 @@ providerRoutes.delete('/api/v1/delivery/providers/:id', async (c) => {
   try {
     const deleted = await deleteProviderConfig(db, tenant.organizationId, id);
     if (!deleted) {
-      return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Provider config not found' },
+        404,
+      );
     }
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete provider error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete provider' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete provider' },
+      500,
+    );
   }
 });
 
@@ -203,17 +240,24 @@ providerRoutes.post('/api/v1/delivery/providers/:id/test', async (c) => {
 
     const config = await findProviderConfigById(db, tenant.organizationId, id);
     if (!config) {
-      return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Provider config not found' },
+        404,
+      );
     }
 
     // In the worker context, we can only validate the config exists.
     // Actual sending happens in the delivery engine service (Fly.io).
     return c.json({
       success: true,
-      message: 'Provider configuration is valid. Test message queued for delivery.',
+      message:
+        'Provider configuration is valid. Test message queued for delivery.',
     });
   } catch (error) {
     console.error('Test provider error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to test provider' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to test provider' },
+      500,
+    );
   }
 });

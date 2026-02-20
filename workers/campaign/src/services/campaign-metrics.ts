@@ -1,10 +1,6 @@
+import { campaignStats } from '@mauntic/campaign-domain/drizzle';
 import { sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import {
-  campaigns,
-  campaignSummaries,
-  campaignStats,
-} from '@mauntic/campaign-domain/drizzle';
 
 type MetricEvent =
   | 'delivery.MessageSent'
@@ -62,7 +58,14 @@ export async function applyDeliveryFeedback(
 
   await db.transaction(async (tx) => {
     await upsertCampaignStats(tx, orgId, campaignId, increments, now);
-    await updateCampaignProjection(tx, 'campaign.campaigns', orgId, campaignId, increments, now);
+    await updateCampaignProjection(
+      tx,
+      'campaign.campaigns',
+      orgId,
+      campaignId,
+      increments,
+      now,
+    );
     await updateCampaignProjection(
       tx,
       'campaign.campaign_summaries',
@@ -83,7 +86,7 @@ function buildIncrements(event: MetricEvent): MetricIncrements {
 }
 
 async function upsertCampaignStats(
-  db: NeonHttpDatabase,
+  db: NeonHttpDatabase | any,
   orgId: string,
   campaignId: string,
   increments: MetricIncrements,
@@ -139,7 +142,7 @@ async function upsertCampaignStats(
 }
 
 async function updateCampaignProjection(
-  db: NeonHttpDatabase,
+  db: NeonHttpDatabase | any,
   tableName: 'campaign.campaigns' | 'campaign.campaign_summaries',
   orgId: string,
   campaignId: string,

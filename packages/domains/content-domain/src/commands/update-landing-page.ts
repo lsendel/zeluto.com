@@ -10,8 +10,12 @@ export const UpdateLandingPageCommandSchema = z.object({
   templateId: z.string().uuid().nullable().optional(),
 });
 
-export type UpdateLandingPageCommand = z.infer<typeof UpdateLandingPageCommandSchema>;
+export type UpdateLandingPageCommand = z.infer<
+  typeof UpdateLandingPageCommandSchema
+>;
 
-export function updateLandingPageCommand(input: UpdateLandingPageCommand): UpdateLandingPageCommand {
+export function updateLandingPageCommand(
+  input: UpdateLandingPageCommand,
+): UpdateLandingPageCommand {
   return UpdateLandingPageCommandSchema.parse(input);
 }

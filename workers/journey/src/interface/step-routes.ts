@@ -1,21 +1,16 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { findJourneyById } from '../infrastructure/repositories/journey-repository.js';
 import {
-  findStepById,
-  createStep,
-  updateStep,
-  deleteStep,
-  deleteConnectionsByStepId,
   createConnection,
+  createStep,
   deleteConnection,
-  findConnectionById,
+  deleteConnectionsByStepId,
+  deleteStep,
+  findStepById,
+  updateStep,
 } from '../infrastructure/repositories/step-repository.js';
-import {
-  findLatestVersion,
-} from '../infrastructure/repositories/version-repository.js';
-import {
-  findJourneyById,
-} from '../infrastructure/repositories/journey-repository.js';
+import { findLatestVersion } from '../infrastructure/repositories/version-repository.js';
 
 export const stepRoutes = new Hono<Env>();
 
@@ -33,15 +28,26 @@ stepRoutes.post('/api/v1/journey/journeys/:id/steps', async (c) => {
 
     if (journey.status !== 'draft') {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Steps can only be added to draft journeys' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Steps can only be added to draft journeys',
+        },
         400,
       );
     }
 
-    const latestVersion = await findLatestVersion(db, tenant.organizationId, journeyId);
+    const latestVersion = await findLatestVersion(
+      db,
+      tenant.organizationId,
+      journeyId,
+    );
     if (!latestVersion) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'No version exists for this journey. Publish first to create a version.' },
+        {
+          code: 'VALIDATION_ERROR',
+          message:
+            'No version exists for this journey. Publish first to create a version.',
+        },
         400,
       );
     }
@@ -54,7 +60,10 @@ stepRoutes.post('/api/v1/journey/journeys/:id/steps', async (c) => {
     }>();
 
     if (!body.type || !body.config) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'type and config are required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'type and config are required' },
+        400,
+      );
     }
 
     const step = await createStep(db, tenant.organizationId, {
@@ -68,7 +77,10 @@ stepRoutes.post('/api/v1/journey/journeys/:id/steps', async (c) => {
     return c.json(step, 201);
   } catch (error) {
     console.error('Create step error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create step' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create step' },
+      500,
+    );
   }
 });
 
@@ -90,7 +102,12 @@ stepRoutes.patch('/api/v1/journey/steps/:stepId', async (c) => {
     if (body.positionX !== undefined) updateData.position_x = body.positionX;
     if (body.positionY !== undefined) updateData.position_y = body.positionY;
 
-    const step = await updateStep(db, tenant.organizationId, stepId, updateData);
+    const step = await updateStep(
+      db,
+      tenant.organizationId,
+      stepId,
+      updateData,
+    );
     if (!step) {
       return c.json({ code: 'NOT_FOUND', message: 'Step not found' }, 404);
     }
@@ -98,7 +115,10 @@ stepRoutes.patch('/api/v1/journey/steps/:stepId', async (c) => {
     return c.json(step);
   } catch (error) {
     console.error('Update step error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update step' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update step' },
+      500,
+    );
   }
 });
 
@@ -120,7 +140,10 @@ stepRoutes.delete('/api/v1/journey/steps/:stepId', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete step error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete step' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete step' },
+      500,
+    );
   }
 });
 
@@ -144,17 +167,27 @@ stepRoutes.post('/api/v1/journey/journeys/:id/connections', async (c) => {
 
     if (!body.fromStepId || !body.toStepId) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'fromStepId and toStepId are required' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'fromStepId and toStepId are required',
+        },
         400,
       );
     }
 
     // Verify both steps exist and belong to this org
-    const fromStep = await findStepById(db, tenant.organizationId, body.fromStepId);
+    const fromStep = await findStepById(
+      db,
+      tenant.organizationId,
+      body.fromStepId,
+    );
     const toStep = await findStepById(db, tenant.organizationId, body.toStepId);
 
     if (!fromStep || !toStep) {
-      return c.json({ code: 'NOT_FOUND', message: 'One or both steps not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'One or both steps not found' },
+        404,
+      );
     }
 
     const connection = await createConnection(db, {
@@ -166,7 +199,10 @@ stepRoutes.post('/api/v1/journey/journeys/:id/connections', async (c) => {
     return c.json(connection, 201);
   } catch (error) {
     console.error('Create connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create connection' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create connection' },
+      500,
+    );
   }
 });
 
@@ -178,12 +214,18 @@ stepRoutes.delete('/api/v1/journey/connections/:connectionId', async (c) => {
   try {
     const deleted = await deleteConnection(db, connectionId);
     if (!deleted) {
-      return c.json({ code: 'NOT_FOUND', message: 'Connection not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Connection not found' },
+        404,
+      );
     }
 
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete connection' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete connection' },
+      500,
+    );
   }
 });

@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const AbTestStatusSchema = z.enum(['running', 'completed', 'canceled']);
 export type AbTestStatus = z.infer<typeof AbTestStatusSchema>;
@@ -130,7 +130,9 @@ export class AbTest {
     }
     const variant = this.props.variants.find((v) => v.id === variantId);
     if (!variant) {
-      throw new InvariantViolation(`Variant "${variantId}" not found in this A/B test`);
+      throw new InvariantViolation(
+        `Variant "${variantId}" not found in this A/B test`,
+      );
     }
     this.props.winnerVariantId = variantId;
     this.props.status = 'completed';

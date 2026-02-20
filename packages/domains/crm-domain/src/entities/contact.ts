@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { AggregateRoot, InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const ContactStatusSchema = z.enum([
   'active',
@@ -156,7 +156,10 @@ export class Contact extends AggregateRoot<ContactProps> {
       this.props.phone = input.phone;
     }
     if (input.customFields !== undefined) {
-      this.props.customFields = { ...this.props.customFields, ...input.customFields };
+      this.props.customFields = {
+        ...this.props.customFields,
+        ...input.customFields,
+      };
     }
     this.props.updatedAt = new Date();
 

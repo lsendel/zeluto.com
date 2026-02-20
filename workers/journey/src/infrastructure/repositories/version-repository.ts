@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { journey_versions } from '@mauntic/journey-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type VersionRow = typeof journey_versions.$inferSelect;
@@ -13,7 +13,12 @@ export async function findVersionById(
   const [version] = await db
     .select()
     .from(journey_versions)
-    .where(and(eq(journey_versions.id, id), eq(journey_versions.organization_id, orgId)));
+    .where(
+      and(
+        eq(journey_versions.id, id),
+        eq(journey_versions.organization_id, orgId),
+      ),
+    );
   return version ?? null;
 }
 
@@ -59,7 +64,9 @@ export async function getNextVersionNumber(
   journeyId: string,
 ): Promise<number> {
   const [result] = await db
-    .select({ maxVersion: sql<number>`coalesce(max(${journey_versions.version_number}), 0)::int` })
+    .select({
+      maxVersion: sql<number>`coalesce(max(${journey_versions.version_number}), 0)::int`,
+    })
     .from(journey_versions)
     .where(
       and(

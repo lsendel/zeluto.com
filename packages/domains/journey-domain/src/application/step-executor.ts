@@ -1,8 +1,15 @@
 import type { DomainEvent } from '@mauntic/domain-kernel';
 import type { JourneyExecution } from '../entities/journey-execution.js';
 import type { JourneyStep } from '../entities/journey-step.js';
-import { evaluateConditionSplit, evaluateRandomSplit } from '../services/split-evaluator.js';
-import type { DelayDurationConfig, SplitConditionConfig, SplitRandomConfig } from '../value-objects/step-configs.js';
+import {
+  evaluateConditionSplit,
+  evaluateRandomSplit,
+} from '../services/split-evaluator.js';
+import type {
+  DelayDurationConfig,
+  SplitConditionConfig,
+  SplitRandomConfig,
+} from '../value-objects/step-configs.js';
 
 export interface StepExecutionContext {
   execution: JourneyExecution;
@@ -13,8 +20,8 @@ export interface StepExecutionContext {
 
 export interface StepExecutionResult {
   nextStepIds: string[]; // 0 for exit, 1 for linear, 2+ for split
-  events: DomainEvent[];  // events to publish
-  delayMs?: number;       // for delay steps
+  events: DomainEvent[]; // events to publish
+  delayMs?: number; // for delay steps
 }
 
 /**

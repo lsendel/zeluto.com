@@ -1,5 +1,5 @@
-import type { MiddlewareHandler } from 'hono';
 import { DomainError } from '@mauntic/domain-kernel/errors';
+import type { MiddlewareHandler } from 'hono';
 
 export function errorHandler(): MiddlewareHandler {
   return async (c, next) => {

@@ -1,11 +1,11 @@
-import { eq, and } from 'drizzle-orm';
-import { users, organizationMembers } from '@mauntic/identity-domain';
+import { organizationMembers, users } from '@mauntic/identity-domain';
+import { and, eq } from 'drizzle-orm';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export async function blockUser(
   db: DrizzleDb,
   userId: string,
-  organizationId: string
+  organizationId: string,
 ) {
   // Check if user is the org owner - cannot block owner
   const [membership] = await db
@@ -14,8 +14,8 @@ export async function blockUser(
     .where(
       and(
         eq(organizationMembers.userId, userId),
-        eq(organizationMembers.organizationId, organizationId)
-      )
+        eq(organizationMembers.organizationId, organizationId),
+      ),
     )
     .limit(1);
 

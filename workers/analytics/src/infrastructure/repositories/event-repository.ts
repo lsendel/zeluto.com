@@ -1,5 +1,8 @@
-import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
-import { contactActivity, eventAggregates } from '@mauntic/analytics-domain/drizzle';
+import {
+  contactActivity,
+  eventAggregates,
+} from '@mauntic/analytics-domain/drizzle';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ContactActivityRow = typeof contactActivity.$inferSelect;
@@ -46,8 +49,10 @@ export async function queryEvents(
   const conditions = [eq(contactActivity.organizationId, orgId)];
   if (eventType) conditions.push(eq(contactActivity.eventType, eventType));
   if (contactId) conditions.push(eq(contactActivity.contactId, contactId));
-  if (startDate) conditions.push(gte(contactActivity.createdAt, new Date(startDate)));
-  if (endDate) conditions.push(lte(contactActivity.createdAt, new Date(endDate)));
+  if (startDate)
+    conditions.push(gte(contactActivity.createdAt, new Date(startDate)));
+  if (endDate)
+    conditions.push(lte(contactActivity.createdAt, new Date(endDate)));
 
   const where = and(...conditions);
 
@@ -78,8 +83,10 @@ export async function queryAggregates(
   },
 ): Promise<EventAggregateRow[]> {
   const conditions = [eq(eventAggregates.organizationId, orgId)];
-  if (opts.eventType) conditions.push(eq(eventAggregates.eventType, opts.eventType));
-  if (opts.startDate) conditions.push(gte(eventAggregates.date, opts.startDate));
+  if (opts.eventType)
+    conditions.push(eq(eventAggregates.eventType, opts.eventType));
+  if (opts.startDate)
+    conditions.push(gte(eventAggregates.date, opts.startDate));
   if (opts.endDate) conditions.push(lte(eventAggregates.date, opts.endDate));
 
   return db

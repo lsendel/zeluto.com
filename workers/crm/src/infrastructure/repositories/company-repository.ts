@@ -1,5 +1,5 @@
-import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
 import { companies } from '@mauntic/crm-domain/drizzle';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type CompanyRow = typeof companies.$inferSelect;
@@ -25,7 +25,9 @@ export async function findCompanyByDomain(
   const [company] = await db
     .select()
     .from(companies)
-    .where(and(eq(companies.domain, domain), eq(companies.organization_id, orgId)));
+    .where(
+      and(eq(companies.domain, domain), eq(companies.organization_id, orgId)),
+    );
   return company ?? null;
 }
 
@@ -42,10 +44,7 @@ export async function findAllCompanies(
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      or(
-        ilike(companies.name, pattern),
-        ilike(companies.domain, pattern),
-      )!,
+      or(ilike(companies.name, pattern), ilike(companies.domain, pattern))!,
     );
   }
 
@@ -71,7 +70,10 @@ export async function findAllCompanies(
 export async function createCompany(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<CompanyInsert, 'id' | 'organization_id' | 'created_at' | 'updated_at'>,
+  data: Omit<
+    CompanyInsert,
+    'id' | 'organization_id' | 'created_at' | 'updated_at'
+  >,
 ): Promise<CompanyRow> {
   const [company] = await db
     .insert(companies)

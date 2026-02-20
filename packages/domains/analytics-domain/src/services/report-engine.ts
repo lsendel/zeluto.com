@@ -17,9 +17,19 @@ export interface ReportResult {
 }
 
 export interface ReportDataSource {
-  getContactGrowth(orgId: string, range: ReportDateRange): Promise<ReportResult>;
-  getEmailPerformance(orgId: string, range: ReportDateRange): Promise<ReportResult>;
-  getCampaignComparison(orgId: string, range: ReportDateRange, campaignIds?: string[]): Promise<ReportResult>;
+  getContactGrowth(
+    orgId: string,
+    range: ReportDateRange,
+  ): Promise<ReportResult>;
+  getEmailPerformance(
+    orgId: string,
+    range: ReportDateRange,
+  ): Promise<ReportResult>;
+  getCampaignComparison(
+    orgId: string,
+    range: ReportDateRange,
+    campaignIds?: string[],
+  ): Promise<ReportResult>;
   getRevenue(orgId: string, range: ReportDateRange): Promise<ReportResult>;
 }
 

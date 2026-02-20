@@ -1,4 +1,9 @@
-export type QueueMetricStatus = 'received' | 'ack' | 'retry' | 'duplicate' | 'error';
+export type QueueMetricStatus =
+  | 'received'
+  | 'ack'
+  | 'retry'
+  | 'duplicate'
+  | 'error';
 
 export interface QueueMetricEvent {
   queue: string;

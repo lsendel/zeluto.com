@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
 import { journey_triggers } from '@mauntic/journey-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type TriggerRow = typeof journey_triggers.$inferSelect;
@@ -13,7 +13,12 @@ export async function findTriggerById(
   const [trigger] = await db
     .select()
     .from(journey_triggers)
-    .where(and(eq(journey_triggers.id, id), eq(journey_triggers.organization_id, orgId)));
+    .where(
+      and(
+        eq(journey_triggers.id, id),
+        eq(journey_triggers.organization_id, orgId),
+      ),
+    );
   return trigger ?? null;
 }
 
@@ -92,7 +97,12 @@ export async function deleteTrigger(
 ): Promise<boolean> {
   const result = await db
     .delete(journey_triggers)
-    .where(and(eq(journey_triggers.id, id), eq(journey_triggers.organization_id, orgId)))
+    .where(
+      and(
+        eq(journey_triggers.id, id),
+        eq(journey_triggers.organization_id, orgId),
+      ),
+    )
     .returning({ id: journey_triggers.id });
   return result.length > 0;
 }

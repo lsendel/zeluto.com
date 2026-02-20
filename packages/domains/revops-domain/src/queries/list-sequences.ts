@@ -8,6 +8,8 @@ export const ListSequencesQuerySchema = z.object({
 
 export type ListSequencesQuery = z.infer<typeof ListSequencesQuerySchema>;
 
-export function listSequencesQuery(input: ListSequencesQuery): ListSequencesQuery {
+export function listSequencesQuery(
+  input: ListSequencesQuery,
+): ListSequencesQuery {
   return ListSequencesQuerySchema.parse(input);
 }

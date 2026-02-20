@@ -1,23 +1,19 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findJourneyById,
   findAllJourneys,
+  findJourneyById,
 } from '../infrastructure/repositories/journey-repository.js';
 import {
-  findLatestVersion,
-} from '../infrastructure/repositories/version-repository.js';
-import {
-  findStepsByVersionId,
   findConnectionsByStepIds,
+  findStepsByVersionId,
 } from '../infrastructure/repositories/step-repository.js';
-import {
-  findTriggersByJourneyId,
-} from '../infrastructure/repositories/trigger-repository.js';
-import { JourneyListView } from '../views/journeys/list.js';
+import { findTriggersByJourneyId } from '../infrastructure/repositories/trigger-repository.js';
+import { findLatestVersion } from '../infrastructure/repositories/version-repository.js';
+import { StepAddForm } from '../views/journeys/builder.js';
 import { JourneyDetailView } from '../views/journeys/detail.js';
 import { JourneyFormView } from '../views/journeys/form.js';
-import { StepAddForm } from '../views/journeys/builder.js';
+import { JourneyListView } from '../views/journeys/list.js';
 
 export const viewRoutes = new Hono<Env>();
 
@@ -72,7 +68,10 @@ viewRoutes.get('/app/journey/journeys/:id', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
   const id = c.req.param('id');
-  const tab = (c.req.query('tab') ?? 'overview') as 'overview' | 'builder' | 'executions';
+  const tab = (c.req.query('tab') ?? 'overview') as
+    | 'overview'
+    | 'builder'
+    | 'executions';
 
   try {
     const journey = await findJourneyById(db, tenant.organizationId, id);
@@ -94,13 +93,25 @@ viewRoutes.get('/app/journey/journeys/:id', async (c) => {
       );
     }
 
-    const latestVersion = await findLatestVersion(db, tenant.organizationId, id);
-    const triggers = await findTriggersByJourneyId(db, tenant.organizationId, id);
+    const latestVersion = await findLatestVersion(
+      db,
+      tenant.organizationId,
+      id,
+    );
+    const triggers = await findTriggersByJourneyId(
+      db,
+      tenant.organizationId,
+      id,
+    );
 
     let steps: Awaited<ReturnType<typeof findStepsByVersionId>> = [];
     let connections: Awaited<ReturnType<typeof findConnectionsByStepIds>> = [];
     if (latestVersion) {
-      steps = await findStepsByVersionId(db, tenant.organizationId, latestVersion.id);
+      steps = await findStepsByVersionId(
+        db,
+        tenant.organizationId,
+        latestVersion.id,
+      );
       const stepIds = steps.map((s) => s.id);
       connections = await findConnectionsByStepIds(db, stepIds);
     }
@@ -152,9 +163,7 @@ viewRoutes.get('/app/journey/journeys/:id/edit', async (c) => {
       );
     }
 
-    return c.html(
-      <JourneyFormView journey={journey} />,
-    );
+    return c.html(<JourneyFormView journey={journey} />);
   } catch (error) {
     console.error('View: edit journey form error:', error);
     return c.html(
@@ -171,7 +180,5 @@ viewRoutes.get('/app/journey/journeys/:id/add-step', (c) => {
   const journeyId = c.req.param('id');
   const stepType = c.req.query('type') ?? 'action';
 
-  return c.html(
-    <StepAddForm journeyId={journeyId} stepType={stepType} />,
-  );
+  return c.html(<StepAddForm journeyId={journeyId} stepType={stepType} />);
 });

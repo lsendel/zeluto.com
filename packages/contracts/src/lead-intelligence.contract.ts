@@ -25,14 +25,16 @@ export const EnrichmentJobSchema = z.object({
   contactId: z.string(),
   status: z.string(),
   fieldRequests: z.array(z.string()),
-  results: z.array(z.object({
-    field: z.string(),
-    provider: z.string(),
-    value: z.unknown(),
-    confidence: z.number(),
-    cost: z.number(),
-    latencyMs: z.number(),
-  })),
+  results: z.array(
+    z.object({
+      field: z.string(),
+      provider: z.string(),
+      value: z.unknown(),
+      confidence: z.number(),
+      cost: z.number(),
+      latencyMs: z.number(),
+    }),
+  ),
   totalCost: z.number(),
   totalLatencyMs: z.number(),
   providersTried: z.array(z.string()),
@@ -96,8 +98,13 @@ export const leadIntelligenceContract = c.router({
     method: 'GET',
     path: '/api/v1/lead-intelligence/contacts/:contactId/enrichment-history',
     pathParams: z.object({ contactId: z.string().uuid() }),
-    query: z.object({ page: z.coerce.number().default(1), limit: z.coerce.number().default(20) }),
-    responses: { 200: z.object({ items: z.array(EnrichmentJobSchema), total: z.number() }) },
+    query: z.object({
+      page: z.coerce.number().default(1),
+      limit: z.coerce.number().default(20),
+    }),
+    responses: {
+      200: z.object({ items: z.array(EnrichmentJobSchema), total: z.number() }),
+    },
   },
 
   // Providers

@@ -11,16 +11,21 @@ healthRoutes.get('/api/v1/lead-intelligence/health', async (c) => {
 
   try {
     const health = await findHealthByOrganization(db, tenant.organizationId);
-    return c.json(health.map(h => ({
-      providerId: h.provider_id,
-      successCount: h.success_count,
-      failureCount: h.failure_count,
-      circuitState: h.circuit_state,
-      lastFailureAt: h.last_failure_at?.toISOString() ?? null,
-      lastSuccessAt: h.last_success_at?.toISOString() ?? null,
-    })));
+    return c.json(
+      health.map((h) => ({
+        providerId: h.provider_id,
+        successCount: h.success_count,
+        failureCount: h.failure_count,
+        circuitState: h.circuit_state,
+        lastFailureAt: h.last_failure_at?.toISOString() ?? null,
+        lastSuccessAt: h.last_success_at?.toISOString() ?? null,
+      })),
+    );
   } catch (error) {
     console.error('Get provider health error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get provider health' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get provider health' },
+      500,
+    );
   }
 });

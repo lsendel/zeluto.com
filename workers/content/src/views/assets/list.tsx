@@ -46,31 +46,65 @@ export const AssetListView: FC<AssetListProps> = ({
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Name</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Type</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Size</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Folder</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Type
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Size
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Folder
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
               {assets.length === 0 ? (
                 <tr>
-                  <td colspan={5} class="px-6 py-12 text-center text-sm text-gray-500">
+                  <td
+                    colspan={5}
+                    class="px-6 py-12 text-center text-sm text-gray-500"
+                  >
                     No assets found. Upload your first asset to get started.
                   </td>
                 </tr>
               ) : (
                 assets.map((a) => (
                   <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 text-sm font-medium text-gray-900">{a.name}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                      {a.name}
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-500">
                       <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
                         {a.mimeType}
                       </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{formatFileSize(Number(a.sizeBytes))}</td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{a.folder ?? '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                      {formatFileSize(Number(a.sizeBytes))}
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                      {a.folder ?? '-'}
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-500 space-x-2">
                       <a
                         href={`/api/v1/content/assets/${a.id}/download`}

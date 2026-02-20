@@ -37,7 +37,9 @@ const OverviewTab: FC<{ contact: ContactRow }> = ({ contact }) => {
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Basic info */}
       <div class="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">Contact Information</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">
+          Contact Information
+        </h3>
         <dl class="space-y-3">
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Email</dt>
@@ -61,7 +63,9 @@ const OverviewTab: FC<{ contact: ContactRow }> = ({ contact }) => {
           </div>
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Stage</dt>
-            <dd class="text-sm text-gray-900 capitalize">{contact.stage || '-'}</dd>
+            <dd class="text-sm text-gray-900 capitalize">
+              {contact.stage || '-'}
+            </dd>
           </div>
         </dl>
       </div>
@@ -72,15 +76,21 @@ const OverviewTab: FC<{ contact: ContactRow }> = ({ contact }) => {
         <dl class="space-y-3">
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Created</dt>
-            <dd class="text-sm text-gray-900">{formatDate(contact.created_at)}</dd>
+            <dd class="text-sm text-gray-900">
+              {formatDate(contact.created_at)}
+            </dd>
           </div>
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Updated</dt>
-            <dd class="text-sm text-gray-900">{formatDate(contact.updated_at)}</dd>
+            <dd class="text-sm text-gray-900">
+              {formatDate(contact.updated_at)}
+            </dd>
           </div>
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Last Activity</dt>
-            <dd class="text-sm text-gray-900">{formatDate(contact.last_activity_at)}</dd>
+            <dd class="text-sm text-gray-900">
+              {formatDate(contact.last_activity_at)}
+            </dd>
           </div>
         </dl>
       </div>
@@ -88,7 +98,9 @@ const OverviewTab: FC<{ contact: ContactRow }> = ({ contact }) => {
       {/* Custom fields */}
       {fields && Object.keys(fields).length > 0 && (
         <div class="rounded-lg border border-gray-200 bg-white p-6 lg:col-span-2">
-          <h3 class="text-sm font-semibold text-gray-900 mb-4">Custom Fields</h3>
+          <h3 class="text-sm font-semibold text-gray-900 mb-4">
+            Custom Fields
+          </h3>
           <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {Object.entries(fields).map(([key, value]) => (
               <div key={key} class="flex justify-between">
@@ -174,10 +186,16 @@ export const ContactDetailView: FC<ContactDetailProps> = ({
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-4">
             <div class="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-lg font-medium">
-              {(contact.first_name?.[0] ?? contact.email?.[0] ?? '?').toUpperCase()}
+              {(
+                contact.first_name?.[0] ??
+                contact.email?.[0] ??
+                '?'
+              ).toUpperCase()}
             </div>
             <div>
-              <h1 class="text-2xl font-bold text-gray-900">{contactName(contact)}</h1>
+              <h1 class="text-2xl font-bold text-gray-900">
+                {contactName(contact)}
+              </h1>
               <p class="text-sm text-gray-500">{contact.email || 'No email'}</p>
             </div>
           </div>

@@ -5,8 +5,12 @@ export const GetProviderHealthQuerySchema = z.object({
   providerId: z.string().optional(),
 });
 
-export type GetProviderHealthQuery = z.infer<typeof GetProviderHealthQuerySchema>;
+export type GetProviderHealthQuery = z.infer<
+  typeof GetProviderHealthQuerySchema
+>;
 
-export function getProviderHealthQuery(input: GetProviderHealthQuery): GetProviderHealthQuery {
+export function getProviderHealthQuery(
+  input: GetProviderHealthQuery,
+): GetProviderHealthQuery {
   return GetProviderHealthQuerySchema.parse(input);
 }

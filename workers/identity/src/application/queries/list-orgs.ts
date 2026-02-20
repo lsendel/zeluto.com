@@ -1,5 +1,5 @@
+import { organizationMembers, organizations } from '@mauntic/identity-domain';
 import { eq, sql } from 'drizzle-orm';
-import { organizations, organizationMembers } from '@mauntic/identity-domain';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export interface ListOrgsParams {
@@ -19,7 +19,7 @@ export async function listOrgs(db: DrizzleDb, params: ListOrgsParams) {
 
   const baseCondition = eq(organizationMembers.userId, userId);
   const searchCondition = search
-    ? sql`${baseCondition} AND ${organizations.name} ILIKE ${'%' + search + '%'}`
+    ? sql`${baseCondition} AND ${organizations.name} ILIKE ${`%${search}%`}`
     : baseCondition;
 
   // Get total count
@@ -28,7 +28,7 @@ export async function listOrgs(db: DrizzleDb, params: ListOrgsParams) {
     .from(organizations)
     .innerJoin(
       organizationMembers,
-      eq(organizations.id, organizationMembers.organizationId)
+      eq(organizations.id, organizationMembers.organizationId),
     )
     .where(searchCondition);
 
@@ -50,7 +50,7 @@ export async function listOrgs(db: DrizzleDb, params: ListOrgsParams) {
     .from(organizations)
     .innerJoin(
       organizationMembers,
-      eq(organizations.id, organizationMembers.organizationId)
+      eq(organizations.id, organizationMembers.organizationId),
     )
     .where(searchCondition)
     .orderBy(organizations.createdAt)

@@ -13,10 +13,21 @@ export interface SequenceEnrollment {
 
 export interface SequenceRepository {
   findById(orgId: string, id: string): Promise<Sequence | null>;
-  findByOrganization(orgId: string, options?: { status?: string; limit?: number }): Promise<Sequence[]>;
+  findByOrganization(
+    orgId: string,
+    options?: { status?: string; limit?: number },
+  ): Promise<Sequence[]>;
   save(sequence: Sequence): Promise<void>;
   delete(orgId: string, id: string): Promise<void>;
-  findEnrollment(orgId: string, sequenceId: string, contactId: string): Promise<SequenceEnrollment | null>;
-  findEnrollmentsBySequence(orgId: string, sequenceId: string, status?: string): Promise<SequenceEnrollment[]>;
+  findEnrollment(
+    orgId: string,
+    sequenceId: string,
+    contactId: string,
+  ): Promise<SequenceEnrollment | null>;
+  findEnrollmentsBySequence(
+    orgId: string,
+    sequenceId: string,
+    status?: string,
+  ): Promise<SequenceEnrollment[]>;
   saveEnrollment(orgId: string, enrollment: SequenceEnrollment): Promise<void>;
 }

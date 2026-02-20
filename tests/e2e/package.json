@@ -8,7 +8,8 @@
     "test:watch": "vitest",
     "test:browser": "vitest --ui",
     "test:playwright": "playwright test",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "lint": "biome check ."
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",

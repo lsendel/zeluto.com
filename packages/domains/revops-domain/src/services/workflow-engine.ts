@@ -1,10 +1,21 @@
 export type WorkflowTrigger =
-  | 'deal_created' | 'stage_changed' | 'deal_won' | 'deal_lost'
-  | 'inactivity' | 'score_changed' | 'time_in_stage';
+  | 'deal_created'
+  | 'stage_changed'
+  | 'deal_won'
+  | 'deal_lost'
+  | 'inactivity'
+  | 'score_changed'
+  | 'time_in_stage';
 
 export type WorkflowActionType =
-  | 'send_email' | 'create_task' | 'update_field' | 'assign_owner'
-  | 'notify' | 'call_webhook' | 'add_to_sequence' | 'move_stage';
+  | 'send_email'
+  | 'create_task'
+  | 'update_field'
+  | 'assign_owner'
+  | 'notify'
+  | 'call_webhook'
+  | 'add_to_sequence'
+  | 'move_stage';
 
 export interface WorkflowAction {
   type: WorkflowActionType;
@@ -50,7 +61,10 @@ export class WorkflowEngine {
     const results: WorkflowExecutionResult[] = [];
 
     const matching = workflows.filter(
-      w => w.enabled && w.trigger === context.trigger && this.matchConditions(w.conditions, context),
+      (w) =>
+        w.enabled &&
+        w.trigger === context.trigger &&
+        this.matchConditions(w.conditions, context),
     );
 
     for (const workflow of matching) {
@@ -88,7 +102,10 @@ export class WorkflowEngine {
     }
   }
 
-  private matchConditions(conditions: Record<string, unknown> | undefined, context: WorkflowContext): boolean {
+  private matchConditions(
+    conditions: Record<string, unknown> | undefined,
+    context: WorkflowContext,
+  ): boolean {
     if (!conditions || Object.keys(conditions).length === 0) return true;
 
     // Simple condition matching: check if context data contains matching values
@@ -100,9 +117,24 @@ export class WorkflowEngine {
         const condition = value as Record<string, unknown>;
         if ('eq' in condition && contextValue !== condition.eq) return false;
         if ('neq' in condition && contextValue === condition.neq) return false;
-        if ('gt' in condition && typeof contextValue === 'number' && contextValue <= (condition.gt as number)) return false;
-        if ('lt' in condition && typeof contextValue === 'number' && contextValue >= (condition.lt as number)) return false;
-        if ('in' in condition && Array.isArray(condition.in) && !condition.in.includes(contextValue)) return false;
+        if (
+          'gt' in condition &&
+          typeof contextValue === 'number' &&
+          contextValue <= (condition.gt as number)
+        )
+          return false;
+        if (
+          'lt' in condition &&
+          typeof contextValue === 'number' &&
+          contextValue >= (condition.lt as number)
+        )
+          return false;
+        if (
+          'in' in condition &&
+          Array.isArray(condition.in) &&
+          !condition.in.includes(contextValue)
+        )
+          return false;
       } else if (contextValue !== value) {
         return false;
       }

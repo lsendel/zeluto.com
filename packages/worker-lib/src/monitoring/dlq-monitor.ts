@@ -108,10 +108,7 @@ export async function replayDlqMessages<T = unknown>(
       await targetQueue.send(msg.body);
       await kv.delete(key.name);
       replayed++;
-    } catch {
-      // Skip messages that fail to parse or re-enqueue
-      continue;
-    }
+    } catch {}
   }
 
   return replayed;
@@ -155,8 +152,9 @@ export async function sendDlqAlert(
   stats: DlqStats,
   logger?: Logger,
 ): Promise<void> {
-  const message = `DLQ Alert: ${stats.queueName} has ${stats.depth} messages pending. ` +
-    `Oldest message age: ${stats.oldestMessageAge ? Math.round(stats.oldestMessageAge / 1000) + 's' : 'unknown'}`;
+  const message =
+    `DLQ Alert: ${stats.queueName} has ${stats.depth} messages pending. ` +
+    `Oldest message age: ${stats.oldestMessageAge ? `${Math.round(stats.oldestMessageAge / 1000)}s` : 'unknown'}`;
 
   if (config.alertWebhookUrl) {
     try {

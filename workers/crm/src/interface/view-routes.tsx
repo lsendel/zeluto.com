@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findContactById,
   findAllContacts,
+  findContactById,
 } from '../infrastructure/repositories/contact-repository.js';
-import { ContactListView } from '../views/contacts/list.js';
 import { ContactDetailView } from '../views/contacts/detail.js';
 import { ContactFormView } from '../views/contacts/form.js';
+import { ContactListView } from '../views/contacts/list.js';
 
 /**
  * HTMX view routes.
@@ -26,11 +26,7 @@ export const viewRoutes = new Hono<Env>();
 viewRoutes.get('/app/crm/contacts', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const {
-    page: pageStr = '1',
-    limit: limitStr = '25',
-    search,
-  } = c.req.query();
+  const { page: pageStr = '1', limit: limitStr = '25', search } = c.req.query();
 
   const page = Math.max(1, parseInt(pageStr, 10) || 1);
   const limit = Math.min(100, Math.max(1, parseInt(limitStr, 10) || 25));
@@ -71,7 +67,10 @@ viewRoutes.get('/app/crm/contacts/:id', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
   const id = c.req.param('id');
-  const tab = (c.req.query('tab') ?? 'overview') as 'overview' | 'activity' | 'tags';
+  const tab = (c.req.query('tab') ?? 'overview') as
+    | 'overview'
+    | 'activity'
+    | 'tags';
 
   try {
     const contact = await findContactById(db, tenant.organizationId, id);
@@ -93,9 +92,7 @@ viewRoutes.get('/app/crm/contacts/:id', async (c) => {
       );
     }
 
-    return c.html(
-      <ContactDetailView contact={contact} activeTab={tab} />,
-    );
+    return c.html(<ContactDetailView contact={contact} activeTab={tab} />);
   } catch (error) {
     console.error('View: contact detail error:', error);
     return c.html(
@@ -133,9 +130,7 @@ viewRoutes.get('/app/crm/contacts/:id/edit', async (c) => {
       );
     }
 
-    return c.html(
-      <ContactFormView contact={contact} />,
-    );
+    return c.html(<ContactFormView contact={contact} />);
   } catch (error) {
     console.error('View: edit contact form error:', error);
     return c.html(

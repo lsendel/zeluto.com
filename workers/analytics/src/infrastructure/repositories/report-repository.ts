@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { funnelReports } from '@mauntic/analytics-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ReportRow = typeof funnelReports.$inferSelect;
@@ -13,7 +13,9 @@ export async function findReportById(
   const [row] = await db
     .select()
     .from(funnelReports)
-    .where(and(eq(funnelReports.id, id), eq(funnelReports.organizationId, orgId)));
+    .where(
+      and(eq(funnelReports.id, id), eq(funnelReports.organizationId, orgId)),
+    );
   return row ?? null;
 }
 
@@ -73,7 +75,9 @@ export async function updateReport(
   const [row] = await db
     .update(funnelReports)
     .set({ ...data, updatedAt: new Date() })
-    .where(and(eq(funnelReports.id, id), eq(funnelReports.organizationId, orgId)))
+    .where(
+      and(eq(funnelReports.id, id), eq(funnelReports.organizationId, orgId)),
+    )
     .returning();
   return row ?? null;
 }
@@ -85,7 +89,9 @@ export async function deleteReport(
 ): Promise<boolean> {
   const result = await db
     .delete(funnelReports)
-    .where(and(eq(funnelReports.id, id), eq(funnelReports.organizationId, orgId)))
+    .where(
+      and(eq(funnelReports.id, id), eq(funnelReports.organizationId, orgId)),
+    )
     .returning({ id: funnelReports.id });
   return result.length > 0;
 }

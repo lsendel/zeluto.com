@@ -1,4 +1,4 @@
-import type { Child, FC } from "../types.js";
+import type { Child, FC } from '../types.js';
 
 export interface Column<T = Record<string, unknown>> {
   key: string;
@@ -14,9 +14,9 @@ export interface PaginationProps {
   /** Base URL for pagination links (page param will be appended) */
   baseUrl: string;
   /** HTMX target for pagination */
-  "hx-target"?: string;
+  'hx-target'?: string;
   /** HTMX swap strategy */
-  "hx-swap"?: string;
+  'hx-swap'?: string;
 }
 
 export interface TableProps<T = Record<string, unknown>> {
@@ -36,22 +36,22 @@ const Pagination: FC<PaginationProps> = ({
   totalPages,
   totalItems,
   baseUrl,
-  "hx-target": hxTarget,
-  "hx-swap": hxSwap = "innerHTML",
+  'hx-target': hxTarget,
+  'hx-swap': hxSwap = 'innerHTML',
 }) => {
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
 
-  const separator = baseUrl.includes("?") ? "&" : "?";
+  const separator = baseUrl.includes('?') ? '&' : '?';
   const pageUrl = (page: number) => `${baseUrl}${separator}page=${page}`;
 
   // Build visible page numbers
-  const pages: (number | "ellipsis")[] = [];
+  const pages: (number | 'ellipsis')[] = [];
   if (totalPages <= 7) {
     for (let i = 1; i <= totalPages; i++) pages.push(i);
   } else {
     pages.push(1);
-    if (currentPage > 3) pages.push("ellipsis");
+    if (currentPage > 3) pages.push('ellipsis');
     for (
       let i = Math.max(2, currentPage - 1);
       i <= Math.min(totalPages - 1, currentPage + 1);
@@ -59,13 +59,13 @@ const Pagination: FC<PaginationProps> = ({
     ) {
       pages.push(i);
     }
-    if (currentPage < totalPages - 2) pages.push("ellipsis");
+    if (currentPage < totalPages - 2) pages.push('ellipsis');
     pages.push(totalPages);
   }
 
   const htmxAttrs: Record<string, string> = {};
-  if (hxTarget) htmxAttrs["hx-target"] = hxTarget;
-  if (hxSwap) htmxAttrs["hx-swap"] = hxSwap;
+  if (hxTarget) htmxAttrs['hx-target'] = hxTarget;
+  if (hxSwap) htmxAttrs['hx-swap'] = hxSwap;
 
   return (
     <nav
@@ -74,8 +74,8 @@ const Pagination: FC<PaginationProps> = ({
     >
       <div class="hidden sm:block">
         <p class="text-sm text-gray-700">
-          Showing page <span class="font-medium">{currentPage}</span> of{" "}
-          <span class="font-medium">{totalPages}</span>{" "}
+          Showing page <span class="font-medium">{currentPage}</span> of{' '}
+          <span class="font-medium">{totalPages}</span>{' '}
           <span class="text-gray-500">({totalItems} items)</span>
         </p>
       </div>
@@ -97,7 +97,7 @@ const Pagination: FC<PaginationProps> = ({
 
         <div class="hidden items-center gap-1 sm:flex">
           {pages.map((page, i) =>
-            page === "ellipsis" ? (
+            page === 'ellipsis' ? (
               <span key={`ellipsis-${i}`} class="px-2 text-gray-400">
                 ...
               </span>
@@ -108,11 +108,11 @@ const Pagination: FC<PaginationProps> = ({
                 hx-get={pageUrl(page)}
                 class={`relative inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium ${
                   page === currentPage
-                    ? "bg-brand-600 text-white"
-                    : "text-gray-700 hover:bg-gray-50"
+                    ? 'bg-brand-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 {...htmxAttrs}
-                aria-current={page === currentPage ? "page" : undefined}
+                aria-current={page === currentPage ? 'page' : undefined}
               >
                 {page}
               </a>
@@ -142,10 +142,10 @@ const Pagination: FC<PaginationProps> = ({
 export const Table: FC<TableProps> = ({
   columns,
   rows,
-  rowKey = "id",
-  class: className = "",
+  rowKey = 'id',
+  class: className = '',
   pagination,
-  emptyMessage = "No data found.",
+  emptyMessage = 'No data found.',
 }) => {
   return (
     <div class={`overflow-hidden ${className}`}>
@@ -157,7 +157,7 @@ export const Table: FC<TableProps> = ({
                 <th
                   key={col.key}
                   scope="col"
-                  class={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 ${col.class ?? ""}`}
+                  class={`px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 ${col.class ?? ''}`}
                 >
                   {col.header}
                 </th>
@@ -177,18 +177,21 @@ export const Table: FC<TableProps> = ({
             ) : (
               rows.map((row, index) => (
                 <tr
-                  key={(row as Record<string, unknown>)[rowKey] as string ?? index}
+                  key={
+                    ((row as Record<string, unknown>)[rowKey] as string) ??
+                    index
+                  }
                   class="hover:bg-gray-50 transition-colors"
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      class={`whitespace-nowrap px-6 py-4 text-sm text-gray-900 ${col.class ?? ""}`}
+                      class={`whitespace-nowrap px-6 py-4 text-sm text-gray-900 ${col.class ?? ''}`}
                     >
                       {col.render
                         ? col.render(row, index)
                         : String(
-                            (row as Record<string, unknown>)[col.key] ?? "",
+                            (row as Record<string, unknown>)[col.key] ?? '',
                           )}
                     </td>
                   ))}

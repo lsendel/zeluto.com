@@ -1,8 +1,13 @@
-import type { Child, FC } from "@mauntic/ui-kit";
+import type { Child, FC } from '@mauntic/ui-kit';
 
-function resolveAssetUrl(baseUrl: string | undefined, assetPath: string): string {
-  const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, "") : "";
-  const normalizedPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+function resolveAssetUrl(
+  baseUrl: string | undefined,
+  assetPath: string,
+): string {
+  const normalizedBase = baseUrl ? baseUrl.replace(/\/$/, '') : '';
+  const normalizedPath = assetPath.startsWith('/')
+    ? assetPath
+    : `/${assetPath}`;
   return `${normalizedBase}${normalizedPath}`;
 }
 
@@ -25,28 +30,34 @@ interface Step {
 }
 
 const steps: Step[] = [
-  { number: 1, name: "Account" },
-  { number: 2, name: "Organization" },
-  { number: 3, name: "Plan" },
-  { number: 4, name: "Setup" },
+  { number: 1, name: 'Account' },
+  { number: 2, name: 'Organization' },
+  { number: 3, name: 'Plan' },
+  { number: 4, name: 'Setup' },
 ];
 
 export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
-  title = "Getting Started",
+  title = 'Getting Started',
   currentStep,
   children,
   head,
   assetsBaseUrl,
 }) => {
-  const stylesHref = resolveAssetUrl(assetsBaseUrl, "/styles/latest.css");
+  const stylesHref = resolveAssetUrl(assetsBaseUrl, '/styles/latest.css');
   return (
     <html lang="en" class="h-full bg-gray-50">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{title} | Zeluto</title>
+        <meta name="robots" content="noindex, nofollow" />
+        <meta property="og:site_name" content="Zeluto" />
+        <meta property="og:title" content={`${title} | Zeluto`} />
         <link rel="stylesheet" href={stylesHref} />
-        <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
+        <script
+          src="https://unpkg.com/htmx.org@2.0.4"
+          crossorigin="anonymous"
+        />
         {head}
       </head>
       <body class="h-full">
@@ -70,10 +81,10 @@ export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
                         <div
                           class={`flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold ${
                             step.number < currentStep
-                              ? "border-brand-600 bg-brand-600 text-white"
+                              ? 'border-brand-600 bg-brand-600 text-white'
                               : step.number === currentStep
-                              ? "border-brand-600 bg-white text-brand-600"
-                              : "border-gray-300 bg-white text-gray-400"
+                                ? 'border-brand-600 bg-white text-brand-600'
+                                : 'border-gray-300 bg-white text-gray-400'
                           }`}
                         >
                           {step.number < currentStep ? (
@@ -95,8 +106,8 @@ export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
                         <span
                           class={`mt-2 text-xs font-medium ${
                             step.number <= currentStep
-                              ? "text-gray-900"
-                              : "text-gray-500"
+                              ? 'text-gray-900'
+                              : 'text-gray-500'
                           }`}
                         >
                           {step.name}
@@ -107,8 +118,8 @@ export const OnboardingLayout: FC<OnboardingLayoutProps> = ({
                       <div
                         class={`h-0.5 w-12 sm:w-20 ${
                           step.number < currentStep
-                            ? "bg-brand-600"
-                            : "bg-gray-300"
+                            ? 'bg-brand-600'
+                            : 'bg-gray-300'
                         }`}
                       />
                     )}

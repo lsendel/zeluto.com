@@ -1,13 +1,6 @@
 import type {
-  CampaignCreatedEvent,
-  CampaignScheduledEvent,
-  CampaignStartedEvent,
   CampaignCompletedEvent,
-  CampaignPausedEvent,
-  CampaignCanceledEvent,
-  CampaignSentEvent,
-  AbTestStartedEvent,
-  AbTestCompletedEvent,
+  CampaignStartedEvent,
   PointsAwardedEvent,
   SendMessageEvent,
 } from '@mauntic/domain-kernel/events';

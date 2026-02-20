@@ -7,6 +7,8 @@ export const ResumeCampaignCommandSchema = z.object({
 
 export type ResumeCampaignCommand = z.infer<typeof ResumeCampaignCommandSchema>;
 
-export function resumeCampaignCommand(input: ResumeCampaignCommand): ResumeCampaignCommand {
+export function resumeCampaignCommand(
+  input: ResumeCampaignCommand,
+): ResumeCampaignCommand {
   return ResumeCampaignCommandSchema.parse(input);
 }

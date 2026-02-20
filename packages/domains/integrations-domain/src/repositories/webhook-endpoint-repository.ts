@@ -7,7 +7,10 @@ export interface WebhookEndpointRepository {
     orgId: string,
     pagination: { page: number; limit: number },
   ): Promise<{ data: WebhookEndpoint[]; total: number }>;
-  findActiveByEvent(orgId: string, eventType: string): Promise<WebhookEndpoint[]>;
+  findActiveByEvent(
+    orgId: string,
+    eventType: string,
+  ): Promise<WebhookEndpoint[]>;
   update(endpoint: WebhookEndpoint): Promise<void>;
   delete(orgId: string, id: string): Promise<void>;
 }

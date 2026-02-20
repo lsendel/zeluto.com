@@ -1,4 +1,8 @@
-import type { LLMProvider, LLMOptions, LLMResponse } from '@mauntic/revops-domain';
+import type {
+  LLMOptions,
+  LLMProvider,
+  LLMResponse,
+} from '@mauntic/revops-domain';
 import OpenAI from 'openai';
 
 export class OpenAILLMProvider implements LLMProvider {
@@ -14,7 +18,9 @@ export class OpenAILLMProvider implements LLMProvider {
       max_tokens: options?.maxTokens ?? 1024,
       temperature: options?.temperature ?? 0.7,
       messages: [
-        ...(options?.systemPrompt ? [{ role: 'system' as const, content: options.systemPrompt }] : []),
+        ...(options?.systemPrompt
+          ? [{ role: 'system' as const, content: options.systemPrompt }]
+          : []),
         { role: 'user' as const, content: prompt },
       ],
     });
@@ -35,7 +41,9 @@ export class OpenAILLMProvider implements LLMProvider {
       temperature: options?.temperature ?? 0.7,
       stream: true,
       messages: [
-        ...(options?.systemPrompt ? [{ role: 'system' as const, content: options.systemPrompt }] : []),
+        ...(options?.systemPrompt
+          ? [{ role: 'system' as const, content: options.systemPrompt }]
+          : []),
         { role: 'user' as const, content: prompt },
       ],
     });

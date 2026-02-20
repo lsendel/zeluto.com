@@ -1,8 +1,8 @@
-import { eq, and } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { plans, planLimits } from '../../drizzle/schema.js';
-import type { Plan, PlanLimit } from '../entities/plan.js';
 import { NotFoundError } from '@mauntic/domain-kernel';
+import { and, eq } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { planLimits, plans } from '../../drizzle/schema.js';
+import type { Plan, PlanLimit } from '../entities/plan.js';
 
 export interface PlanWithLimits {
   plan: Plan;
@@ -57,15 +57,15 @@ export class PlanService {
   }
 
   /** Get the limit for a specific resource on a plan. */
-  async getResourceLimit(planId: string, resource: string): Promise<PlanLimit | null> {
+  async getResourceLimit(
+    planId: string,
+    resource: string,
+  ): Promise<PlanLimit | null> {
     const [row] = await this.db
       .select()
       .from(planLimits)
       .where(
-        and(
-          eq(planLimits.planId, planId),
-          eq(planLimits.resource, resource),
-        ),
+        and(eq(planLimits.planId, planId), eq(planLimits.resource, resource)),
       )
       .limit(1);
 
@@ -83,11 +83,15 @@ export class PlanService {
    * Compare two plans. Returns whether the move is an upgrade or downgrade
    * and the price difference.
    */
-  async comparePlans(currentPlanId: string, newPlanId: string): Promise<PlanComparison> {
+  async comparePlans(
+    currentPlanId: string,
+    newPlanId: string,
+  ): Promise<PlanComparison> {
     const currentPlan = await this.getPlan(currentPlanId);
     const newPlan = await this.getPlan(newPlanId);
 
-    const priceDifferenceMonthly = newPlan.priceMonthly - currentPlan.priceMonthly;
+    const priceDifferenceMonthly =
+      newPlan.priceMonthly - currentPlan.priceMonthly;
     const priceDifferenceYearly = newPlan.priceYearly - currentPlan.priceYearly;
 
     return {

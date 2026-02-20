@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const PointEventTypeSchema = z.enum([
   'email.opened',
@@ -86,10 +86,7 @@ export class PointRule {
 
   // ---- Domain methods ----
 
-  update(input: {
-    points?: number;
-    description?: string | null;
-  }): void {
+  update(input: { points?: number; description?: string | null }): void {
     if (input.points !== undefined) {
       if (input.points === 0) {
         throw new InvariantViolation('Points value cannot be zero');

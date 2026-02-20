@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { findEventsByJobId } from '../infrastructure/repositories/delivery-event-repository.js';
 import {
-  findJobById,
-  findAllJobs,
   createJob,
+  findAllJobs,
+  findJobById,
   findJobByIdempotencyKey,
 } from '../infrastructure/repositories/delivery-job-repository.js';
-import { findEventsByJobId } from '../infrastructure/repositories/delivery-event-repository.js';
 
 export const deliveryRoutes = new Hono<Env>();
 
@@ -27,7 +27,10 @@ deliveryRoutes.post('/api/v1/delivery/send', async (c) => {
 
     if (!body.channel || !body.to || !body.body) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'channel, to, and body are required' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'channel, to, and body are required',
+        },
         400,
       );
     }
@@ -35,7 +38,10 @@ deliveryRoutes.post('/api/v1/delivery/send', async (c) => {
     const validChannels = ['email', 'sms', 'push', 'webhook'];
     if (!validChannels.includes(body.channel)) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: `channel must be one of: ${validChannels.join(', ')}` },
+        {
+          code: 'VALIDATION_ERROR',
+          message: `channel must be one of: ${validChannels.join(', ')}`,
+        },
         400,
       );
     }
@@ -43,7 +49,11 @@ deliveryRoutes.post('/api/v1/delivery/send', async (c) => {
     const idempotencyKey = body.idempotencyKey ?? crypto.randomUUID();
 
     // Check idempotency
-    const existing = await findJobByIdempotencyKey(db, tenant.organizationId, idempotencyKey);
+    const existing = await findJobByIdempotencyKey(
+      db,
+      tenant.organizationId,
+      idempotencyKey,
+    );
     if (existing) {
       return c.json(existing, 201);
     }
@@ -83,7 +93,10 @@ deliveryRoutes.post('/api/v1/delivery/send', async (c) => {
     return c.json(job, 201);
   } catch (error) {
     console.error('Send message error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to send message' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to send message' },
+      500,
+    );
   }
 });
 
@@ -104,9 +117,17 @@ deliveryRoutes.post('/api/v1/delivery/send/batch', async (c) => {
       idempotencyKey?: string;
     }>();
 
-    if (!body.channel || !body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
+    if (
+      !body.channel ||
+      !body.messages ||
+      !Array.isArray(body.messages) ||
+      body.messages.length === 0
+    ) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'channel and messages array are required' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'channel and messages array are required',
+        },
         400,
       );
     }
@@ -114,7 +135,11 @@ deliveryRoutes.post('/api/v1/delivery/send/batch', async (c) => {
     const idempotencyKey = body.idempotencyKey ?? crypto.randomUUID();
 
     // Check idempotency
-    const existing = await findJobByIdempotencyKey(db, tenant.organizationId, idempotencyKey);
+    const existing = await findJobByIdempotencyKey(
+      db,
+      tenant.organizationId,
+      idempotencyKey,
+    );
     if (existing) {
       return c.json(existing, 201);
     }
@@ -151,7 +176,10 @@ deliveryRoutes.post('/api/v1/delivery/send/batch', async (c) => {
     return c.json(job, 201);
   } catch (error) {
     console.error('Send batch error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to send batch' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to send batch' },
+      500,
+    );
   }
 });
 
@@ -181,7 +209,10 @@ deliveryRoutes.get('/api/v1/delivery/jobs', async (c) => {
     });
   } catch (error) {
     console.error('List jobs error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list jobs' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list jobs' },
+      500,
+    );
   }
 });
 
@@ -194,12 +225,18 @@ deliveryRoutes.get('/api/v1/delivery/jobs/:id', async (c) => {
   try {
     const job = await findJobById(db, tenant.organizationId, id);
     if (!job) {
-      return c.json({ code: 'NOT_FOUND', message: 'Delivery job not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Delivery job not found' },
+        404,
+      );
     }
     return c.json(job);
   } catch (error) {
     console.error('Get job error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get job' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get job' },
+      500,
+    );
   }
 });
 
@@ -217,7 +254,10 @@ deliveryRoutes.get('/api/v1/delivery/jobs/:id/events', async (c) => {
     // Verify job exists
     const job = await findJobById(db, tenant.organizationId, id);
     if (!job) {
-      return c.json({ code: 'NOT_FOUND', message: 'Delivery job not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Delivery job not found' },
+        404,
+      );
     }
 
     const result = await findEventsByJobId(db, tenant.organizationId, id, {
@@ -234,6 +274,9 @@ deliveryRoutes.get('/api/v1/delivery/jobs/:id/events', async (c) => {
     });
   } catch (error) {
     console.error('Get job events error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get job events' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get job events' },
+      500,
+    );
   }
 });

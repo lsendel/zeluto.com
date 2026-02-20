@@ -1,24 +1,24 @@
-export { publishDomainEvent, publishDomainEvents } from './publisher.js';
-export {
-  contactCreated,
-  contactUpdated,
-  contactDeleted,
-  contactMerged,
-  contactImported,
-} from './contact-events.js';
 export {
   companyCreated,
-  companyUpdated,
   companyDeleted,
+  companyUpdated,
 } from './company-events.js';
 export {
+  contactCreated,
+  contactDeleted,
+  contactImported,
+  contactMerged,
+  contactUpdated,
+} from './contact-events.js';
+export { publishDomainEvent, publishDomainEvents } from './publisher.js';
+export {
   segmentCreated,
-  segmentUpdated,
   segmentRebuilt,
+  segmentUpdated,
 } from './segment-events.js';
 export {
-  tagCreated,
-  tagDeleted,
   contactTagged,
   contactUntagged,
+  tagCreated,
+  tagDeleted,
 } from './tag-events.js';

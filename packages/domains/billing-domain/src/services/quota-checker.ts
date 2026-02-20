@@ -1,6 +1,10 @@
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { subscriptions, planLimits, usageRecords } from '../../drizzle/schema.js';
+import {
+  planLimits,
+  subscriptions,
+  usageRecords,
+} from '../../drizzle/schema.js';
 import { getBillingPeriod } from '../entities/usage-record.js';
 
 export interface QuotaCheckResult {

@@ -10,6 +10,8 @@ export const AddSuppressionCommandSchema = z.object({
 
 export type AddSuppressionCommand = z.infer<typeof AddSuppressionCommandSchema>;
 
-export function addSuppressionCommand(input: AddSuppressionCommand): AddSuppressionCommand {
+export function addSuppressionCommand(
+  input: AddSuppressionCommand,
+): AddSuppressionCommand {
   return AddSuppressionCommandSchema.parse(input);
 }

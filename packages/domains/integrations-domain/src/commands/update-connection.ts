@@ -9,8 +9,12 @@ export const UpdateConnectionCommandSchema = z.object({
   status: ConnectionStatusSchema.optional(),
 });
 
-export type UpdateConnectionCommand = z.infer<typeof UpdateConnectionCommandSchema>;
+export type UpdateConnectionCommand = z.infer<
+  typeof UpdateConnectionCommandSchema
+>;
 
-export function updateConnectionCommand(input: UpdateConnectionCommand): UpdateConnectionCommand {
+export function updateConnectionCommand(
+  input: UpdateConnectionCommand,
+): UpdateConnectionCommand {
   return UpdateConnectionCommandSchema.parse(input);
 }

@@ -6,10 +6,12 @@
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run",
     "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "test": "vitest",
+    "lint": "biome check ./src"
   },
   "dependencies": {
     "@mauntic/contracts": "workspace:*",
+    "@ts-rest/serverless": "catalog:",
     "@mauntic/crm-domain": "workspace:*",
     "@mauntic/domain-kernel": "workspace:*",
     "@mauntic/ui-kit": "workspace:*",

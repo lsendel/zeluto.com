@@ -1,33 +1,45 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
-import { createDatabase, createLoggerFromEnv, logQueueMetric } from '@mauntic/worker-lib';
-import {
-  ResearchAgent,
-  DealInspector,
-  WorkflowEngine,
-  SDRAgent,
-} from '@mauntic/revops-domain';
 import type {
-  DealProps,
   ActivityProps,
-  WorkflowDefinition,
+  DealProps,
   WorkflowContext,
+  WorkflowDefinition,
   WorkflowTrigger,
 } from '@mauntic/revops-domain';
+import {
+  DealInspector,
+  ResearchAgent,
+  SDRAgent,
+  WorkflowEngine,
+} from '@mauntic/revops-domain';
+import {
+  createDatabase,
+  createLoggerFromEnv,
+  logQueueMetric,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { ClaudeLLMProvider } from './adapters/claude-llm-provider.js';
 import { RevOpsActionExecutor } from './application/action-executor.js';
-import { findDealById, updateDeal } from './infrastructure/repositories/deal-repository.js';
+import type { ActivityRow } from './infrastructure/repositories/activity-repository.js';
 import { findActivitiesByDeal } from './infrastructure/repositories/activity-repository.js';
-import { findWorkflowsByTrigger, findWorkflowById, recordExecution } from './infrastructure/repositories/workflow-repository.js';
-import { createJob, updateJob, createInsights } from './infrastructure/repositories/research-repository.js';
+import type { DealRow } from './infrastructure/repositories/deal-repository.js';
+import { findDealById } from './infrastructure/repositories/deal-repository.js';
 import { upsertProspect } from './infrastructure/repositories/prospect-repository.js';
 import {
-  findSequenceById,
+  createInsights,
+  createJob,
+  updateJob,
+} from './infrastructure/repositories/research-repository.js';
+import {
   findEnrollmentById,
+  findSequenceById,
   updateEnrollment,
 } from './infrastructure/repositories/sequence-repository.js';
-import type { DealRow } from './infrastructure/repositories/deal-repository.js';
-import type { ActivityRow } from './infrastructure/repositories/activity-repository.js';
+import {
+  findWorkflowById,
+  findWorkflowsByTrigger,
+  recordExecution,
+} from './infrastructure/repositories/workflow-repository.js';
 
 // ---------------------------------------------------------------------------
 // Environment type
@@ -216,7 +228,10 @@ async function handleDealStageChanged(
   // Load deal + activities for inspection
   const dealRow = await findDealById(db, organizationId, dealId);
   if (!dealRow) {
-    console.warn('DealStageChanged: deal not found', { organizationId, dealId });
+    console.warn('DealStageChanged: deal not found', {
+      organizationId,
+      dealId,
+    });
     return;
   }
 
@@ -236,7 +251,11 @@ async function handleDealStageChanged(
   });
 
   // Load and evaluate workflows triggered by stage_changed
-  const workflowRows = await findWorkflowsByTrigger(db, organizationId, 'stage_changed');
+  const workflowRows = await findWorkflowsByTrigger(
+    db,
+    organizationId,
+    'stage_changed',
+  );
   if (workflowRows.length > 0) {
     const workflows = workflowRows.map(mapWorkflowRowToDefinition);
     const executor = new RevOpsActionExecutor(db, env.EVENTS);
@@ -291,12 +310,18 @@ async function handleWorkflowTrigger(
 
   const workflowRow = await findWorkflowById(db, organizationId, workflowId);
   if (!workflowRow) {
-    console.warn('WorkflowTrigger: workflow not found', { organizationId, workflowId });
+    console.warn('WorkflowTrigger: workflow not found', {
+      organizationId,
+      workflowId,
+    });
     return;
   }
 
   if (!workflowRow.enabled) {
-    console.info('WorkflowTrigger: workflow is disabled', { organizationId, workflowId });
+    console.info('WorkflowTrigger: workflow is disabled', {
+      organizationId,
+      workflowId,
+    });
     return;
   }
 
@@ -347,7 +372,10 @@ async function handleSequenceStepExecute(
   // Load enrollment
   const enrollment = await findEnrollmentById(db, organizationId, enrollmentId);
   if (!enrollment) {
-    console.warn('SequenceStepExecute: enrollment not found', { organizationId, enrollmentId });
+    console.warn('SequenceStepExecute: enrollment not found', {
+      organizationId,
+      enrollmentId,
+    });
     return;
   }
 
@@ -363,7 +391,10 @@ async function handleSequenceStepExecute(
   // Load sequence definition
   const sequence = await findSequenceById(db, organizationId, sequenceId);
   if (!sequence) {
-    console.warn('SequenceStepExecute: sequence not found', { organizationId, sequenceId });
+    console.warn('SequenceStepExecute: sequence not found', {
+      organizationId,
+      sequenceId,
+    });
     return;
   }
 
@@ -383,7 +414,11 @@ async function handleSequenceStepExecute(
       completed_at: new Date(),
       current_step: stepIndex,
     });
-    console.info('Sequence completed', { organizationId, enrollmentId, sequenceId });
+    console.info('Sequence completed', {
+      organizationId,
+      enrollmentId,
+      sequenceId,
+    });
     return;
   }
 
@@ -433,7 +468,10 @@ async function handleSequenceStepExecute(
       break;
     }
     default: {
-      console.warn('Unknown sequence step type', { type: step.type, stepIndex });
+      console.warn('Unknown sequence step type', {
+        type: step.type,
+        stepIndex,
+      });
     }
   }
 
@@ -537,7 +575,10 @@ function normalizeMessage(body: unknown): RevOpsEvent | null {
       return {
         type: candidate.type as RevOpsEventType,
         data: (candidate.data as Record<string, unknown>) ?? {},
-        correlationId: typeof candidate.correlationId === 'string' ? candidate.correlationId : undefined,
+        correlationId:
+          typeof candidate.correlationId === 'string'
+            ? candidate.correlationId
+            : undefined,
       };
     }
   }
@@ -551,7 +592,11 @@ function normalizeMessage(body: unknown): RevOpsEvent | null {
 
 const EVENT_HANDLERS: Record<
   RevOpsEventType,
-  (data: Record<string, unknown>, db: NeonHttpDatabase, env: RevOpsQueueEnv) => Promise<void>
+  (
+    data: Record<string, unknown>,
+    db: NeonHttpDatabase,
+    env: RevOpsQueueEnv,
+  ) => Promise<void>
 > = {
   'revops.ResearchRequested': handleResearchRequested,
   'revops.DealStageChanged': handleDealStageChanged,
@@ -561,7 +606,11 @@ const EVENT_HANDLERS: Record<
 };
 
 export default {
-  async queue(batch: MessageBatch, env: RevOpsQueueEnv, _ctx: ExecutionContext) {
+  async queue(
+    batch: MessageBatch,
+    env: RevOpsQueueEnv,
+    _ctx: ExecutionContext,
+  ) {
     const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
     const queueName = batch.queue ?? 'mauntic-revops-events';
     const baseLogger = createLoggerFromEnv(
@@ -579,29 +628,57 @@ export default {
 
       if (!event) {
         message.ack();
-        logQueueMetric({ queue: queueName, messageId: message.id, status: 'ack', eventType: 'revops.unknown', durationMs: Date.now() - startedAt });
+        logQueueMetric({
+          queue: queueName,
+          messageId: message.id,
+          status: 'ack',
+          eventType: 'revops.unknown',
+          durationMs: Date.now() - startedAt,
+        });
         continue;
       }
 
       const handler = EVENT_HANDLERS[event.type];
       if (!handler) {
         message.ack();
-        logQueueMetric({ queue: queueName, messageId: message.id, status: 'ack', eventType: event.type, durationMs: Date.now() - startedAt });
+        logQueueMetric({
+          queue: queueName,
+          messageId: message.id,
+          status: 'ack',
+          eventType: event.type,
+          durationMs: Date.now() - startedAt,
+        });
         continue;
       }
 
-      const messageLogger = baseLogger.child({ messageId: message.id, eventType: event.type, correlationId: event.correlationId });
+      const messageLogger = baseLogger.child({
+        messageId: message.id,
+        eventType: event.type,
+        correlationId: event.correlationId,
+      });
 
       try {
         await handler(event.data, db, env);
         const durationMs = Date.now() - startedAt;
         message.ack();
-        logQueueMetric({ queue: queueName, messageId: message.id, status: 'ack', eventType: event.type, durationMs });
+        logQueueMetric({
+          queue: queueName,
+          messageId: message.id,
+          status: 'ack',
+          eventType: event.type,
+          durationMs,
+        });
         messageLogger.info({ durationMs, event: 'queue.job.success' });
       } catch (error) {
         const durationMs = Date.now() - startedAt;
         message.retry();
-        logQueueMetric({ queue: queueName, messageId: message.id, status: 'retry', eventType: event.type, durationMs });
+        logQueueMetric({
+          queue: queueName,
+          messageId: message.id,
+          status: 'retry',
+          eventType: event.type,
+          durationMs,
+        });
         messageLogger.error(
           {
             durationMs,

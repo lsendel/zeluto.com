@@ -1,5 +1,9 @@
-import { eq, and, sql, desc, lt } from 'drizzle-orm';
-import { journey_executions, step_executions, execution_logs } from '@mauntic/journey-domain/drizzle';
+import {
+  execution_logs,
+  journey_executions,
+  step_executions,
+} from '@mauntic/journey-domain/drizzle';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ExecutionRow = typeof journey_executions.$inferSelect;
@@ -19,7 +23,12 @@ export async function findExecutionById(
   const [execution] = await db
     .select()
     .from(journey_executions)
-    .where(and(eq(journey_executions.id, id), eq(journey_executions.organization_id, orgId)));
+    .where(
+      and(
+        eq(journey_executions.id, id),
+        eq(journey_executions.organization_id, orgId),
+      ),
+    );
   return execution ?? null;
 }
 
@@ -104,7 +113,12 @@ export async function updateExecution(
   const [execution] = await db
     .update(journey_executions)
     .set(data)
-    .where(and(eq(journey_executions.id, id), eq(journey_executions.organization_id, orgId)))
+    .where(
+      and(
+        eq(journey_executions.id, id),
+        eq(journey_executions.organization_id, orgId),
+      ),
+    )
     .returning();
   return execution ?? null;
 }
@@ -176,7 +190,12 @@ export async function findStepExecutionById(
   const [stepExec] = await db
     .select()
     .from(step_executions)
-    .where(and(eq(step_executions.id, id), eq(step_executions.organization_id, orgId)));
+    .where(
+      and(
+        eq(step_executions.id, id),
+        eq(step_executions.organization_id, orgId),
+      ),
+    );
   return stepExec ?? null;
 }
 
@@ -201,7 +220,12 @@ export async function updateStepExecution(
   const [stepExec] = await db
     .update(step_executions)
     .set(data)
-    .where(and(eq(step_executions.id, id), eq(step_executions.organization_id, orgId)))
+    .where(
+      and(
+        eq(step_executions.id, id),
+        eq(step_executions.organization_id, orgId),
+      ),
+    )
     .returning();
   return stepExec ?? null;
 }

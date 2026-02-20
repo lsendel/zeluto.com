@@ -1,5 +1,5 @@
-import { eq, and, ilike, sql, desc } from 'drizzle-orm';
 import { assets } from '@mauntic/content-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type AssetRow = typeof assets.$inferSelect;
@@ -41,10 +41,7 @@ export async function findAllAssets(
       .orderBy(desc(assets.createdAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(assets)
-      .where(where),
+    db.select({ count: sql<number>`count(*)::int` }).from(assets).where(where),
   ]);
 
   return { data, total: countResult[0]?.count ?? 0 };
@@ -84,7 +81,9 @@ export async function listAssetFolders(
       assetCount: sql<number>`count(*)::int`,
     })
     .from(assets)
-    .where(and(eq(assets.organizationId, orgId), sql`${assets.folder} IS NOT NULL`))
+    .where(
+      and(eq(assets.organizationId, orgId), sql`${assets.folder} IS NOT NULL`),
+    )
     .groupBy(assets.folder);
 
   return result.map((r) => ({ name: r.name ?? '', assetCount: r.assetCount }));

@@ -6,14 +6,11 @@ export interface PageEditorProps {
   errors?: Record<string, string>;
 }
 
-export const PageEditorView: FC<PageEditorProps> = ({
-  page,
-  errors = {},
-}) => {
+export const PageEditorView: FC<PageEditorProps> = ({ page, errors = {} }) => {
   const isEdit = !!page;
   const title = isEdit ? 'Edit Landing Page' : 'New Landing Page';
   const submitUrl = isEdit
-    ? `/api/v1/content/landing-pages/${page!.id}`
+    ? `/api/v1/content/landing-pages/${page?.id}`
     : '/api/v1/content/landing-pages';
 
   return (
@@ -36,16 +33,18 @@ export const PageEditorView: FC<PageEditorProps> = ({
         <h1 class="text-2xl font-bold text-gray-900">{title}</h1>
         {isEdit && (
           <div class="flex items-center gap-2">
-            <span class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-              page!.isPublished
-                ? 'bg-green-50 text-green-700'
-                : 'bg-yellow-50 text-yellow-700'
-            }`}>
-              {page!.isPublished ? 'Published' : 'Draft'}
+            <span
+              class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                page?.isPublished
+                  ? 'bg-green-50 text-green-700'
+                  : 'bg-yellow-50 text-yellow-700'
+              }`}
+            >
+              {page?.isPublished ? 'Published' : 'Draft'}
             </span>
-            {page!.isPublished ? (
+            {page?.isPublished ? (
               <button
-                hx-post={`/api/v1/content/landing-pages/${page!.id}/unpublish`}
+                hx-post={`/api/v1/content/landing-pages/${page?.id}/unpublish`}
                 hx-target="#app-content"
                 class="inline-flex items-center rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-1.5 text-sm font-medium text-yellow-700 hover:bg-yellow-100"
               >
@@ -53,7 +52,7 @@ export const PageEditorView: FC<PageEditorProps> = ({
               </button>
             ) : (
               <button
-                hx-post={`/api/v1/content/landing-pages/${page!.id}/publish`}
+                hx-post={`/api/v1/content/landing-pages/${page?.id}/publish`}
                 hx-target="#app-content"
                 class="inline-flex items-center rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
               >
@@ -75,7 +74,10 @@ export const PageEditorView: FC<PageEditorProps> = ({
         <div class="space-y-6">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="name"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Page Name
               </label>
               <input
@@ -89,7 +91,10 @@ export const PageEditorView: FC<PageEditorProps> = ({
               />
             </div>
             <div>
-              <label for="slug" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="slug"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 URL Slug
               </label>
               <div class="flex items-center">
@@ -112,18 +117,28 @@ export const PageEditorView: FC<PageEditorProps> = ({
           {isEdit && (
             <div class="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
               <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wider">Visits</p>
-                <p class="text-lg font-semibold text-gray-900">{page!.visitCount}</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wider">Conversions</p>
-                <p class="text-lg font-semibold text-gray-900">{page!.conversionCount}</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wider">Conversion Rate</p>
+                <p class="text-xs text-gray-500 uppercase tracking-wider">
+                  Visits
+                </p>
                 <p class="text-lg font-semibold text-gray-900">
-                  {page!.visitCount > 0
-                    ? `${((page!.conversionCount / page!.visitCount) * 100).toFixed(1)}%`
+                  {page?.visitCount}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wider">
+                  Conversions
+                </p>
+                <p class="text-lg font-semibold text-gray-900">
+                  {page?.conversionCount}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wider">
+                  Conversion Rate
+                </p>
+                <p class="text-lg font-semibold text-gray-900">
+                  {page?.visitCount > 0
+                    ? `${((page?.conversionCount / page?.visitCount) * 100).toFixed(1)}%`
                     : '0%'}
                 </p>
               </div>

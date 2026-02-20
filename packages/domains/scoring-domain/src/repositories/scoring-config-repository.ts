@@ -9,7 +9,10 @@ export interface ScoringConfigEntry {
 
 export interface ScoringConfigRepository {
   findByOrganization(orgId: string): Promise<ScoringConfigEntry[]>;
-  findByCategory(orgId: string, category: string): Promise<ScoringConfigEntry[]>;
+  findByCategory(
+    orgId: string,
+    category: string,
+  ): Promise<ScoringConfigEntry[]>;
   save(config: ScoringConfigEntry): Promise<void>;
   saveBatch(configs: ScoringConfigEntry[]): Promise<void>;
   delete(orgId: string, id: string): Promise<void>;

@@ -17,7 +17,9 @@ export interface SyncProvider {
   readonly name: string;
 
   /** Test connectivity with the configured credentials */
-  testConnection(config: Record<string, unknown>): Promise<{ success: boolean; message?: string }>;
+  testConnection(
+    config: Record<string, unknown>,
+  ): Promise<{ success: boolean; message?: string }>;
 
   /** Pull records from the external system (inbound) */
   pullRecords(

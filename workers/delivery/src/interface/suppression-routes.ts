@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findAllSuppressions,
-  isEmailSuppressed,
   createSuppression,
   deleteSuppression,
+  findAllSuppressions,
+  isEmailSuppressed,
 } from '../infrastructure/repositories/suppression-repository.js';
 
 export const suppressionRoutes = new Hono<Env>();
@@ -34,7 +34,10 @@ suppressionRoutes.get('/api/v1/delivery/suppressions', async (c) => {
     });
   } catch (error) {
     console.error('List suppressions error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list suppressions' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list suppressions' },
+      500,
+    );
   }
 });
 
@@ -45,7 +48,13 @@ suppressionRoutes.get('/api/v1/delivery/suppressions/check', async (c) => {
   const email = c.req.query('email');
 
   if (!email) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'email query parameter is required' }, 400);
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'email query parameter is required',
+      },
+      400,
+    );
   }
 
   try {
@@ -53,7 +62,10 @@ suppressionRoutes.get('/api/v1/delivery/suppressions/check', async (c) => {
     return c.json(result);
   } catch (error) {
     console.error('Check suppression error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to check suppression' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to check suppression' },
+      500,
+    );
   }
 });
 
@@ -70,22 +82,35 @@ suppressionRoutes.post('/api/v1/delivery/suppressions', async (c) => {
     }>();
 
     if (!body.email) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'email is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'email is required' },
+        400,
+      );
     }
 
     const validReasons = ['bounce', 'complaint', 'unsubscribe', 'manual'];
     if (!body.reason || !validReasons.includes(body.reason)) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: `reason must be one of: ${validReasons.join(', ')}` },
+        {
+          code: 'VALIDATION_ERROR',
+          message: `reason must be one of: ${validReasons.join(', ')}`,
+        },
         400,
       );
     }
 
     // Check if already suppressed
-    const existing = await isEmailSuppressed(db, tenant.organizationId, body.email);
+    const existing = await isEmailSuppressed(
+      db,
+      tenant.organizationId,
+      body.email,
+    );
     if (existing.suppressed) {
       return c.json(
-        { code: 'CONFLICT', message: `Email ${body.email} is already suppressed` },
+        {
+          code: 'CONFLICT',
+          message: `Email ${body.email} is already suppressed`,
+        },
         400,
       );
     }
@@ -99,7 +124,10 @@ suppressionRoutes.post('/api/v1/delivery/suppressions', async (c) => {
     return c.json(suppression, 201);
   } catch (error) {
     console.error('Add suppression error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to add suppression' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to add suppression' },
+      500,
+    );
   }
 });
 
@@ -112,11 +140,17 @@ suppressionRoutes.delete('/api/v1/delivery/suppressions/:id', async (c) => {
   try {
     const deleted = await deleteSuppression(db, tenant.organizationId, id);
     if (!deleted) {
-      return c.json({ code: 'NOT_FOUND', message: 'Suppression not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Suppression not found' },
+        404,
+      );
     }
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete suppression error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete suppression' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete suppression' },
+      500,
+    );
   }
 });

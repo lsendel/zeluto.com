@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   ErrorSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -18,7 +18,14 @@ export const CampaignSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   type: z.enum(['email', 'sms', 'push', 'multichannel']),
-  status: z.enum(['draft', 'scheduled', 'sending', 'sent', 'paused', 'canceled']),
+  status: z.enum([
+    'draft',
+    'scheduled',
+    'sending',
+    'sent',
+    'paused',
+    'canceled',
+  ]),
   scheduledAt: z.string().nullable(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
@@ -76,7 +83,9 @@ const CreateCampaignBodySchema = z.object({
 const UpdateCampaignBodySchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  status: z.enum(['draft', 'scheduled', 'sending', 'sent', 'paused', 'canceled']).optional(),
+  status: z
+    .enum(['draft', 'scheduled', 'sending', 'sent', 'paused', 'canceled'])
+    .optional(),
 });
 
 const SendCampaignBodySchema = z.object({
@@ -209,9 +218,11 @@ export const campaignContract = c.router({
       method: 'POST',
       path: '/api/v1/campaign/campaigns/:id/clone',
       pathParams: IdParamSchema,
-      body: z.object({
-        name: z.string().min(1).optional(),
-      }).optional(),
+      body: z
+        .object({
+          name: z.string().min(1).optional(),
+        })
+        .optional(),
       responses: {
         201: CampaignSchema,
         404: ErrorSchema,

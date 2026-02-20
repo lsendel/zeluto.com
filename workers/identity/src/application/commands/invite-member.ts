@@ -1,6 +1,10 @@
+import {
+  organizationInvites,
+  organizationMembers,
+  users,
+} from '@mauntic/identity-domain';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
-import { organizationInvites, organizationMembers, users } from '@mauntic/identity-domain';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const InviteMemberInput = z.object({
@@ -26,13 +30,15 @@ function generateToken(): string {
 export async function inviteMember(
   db: DrizzleDb,
   input: InviteMemberInput,
-  actorRole: string
+  actorRole: string,
 ) {
   const parsed = InviteMemberInput.parse(input);
 
   // Only owner/admin can invite
   if (actorRole !== 'owner' && actorRole !== 'admin') {
-    throw new InsufficientPermissionsError('Only owners and admins can invite members');
+    throw new InsufficientPermissionsError(
+      'Only owners and admins can invite members',
+    );
   }
 
   // Check if user with this email is already a member
@@ -49,8 +55,8 @@ export async function inviteMember(
       .where(
         and(
           eq(organizationMembers.organizationId, parsed.organizationId),
-          eq(organizationMembers.userId, existingUser[0].id)
-        )
+          eq(organizationMembers.userId, existingUser[0].id),
+        ),
       )
       .limit(1);
 
@@ -66,8 +72,8 @@ export async function inviteMember(
     .where(
       and(
         eq(organizationInvites.organizationId, parsed.organizationId),
-        eq(organizationInvites.email, parsed.email)
-      )
+        eq(organizationInvites.email, parsed.email),
+      ),
     )
     .limit(1);
 
@@ -106,7 +112,9 @@ export class InsufficientPermissionsError extends Error {
 export class AlreadyMemberError extends Error {
   public readonly code = 'ALREADY_MEMBER';
   constructor(email: string) {
-    super(`User with email "${email}" is already a member of this organization`);
+    super(
+      `User with email "${email}" is already a member of this organization`,
+    );
     this.name = 'AlreadyMemberError';
   }
 }

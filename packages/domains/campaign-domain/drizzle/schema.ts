@@ -1,4 +1,16 @@
-import { pgSchema, uuid, varchar, text, timestamp, jsonb, integer, boolean, real, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgSchema,
+  real,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 export const campaignSchema = pgSchema('campaign');
 
@@ -49,27 +61,31 @@ export const campaignVersions = campaignSchema.table('campaign_versions', {
 });
 
 // Campaign stats
-export const campaignStats = campaignSchema.table('campaign_stats', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  campaignId: uuid('campaign_id')
-    .notNull()
-    .references(() => campaigns.id, { onDelete: 'cascade' }),
-  organizationId: uuid('organization_id').notNull(),
-  totalRecipients: integer('total_recipients').default(0).notNull(),
-  sent: integer('sent').default(0).notNull(),
-  delivered: integer('delivered').default(0).notNull(),
-  opened: integer('opened').default(0).notNull(),
-  clicked: integer('clicked').default(0).notNull(),
-  bounced: integer('bounced').default(0).notNull(),
-  complained: integer('complained').default(0).notNull(),
-  unsubscribed: integer('unsubscribed').default(0).notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  campaignOrgIdx: uniqueIndex('campaign_stats_campaign_org_idx').on(
-    table.campaignId,
-    table.organizationId,
-  ),
-}));
+export const campaignStats = campaignSchema.table(
+  'campaign_stats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    organizationId: uuid('organization_id').notNull(),
+    totalRecipients: integer('total_recipients').default(0).notNull(),
+    sent: integer('sent').default(0).notNull(),
+    delivered: integer('delivered').default(0).notNull(),
+    opened: integer('opened').default(0).notNull(),
+    clicked: integer('clicked').default(0).notNull(),
+    bounced: integer('bounced').default(0).notNull(),
+    complained: integer('complained').default(0).notNull(),
+    unsubscribed: integer('unsubscribed').default(0).notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => ({
+    campaignOrgIdx: uniqueIndex('campaign_stats_campaign_org_idx').on(
+      table.campaignId,
+      table.organizationId,
+    ),
+  }),
+);
 
 // A/B tests
 export const abTests = campaignSchema.table('ab_tests', {

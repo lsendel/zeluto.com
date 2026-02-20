@@ -42,7 +42,11 @@ export class ForbiddenError extends DomainError {
 
 export class QuotaExceededError extends DomainError {
   constructor(resource: string, limit: number) {
-    super('QUOTA_EXCEEDED', `${resource} quota exceeded (limit: ${limit})`, 402);
+    super(
+      'QUOTA_EXCEEDED',
+      `${resource} quota exceeded (limit: ${limit})`,
+      402,
+    );
   }
 }
 

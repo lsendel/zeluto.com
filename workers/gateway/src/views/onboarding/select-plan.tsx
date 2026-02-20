@@ -1,6 +1,6 @@
-import { OnboardingLayout } from "./layout";
-import { Button, Badge } from "@mauntic/ui-kit";
-import type { FC } from "@mauntic/ui-kit";
+import type { FC } from '@mauntic/ui-kit';
+import { Badge, Button } from '@mauntic/ui-kit';
+import { OnboardingLayout } from './layout';
 
 interface Plan {
   name: string;
@@ -14,64 +14,64 @@ interface Plan {
 
 const plans: Plan[] = [
   {
-    name: "free",
-    displayName: "Free",
-    description: "Perfect for trying out Zeluto",
+    name: 'free',
+    displayName: 'Free',
+    description: 'Perfect for trying out Zeluto',
     priceMonthly: 0,
     priceYearly: 0,
     features: [
-      "Up to 1,000 contacts",
-      "5,000 emails/month",
-      "Basic templates",
-      "Email support",
+      'Up to 1,000 contacts',
+      '5,000 emails/month',
+      'Basic templates',
+      'Email support',
     ],
   },
   {
-    name: "starter",
-    displayName: "Starter",
-    description: "Great for small teams getting started",
+    name: 'starter',
+    displayName: 'Starter',
+    description: 'Great for small teams getting started',
     priceMonthly: 29,
     priceYearly: 290,
     popular: true,
     features: [
-      "Up to 10,000 contacts",
-      "50,000 emails/month",
-      "Advanced templates",
-      "A/B testing",
-      "Priority email support",
-      "Custom domains",
+      'Up to 10,000 contacts',
+      '50,000 emails/month',
+      'Advanced templates',
+      'A/B testing',
+      'Priority email support',
+      'Custom domains',
     ],
   },
   {
-    name: "pro",
-    displayName: "Pro",
-    description: "For growing businesses with advanced needs",
+    name: 'pro',
+    displayName: 'Pro',
+    description: 'For growing businesses with advanced needs',
     priceMonthly: 99,
     priceYearly: 990,
     features: [
-      "Up to 100,000 contacts",
-      "500,000 emails/month",
-      "All templates",
-      "Advanced analytics",
-      "API access",
-      "Phone support",
-      "Custom integrations",
+      'Up to 100,000 contacts',
+      '500,000 emails/month',
+      'All templates',
+      'Advanced analytics',
+      'API access',
+      'Phone support',
+      'Custom integrations',
     ],
   },
   {
-    name: "enterprise",
-    displayName: "Enterprise",
-    description: "Custom solutions for large organizations",
+    name: 'enterprise',
+    displayName: 'Enterprise',
+    description: 'Custom solutions for large organizations',
     priceMonthly: 0,
     priceYearly: 0,
     features: [
-      "Unlimited contacts",
-      "Unlimited emails",
-      "Dedicated account manager",
-      "Custom SLA",
-      "SSO & SAML",
-      "Advanced security",
-      "Custom contracts",
+      'Unlimited contacts',
+      'Unlimited emails',
+      'Dedicated account manager',
+      'Custom SLA',
+      'SSO & SAML',
+      'Advanced security',
+      'Custom contracts',
     ],
   },
 ];
@@ -82,7 +82,11 @@ type SelectPlanViewProps = {
 
 export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
   return (
-    <OnboardingLayout title="Select Plan" currentStep={3} assetsBaseUrl={assetsBaseUrl}>
+    <OnboardingLayout
+      title="Select Plan"
+      currentStep={3}
+      assetsBaseUrl={assetsBaseUrl}
+    >
       <div>
         {/* Heading */}
         <div class="mb-8 text-center">
@@ -100,8 +104,8 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
             <div
               class={`relative rounded-xl border bg-white p-6 shadow-sm ${
                 plan.popular
-                  ? "border-brand-500 ring-2 ring-brand-500"
-                  : "border-gray-200"
+                  ? 'border-brand-500 ring-2 ring-brand-500'
+                  : 'border-gray-200'
               }`}
             >
               {plan.popular && (
@@ -122,7 +126,7 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
 
               {/* Pricing */}
               <div class="mb-6">
-                {plan.name === "enterprise" ? (
+                {plan.name === 'enterprise' ? (
                   <div class="text-3xl font-bold text-gray-900">
                     Custom pricing
                   </div>
@@ -136,11 +140,11 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
                     </div>
                     {plan.priceYearly > 0 && (
                       <p class="mt-1 text-sm text-gray-600">
-                        or ${plan.priceYearly}/year (save{" "}
+                        or ${plan.priceYearly}/year (save{' '}
                         {Math.round(
                           ((plan.priceMonthly * 12 - plan.priceYearly) /
                             (plan.priceMonthly * 12)) *
-                            100
+                            100,
                         )}
                         %)
                       </p>
@@ -170,7 +174,7 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
               </ul>
 
               {/* CTA */}
-              {plan.name === "free" ? (
+              {plan.name === 'free' ? (
                 <form
                   hx-post="/api/v1/onboarding/select-plan"
                   hx-vals={`{"plan": "${plan.name}"}`}
@@ -179,13 +183,13 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
                 >
                   <Button
                     type="submit"
-                    variant={plan.popular ? "primary" : "secondary"}
+                    variant={plan.popular ? 'primary' : 'secondary'}
                     class="w-full justify-center"
                   >
                     Start Free
                   </Button>
                 </form>
-              ) : plan.name === "enterprise" ? (
+              ) : plan.name === 'enterprise' ? (
                 <a href="mailto:sales@mauntic.com">
                   <Button variant="secondary" class="w-full justify-center">
                     Contact Sales
@@ -200,7 +204,7 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
                 >
                   <Button
                     type="submit"
-                    variant={plan.popular ? "primary" : "secondary"}
+                    variant={plan.popular ? 'primary' : 'secondary'}
                     class="w-full justify-center"
                   >
                     Select {plan.displayName}

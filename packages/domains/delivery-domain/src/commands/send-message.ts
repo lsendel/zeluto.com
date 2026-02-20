@@ -15,6 +15,8 @@ export const SendMessageCommandSchema = z.object({
 
 export type SendMessageCommand = z.infer<typeof SendMessageCommandSchema>;
 
-export function sendMessageCommand(input: SendMessageCommand): SendMessageCommand {
+export function sendMessageCommand(
+  input: SendMessageCommand,
+): SendMessageCommand {
   return SendMessageCommandSchema.parse(input);
 }

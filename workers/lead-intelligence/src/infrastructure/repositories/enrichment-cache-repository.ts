@@ -1,5 +1,5 @@
-import { eq, and, lt } from 'drizzle-orm';
 import { enrichmentCache } from '@mauntic/lead-intelligence-domain/drizzle';
+import { and, eq, lt } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type EnrichmentCacheRow = typeof enrichmentCache.$inferSelect;
@@ -13,11 +13,13 @@ export async function getCacheEntry(
   const [row] = await db
     .select()
     .from(enrichmentCache)
-    .where(and(
-      eq(enrichmentCache.organization_id, orgId),
-      eq(enrichmentCache.contact_id, contactId),
-      eq(enrichmentCache.field_name, fieldName),
-    ));
+    .where(
+      and(
+        eq(enrichmentCache.organization_id, orgId),
+        eq(enrichmentCache.contact_id, contactId),
+        eq(enrichmentCache.field_name, fieldName),
+      ),
+    );
   return row ?? null;
 }
 
@@ -36,11 +38,13 @@ export async function setCacheEntry(
   // Delete existing entry for this field
   await db
     .delete(enrichmentCache)
-    .where(and(
-      eq(enrichmentCache.organization_id, orgId),
-      eq(enrichmentCache.contact_id, data.contactId),
-      eq(enrichmentCache.field_name, data.fieldName),
-    ));
+    .where(
+      and(
+        eq(enrichmentCache.organization_id, orgId),
+        eq(enrichmentCache.contact_id, data.contactId),
+        eq(enrichmentCache.field_name, data.fieldName),
+      ),
+    );
 
   await db.insert(enrichmentCache).values({
     organization_id: orgId,

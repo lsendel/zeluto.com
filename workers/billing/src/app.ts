@@ -1,11 +1,11 @@
+import { SubscriptionManager } from '@mauntic/billing-domain';
+import type { TenantContext } from '@mauntic/domain-kernel';
+import { createDatabase, tenantMiddleware } from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import type Stripe from 'stripe';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { TenantContext } from '@mauntic/domain-kernel';
-import { tenantMiddleware, createDatabase } from '@mauntic/worker-lib';
-import { SubscriptionManager } from '@mauntic/billing-domain';
 import { createStripeClient } from './infrastructure/stripe.js';
 import { billingRoutes } from './interface/billing-routes.js';
 import { webhookRoutes } from './interface/webhook-routes.js';
@@ -49,9 +49,14 @@ export function createApp() {
       const db = createDatabase(c.env.DATABASE_URL);
       const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
       const manager = new SubscriptionManager(db as any, stripe);
-      const subscription = await manager.getSubscription(payload.organizationId);
+      const subscription = await manager.getSubscription(
+        payload.organizationId,
+      );
       if (!subscription) {
-        return c.json({ code: 'NOT_FOUND', message: 'No subscription found' }, 404);
+        return c.json(
+          { code: 'NOT_FOUND', message: 'No subscription found' },
+          404,
+        );
       }
       return c.json(subscription);
     } catch (error) {

@@ -1,16 +1,14 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { findJourneyById } from '../infrastructure/repositories/journey-repository.js';
+import {
+  findConnectionsByStepIds,
+  findStepsByVersionId,
+} from '../infrastructure/repositories/step-repository.js';
 import {
   findVersionById,
   findVersionsByJourneyId,
 } from '../infrastructure/repositories/version-repository.js';
-import {
-  findStepsByVersionId,
-  findConnectionsByStepIds,
-} from '../infrastructure/repositories/step-repository.js';
-import {
-  findJourneyById,
-} from '../infrastructure/repositories/journey-repository.js';
 
 export const versionRoutes = new Hono<Env>();
 
@@ -26,11 +24,18 @@ versionRoutes.get('/api/v1/journey/journeys/:id/versions', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
     }
 
-    const versions = await findVersionsByJourneyId(db, tenant.organizationId, journeyId);
+    const versions = await findVersionsByJourneyId(
+      db,
+      tenant.organizationId,
+      journeyId,
+    );
     return c.json(versions);
   } catch (error) {
     console.error('List versions error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list versions' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list versions' },
+      500,
+    );
   }
 });
 
@@ -46,7 +51,11 @@ versionRoutes.get('/api/v1/journey/versions/:versionId', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Version not found' }, 404);
     }
 
-    const steps = await findStepsByVersionId(db, tenant.organizationId, versionId);
+    const steps = await findStepsByVersionId(
+      db,
+      tenant.organizationId,
+      versionId,
+    );
     const stepIds = steps.map((s) => s.id);
     const connections = await findConnectionsByStepIds(db, stepIds);
 
@@ -57,6 +66,9 @@ versionRoutes.get('/api/v1/journey/versions/:versionId', async (c) => {
     });
   } catch (error) {
     console.error('Get version error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get version' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get version' },
+      500,
+    );
   }
 });

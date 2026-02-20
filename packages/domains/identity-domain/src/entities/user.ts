@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const UserRoleSchema = z.enum(['owner', 'admin', 'member', 'viewer']);
 export type UserRole = z.infer<typeof UserRoleSchema>;
@@ -25,11 +25,7 @@ export class User {
 
   // ---- Factory methods ----
 
-  static create(input: {
-    email: string;
-    name: string;
-    role?: UserRole;
-  }): User {
+  static create(input: { email: string; name: string; role?: UserRole }): User {
     return new User(
       UserPropsSchema.parse({
         ...input,

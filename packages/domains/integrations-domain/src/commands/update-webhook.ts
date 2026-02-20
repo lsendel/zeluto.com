@@ -11,6 +11,8 @@ export const UpdateWebhookCommandSchema = z.object({
 
 export type UpdateWebhookCommand = z.infer<typeof UpdateWebhookCommandSchema>;
 
-export function updateWebhookCommand(input: UpdateWebhookCommand): UpdateWebhookCommand {
+export function updateWebhookCommand(
+  input: UpdateWebhookCommand,
+): UpdateWebhookCommand {
   return UpdateWebhookCommandSchema.parse(input);
 }

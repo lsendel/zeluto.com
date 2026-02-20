@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const CampaignStatusSchema = z.enum([
   'draft',
@@ -12,7 +12,12 @@ export const CampaignStatusSchema = z.enum([
 
 export type CampaignStatus = z.infer<typeof CampaignStatusSchema>;
 
-export const CampaignTypeSchema = z.enum(['email', 'sms', 'push', 'multichannel']);
+export const CampaignTypeSchema = z.enum([
+  'email',
+  'sms',
+  'push',
+  'multichannel',
+]);
 export type CampaignType = z.infer<typeof CampaignTypeSchema>;
 
 export const CampaignPropsSchema = z.object({
@@ -259,10 +264,14 @@ export class Campaign {
       );
     }
     if (!this.props.segmentId) {
-      throw new InvariantViolation('Cannot schedule campaign without a segment');
+      throw new InvariantViolation(
+        'Cannot schedule campaign without a segment',
+      );
     }
     if (!this.props.templateId) {
-      throw new InvariantViolation('Cannot schedule campaign without a template');
+      throw new InvariantViolation(
+        'Cannot schedule campaign without a template',
+      );
     }
     if (date <= new Date()) {
       throw new InvariantViolation('Scheduled date must be in the future');

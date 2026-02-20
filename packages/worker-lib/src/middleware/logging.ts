@@ -1,6 +1,6 @@
-import type { MiddlewareHandler } from 'hono';
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
-import { createLogger, type Logger } from '../logger/index.js';
+import type { MiddlewareHandler } from 'hono';
+import { createLogger } from '../logger/index.js';
 
 export interface LoggingOptions {
   datasetBinding?: string;
@@ -11,8 +11,7 @@ export function loggingMiddleware(
   options?: LoggingOptions,
 ): MiddlewareHandler {
   return async (c, next) => {
-    const requestId =
-      c.req.header('X-Request-Id') ?? crypto.randomUUID();
+    const requestId = c.req.header('X-Request-Id') ?? crypto.randomUUID();
     c.set('requestId', requestId);
     c.header('X-Request-Id', requestId);
 

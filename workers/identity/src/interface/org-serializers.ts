@@ -33,7 +33,7 @@ export function serializeInvite(invite: Record<string, any>) {
     acceptedAt:
       invite.acceptedAt instanceof Date
         ? invite.acceptedAt.toISOString()
-        : invite.acceptedAt ?? null,
+        : (invite.acceptedAt ?? null),
     createdAt:
       invite.createdAt instanceof Date
         ? invite.createdAt.toISOString()

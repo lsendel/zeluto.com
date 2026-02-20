@@ -14,7 +14,9 @@ const statusBadge = (status: string) => {
   };
   const cls = colors[status] ?? 'bg-gray-100 text-gray-700';
   return (
-    <span class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+    <span
+      class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}
+    >
       {status.replace(/_/g, ' ')}
     </span>
   );
@@ -47,19 +49,23 @@ export const ContactRowView: FC<ContactRowProps> = ({ contact }) => {
       <td class="whitespace-nowrap px-6 py-4">
         <div class="flex items-center">
           <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-sm font-medium">
-            {(contact.first_name?.[0] ?? contact.email?.[0] ?? '?').toUpperCase()}
+            {(
+              contact.first_name?.[0] ??
+              contact.email?.[0] ??
+              '?'
+            ).toUpperCase()}
           </div>
           <div class="ml-3">
-            <div class="text-sm font-medium text-gray-900">{contactName(contact)}</div>
+            <div class="text-sm font-medium text-gray-900">
+              {contactName(contact)}
+            </div>
           </div>
         </div>
       </td>
       <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
         {contact.email || '-'}
       </td>
-      <td class="whitespace-nowrap px-6 py-4">
-        {statusBadge(contact.status)}
-      </td>
+      <td class="whitespace-nowrap px-6 py-4">{statusBadge(contact.status)}</td>
       <td class="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
         {formatDate(contact.last_activity_at)}
       </td>

@@ -1,5 +1,5 @@
-import type { Child, FC } from "../types.js";
-import { resolveAssetUrl } from "../utils/assets.js";
+import type { Child, FC } from '../types.js';
+import { resolveAssetUrl } from '../utils/assets.js';
 
 export interface AuthLayoutProps {
   /** Page title */
@@ -19,9 +19,9 @@ export interface AuthLayoutProps {
 }
 
 export const AuthLayout: FC<AuthLayoutProps> = ({
-  title = "Sign In",
-  heading = "Welcome back",
-  subheading = "Sign in to your account to continue",
+  title = 'Sign In',
+  heading = 'Welcome back',
+  subheading = 'Sign in to your account to continue',
   children,
   head,
   footer,
@@ -33,8 +33,14 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{title} | Zeluto</title>
-        <link rel="stylesheet" href={resolveAssetUrl(assetsBaseUrl, "/styles/latest.css")} />
-        <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href={resolveAssetUrl(assetsBaseUrl, '/styles/latest.css')}
+        />
+        <script
+          src="https://unpkg.com/htmx.org@2.0.4"
+          crossorigin="anonymous"
+        />
         {head}
       </head>
       <body class="h-full">
@@ -66,9 +72,7 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
 
             {/* Footer */}
             {footer && (
-              <div class="mt-6 text-center text-sm text-gray-600">
-                {footer}
-              </div>
+              <div class="mt-6 text-center text-sm text-gray-600">{footer}</div>
             )}
           </div>
         </div>

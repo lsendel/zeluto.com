@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   ErrorSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();

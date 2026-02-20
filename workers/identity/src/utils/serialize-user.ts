@@ -10,7 +10,7 @@ export function serializeUser(user: Record<string, any>) {
     lastSignedIn:
       user.lastSignedIn instanceof Date
         ? user.lastSignedIn.toISOString()
-        : user.lastSignedIn ?? null,
+        : (user.lastSignedIn ?? null),
     loginMethod: user.loginMethod ?? null,
     createdAt:
       user.createdAt instanceof Date

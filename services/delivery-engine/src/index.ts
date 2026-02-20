@@ -1,21 +1,27 @@
-import { startHealthServer, createWorker, getRedis, getDb, type JobHandler } from '@mauntic/process-lib';
-import type { Job } from 'bullmq';
-import pino from 'pino';
-import { eq, and, desc, sql } from 'drizzle-orm';
 import {
-  delivery_jobs,
+  decryptConfig,
+  getDaysSinceStart,
+  getWarmupLimit,
+  renderTemplate,
+} from '@mauntic/delivery-domain';
+import {
   delivery_events,
+  delivery_jobs,
   provider_configs,
-  suppressions,
   sending_domains,
+  suppressions,
 } from '@mauntic/delivery-domain/drizzle';
 import {
-  renderTemplate,
-  getWarmupLimit,
-  getDaysSinceStart,
-  decryptConfig,
-} from '@mauntic/delivery-domain';
-import { SmtpProvider, type SmtpConfig } from './providers/smtp.provider.js';
+  createWorker,
+  getDb,
+  getRedis,
+  type JobHandler,
+  startHealthServer,
+} from '@mauntic/process-lib';
+import type { Job } from 'bullmq';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import pino from 'pino';
+import { type SmtpConfig, SmtpProvider } from './providers/smtp.provider.js';
 
 const logger = pino({ name: 'delivery-engine' });
 
@@ -148,12 +154,22 @@ async function updateJobCounts(
     await db
       .update(delivery_jobs)
       .set({ sent_count: sql`${delivery_jobs.sent_count} + 1` })
-      .where(and(eq(delivery_jobs.id, jobId), eq(delivery_jobs.organization_id, orgId)));
+      .where(
+        and(
+          eq(delivery_jobs.id, jobId),
+          eq(delivery_jobs.organization_id, orgId),
+        ),
+      );
   } else {
     await db
       .update(delivery_jobs)
       .set({ failed_count: sql`${delivery_jobs.failed_count} + 1` })
-      .where(and(eq(delivery_jobs.id, jobId), eq(delivery_jobs.organization_id, orgId)));
+      .where(
+        and(
+          eq(delivery_jobs.id, jobId),
+          eq(delivery_jobs.organization_id, orgId),
+        ),
+      );
   }
 }
 
@@ -193,7 +209,10 @@ const emailHandler: JobHandler<EmailJobData> = {
     } = job.data;
     let { body, html, text } = job.data;
 
-    logger.info({ jobId: job.id, deliveryId, emailAddress }, 'Processing email delivery');
+    logger.info(
+      { jobId: job.id, deliveryId, emailAddress },
+      'Processing email delivery',
+    );
 
     const db = getDb();
     const redis = getRedis();
@@ -211,21 +230,38 @@ const emailHandler: JobHandler<EmailJobData> = {
       const [deliveryJob] = await db
         .select()
         .from(delivery_jobs)
-        .where(and(eq(delivery_jobs.id, jobId), eq(delivery_jobs.organization_id, organizationId)))
+        .where(
+          and(
+            eq(delivery_jobs.id, jobId),
+            eq(delivery_jobs.organization_id, organizationId),
+          ),
+        )
         .limit(1);
 
       if (deliveryJob && deliveryJob.status === 'queued') {
         await db
           .update(delivery_jobs)
           .set({ status: 'sending' })
-          .where(and(eq(delivery_jobs.id, jobId), eq(delivery_jobs.organization_id, organizationId)));
+          .where(
+            and(
+              eq(delivery_jobs.id, jobId),
+              eq(delivery_jobs.organization_id, organizationId),
+            ),
+          );
       }
     }
 
     // Step 3: Check suppression list
-    const isSuppressed = await checkSuppression(db, organizationId, emailAddress);
+    const isSuppressed = await checkSuppression(
+      db,
+      organizationId,
+      emailAddress,
+    );
     if (isSuppressed) {
-      logger.info({ deliveryId, emailAddress }, 'Recipient is suppressed, skipping');
+      logger.info(
+        { deliveryId, emailAddress },
+        'Recipient is suppressed, skipping',
+      );
       if (jobId && contactId) {
         await recordDeliveryEvent(db, organizationId, {
           jobId,
@@ -245,14 +281,21 @@ const emailHandler: JobHandler<EmailJobData> = {
     if (fromDomain) {
       const warmup = await checkWarmupLimits(db, organizationId, fromDomain);
       if (!warmup.allowed) {
-        logger.warn({ deliveryId, limit: warmup.limit, sent: warmup.sent }, 'Warmup limit exceeded');
+        logger.warn(
+          { deliveryId, limit: warmup.limit, sent: warmup.sent },
+          'Warmup limit exceeded',
+        );
         if (jobId && contactId) {
           await recordDeliveryEvent(db, organizationId, {
             jobId,
             contactId,
             channel: 'email',
             eventType: 'failed',
-            metadata: { reason: 'warmup_limit_exceeded', limit: warmup.limit, sent: warmup.sent },
+            metadata: {
+              reason: 'warmup_limit_exceeded',
+              limit: warmup.limit,
+              sent: warmup.sent,
+            },
           });
           await updateJobCounts(db, organizationId, jobId, false);
         }
@@ -264,7 +307,10 @@ const emailHandler: JobHandler<EmailJobData> = {
     // Step 5: Resolve provider
     const providerConfig = await resolveProvider(db, organizationId, 'email');
     if (!providerConfig) {
-      logger.error({ deliveryId, organizationId }, 'No active email provider configured');
+      logger.error(
+        { deliveryId, organizationId },
+        'No active email provider configured',
+      );
       if (jobId && contactId) {
         await recordDeliveryEvent(db, organizationId, {
           jobId,
@@ -304,7 +350,9 @@ const emailHandler: JobHandler<EmailJobData> = {
       }
 
       if (providerConfig.provider_type === 'custom_smtp') {
-        const smtpProvider = new SmtpProvider(providerSettings as unknown as SmtpConfig);
+        const smtpProvider = new SmtpProvider(
+          providerSettings as unknown as SmtpConfig,
+        );
         sendResult = await smtpProvider.send({
           to: emailAddress,
           from: from ?? (providerSettings.from as string) ?? '',
@@ -315,7 +363,10 @@ const emailHandler: JobHandler<EmailJobData> = {
       } else {
         // For HTTP-based providers (SES, SendGrid, etc.), we import them dynamically
         // since they live in the delivery-domain package
-        sendResult = { success: false, error: `Provider type ${providerConfig.provider_type} not yet integrated in engine` };
+        sendResult = {
+          success: false,
+          error: `Provider type ${providerConfig.provider_type} not yet integrated in engine`,
+        };
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -340,15 +391,30 @@ const emailHandler: JobHandler<EmailJobData> = {
     }
 
     // Step 10: Mark as processed for idempotency
-    await redis.setex(idempotencyKey, 86400, sendResult.success ? 'sent' : 'failed');
+    await redis.setex(
+      idempotencyKey,
+      86400,
+      sendResult.success ? 'sent' : 'failed',
+    );
 
     if (!sendResult.success) {
-      logger.error({ deliveryId, error: sendResult.error }, 'Email delivery failed');
+      logger.error(
+        { deliveryId, error: sendResult.error },
+        'Email delivery failed',
+      );
       throw new Error(sendResult.error ?? 'Email delivery failed');
     }
 
-    logger.info({ deliveryId, emailAddress, externalId: sendResult.externalId }, 'Email sent successfully');
-    return { success: true, deliveryId, externalId: sendResult.externalId, sentAt: new Date().toISOString() };
+    logger.info(
+      { deliveryId, emailAddress, externalId: sendResult.externalId },
+      'Email sent successfully',
+    );
+    return {
+      success: true,
+      deliveryId,
+      externalId: sendResult.externalId,
+      sentAt: new Date().toISOString(),
+    };
   },
 };
 
@@ -361,7 +427,14 @@ const smsHandler: JobHandler = {
   concurrency: 3,
   async process(job: Job) {
     logger.info({ jobId: job.id }, 'Processing SMS delivery');
-    const { deliveryId, phoneNumber, organizationId, contactId, jobId: deliveryJobId, body } = job.data;
+    const {
+      deliveryId,
+      phoneNumber,
+      organizationId,
+      contactId,
+      jobId: deliveryJobId,
+      body,
+    } = job.data;
 
     const db = getDb();
     const redis = getRedis();
@@ -409,7 +482,13 @@ const pushHandler: JobHandler = {
   concurrency: 10,
   async process(job: Job) {
     logger.info({ jobId: job.id }, 'Processing push notification');
-    const { deliveryId, deviceToken, organizationId, contactId, jobId: deliveryJobId } = job.data;
+    const {
+      deliveryId,
+      deviceToken,
+      organizationId,
+      contactId,
+      jobId: deliveryJobId,
+    } = job.data;
 
     const db = getDb();
     const redis = getRedis();
@@ -466,13 +545,20 @@ async function main() {
       logger.info({ jobId: job.id, queue: worker.name }, 'Job completed');
     });
     worker.on('failed', (job, err) => {
-      logger.error({ jobId: job?.id, queue: worker.name, error: err }, 'Job failed');
+      logger.error(
+        { jobId: job?.id, queue: worker.name, error: err },
+        'Job failed',
+      );
     });
   });
 
   const shutdown = async () => {
     logger.info('Shutting down gracefully...');
-    await Promise.all([emailWorker.close(), smsWorker.close(), pushWorker.close()]);
+    await Promise.all([
+      emailWorker.close(),
+      smsWorker.close(),
+      pushWorker.close(),
+    ]);
     const redis = getRedis();
     await redis.quit();
     server.close();

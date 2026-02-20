@@ -1,6 +1,6 @@
-import type { Child, FC } from "../types.js";
+import type { Child, FC } from '../types.js';
 
-export type ModalSize = "sm" | "md" | "lg" | "xl";
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl';
 
 export interface ModalProps {
   id: string;
@@ -13,10 +13,10 @@ export interface ModalProps {
 }
 
 const sizeClasses: Record<ModalSize, string> = {
-  sm: "max-w-sm",
-  md: "max-w-lg",
-  lg: "max-w-2xl",
-  xl: "max-w-4xl",
+  sm: 'max-w-sm',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
 };
 
 /**
@@ -34,8 +34,8 @@ const sizeClasses: Record<ModalSize, string> = {
 export const Modal: FC<ModalProps> = ({
   id,
   title,
-  size = "md",
-  class: className = "",
+  size = 'md',
+  class: className = '',
   children,
   footer,
 }) => {
@@ -60,10 +60,7 @@ export const Modal: FC<ModalProps> = ({
       >
         {/* Header */}
         <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2
-            id={`${id}-title`}
-            class="text-lg font-semibold text-gray-900"
-          >
+          <h2 id={`${id}-title`} class="text-lg font-semibold text-gray-900">
             {title}
           </h2>
           <button

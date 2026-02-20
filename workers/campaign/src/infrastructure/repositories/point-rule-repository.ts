@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
-import { pointRules, pointLog } from '@mauntic/campaign-domain/drizzle';
+import { pointLog, pointRules } from '@mauntic/campaign-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type PointRuleRow = typeof pointRules.$inferSelect;

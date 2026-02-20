@@ -17,8 +17,12 @@ export const ProcessTrackingEventCommandSchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type ProcessTrackingEventCommand = z.infer<typeof ProcessTrackingEventCommandSchema>;
+export type ProcessTrackingEventCommand = z.infer<
+  typeof ProcessTrackingEventCommandSchema
+>;
 
-export function processTrackingEventCommand(input: ProcessTrackingEventCommand): ProcessTrackingEventCommand {
+export function processTrackingEventCommand(
+  input: ProcessTrackingEventCommand,
+): ProcessTrackingEventCommand {
   return ProcessTrackingEventCommandSchema.parse(input);
 }

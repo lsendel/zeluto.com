@@ -1,30 +1,30 @@
-import { Hono } from 'hono';
-import { tenantMiddleware } from '@mauntic/worker-lib';
 import type { TenantContext } from '@mauntic/domain-kernel';
-import { eq, and, sql } from 'drizzle-orm';
-import type { Env, DrizzleDb } from '../infrastructure/database.js';
-import { createDatabase } from '../infrastructure/database.js';
 import {
-  organizationMembers,
   organizationInvites,
+  organizationMembers,
   organizations,
   sessions,
   users,
 } from '@mauntic/identity-domain';
-import { listUsers } from '../application/queries/list-users.js';
+import { tenantMiddleware } from '@mauntic/worker-lib';
+import { and, eq, sql } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { blockUser, unblockUser } from '../application/commands/block-user.js';
+import { createOrg } from '../application/commands/create-org.js';
+import { inviteMember } from '../application/commands/invite-member.js';
+import { removeMember } from '../application/commands/remove-member.js';
+import { updateOrg } from '../application/commands/update-org.js';
 import {
   updateUser,
   updateUserRole,
 } from '../application/commands/update-user.js';
-import { blockUser, unblockUser } from '../application/commands/block-user.js';
-import { listOrgs } from '../application/queries/list-orgs.js';
-import { createOrg } from '../application/commands/create-org.js';
-import { updateOrg } from '../application/commands/update-org.js';
-import { serializeOrg, serializeInvite } from './org-serializers.js';
 import { getUser } from '../application/queries/get-user.js';
+import { listOrgs } from '../application/queries/list-orgs.js';
+import { listUsers } from '../application/queries/list-users.js';
+import type { DrizzleDb, Env } from '../infrastructure/database.js';
+import { createDatabase } from '../infrastructure/database.js';
 import { serializeUser } from '../utils/serialize-user.js';
-import { removeMember } from '../application/commands/remove-member.js';
-import { inviteMember } from '../application/commands/invite-member.js';
+import { serializeInvite, serializeOrg } from './org-serializers.js';
 
 type DispatchEnv = {
   Bindings: Env;
@@ -43,9 +43,11 @@ dispatchRoutes.use('*', async (c, next) => {
 dispatchRoutes.post('/users/list', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { page?: number; limit?: number; search?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    page?: number;
+    limit?: number;
+    search?: string;
+  } | null;
   const page = typeof body?.page === 'number' ? body.page : 1;
   const limit = typeof body?.limit === 'number' ? body.limit : 20;
   const search =
@@ -72,9 +74,9 @@ dispatchRoutes.post('/users/list', async (c) => {
 dispatchRoutes.post('/users/get', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { userId?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    userId?: string;
+  } | null;
 
   if (!body?.userId) {
     return c.json(
@@ -94,9 +96,11 @@ dispatchRoutes.post('/users/get', async (c) => {
 dispatchRoutes.post('/users/update-profile', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { userId?: string; name?: string; image?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    userId?: string;
+    name?: string;
+    image?: string;
+  } | null;
 
   if (!body?.userId) {
     return c.json(
@@ -138,9 +142,10 @@ dispatchRoutes.post('/users/update-profile', async (c) => {
 dispatchRoutes.post('/users/update-role', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { userId?: string; role?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    userId?: string;
+    role?: string;
+  } | null;
 
   const role =
     body?.role === 'admin' || body?.role === 'user' ? body.role : undefined;
@@ -180,9 +185,9 @@ dispatchRoutes.post('/users/update-role', async (c) => {
 dispatchRoutes.post('/users/block', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { userId?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    userId?: string;
+  } | null;
 
   if (!body?.userId) {
     return c.json(
@@ -224,9 +229,9 @@ dispatchRoutes.post('/users/block', async (c) => {
 dispatchRoutes.post('/users/unblock', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { userId?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    userId?: string;
+  } | null;
 
   if (!body?.userId) {
     return c.json(
@@ -263,9 +268,11 @@ dispatchRoutes.post('/users/unblock', async (c) => {
 dispatchRoutes.post('/organizations/list', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { page?: number; limit?: number; search?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    page?: number;
+    limit?: number;
+    search?: string;
+  } | null;
   const page = typeof body?.page === 'number' ? body.page : 1;
   const limit = typeof body?.limit === 'number' ? body.limit : 20;
   const search =
@@ -307,13 +314,18 @@ publicDispatchRoutes.post('/organizations/create', async (c) => {
   // or we need to extract it. Since this is an internal dispatch, we trust the caller.
 
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { name?: string; slug?: string; creatorUserId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    name?: string;
+    slug?: string;
+    creatorUserId?: string;
+  } | null;
 
   if (!body?.name || !body.slug || !body.creatorUserId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'name, slug, and creatorUserId are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'name, slug, and creatorUserId are required',
+      },
       400,
     );
   }
@@ -337,13 +349,18 @@ publicDispatchRoutes.post('/organizations/create', async (c) => {
 // Alias for onboarding flow originating from the gateway
 publicDispatchRoutes.post('/onboarding/create-org', async (c) => {
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { name?: string; slug?: string; creatorUserId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    name?: string;
+    slug?: string;
+    creatorUserId?: string;
+  } | null;
 
   if (!body?.name || !body.slug || !body.creatorUserId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'name, slug, and creatorUserId are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'name, slug, and creatorUserId are required',
+      },
       400,
     );
   }
@@ -369,14 +386,12 @@ dispatchRoutes.route('/', publicDispatchRoutes);
 dispatchRoutes.post('/organizations/update', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as {
-      organizationId?: string;
-      name?: string;
-      slug?: string;
-      logo?: string;
-    } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    name?: string;
+    slug?: string;
+    logo?: string;
+  } | null;
 
   if (!body?.organizationId) {
     return c.json(
@@ -418,9 +433,9 @@ dispatchRoutes.post('/organizations/update', async (c) => {
 dispatchRoutes.post('/organizations/switch', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { organizationId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+  } | null;
 
   if (!body?.organizationId) {
     return c.json(
@@ -487,13 +502,11 @@ dispatchRoutes.post('/organizations/switch', async (c) => {
 dispatchRoutes.post('/organizations/members', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as {
-      organizationId?: string;
-      page?: number;
-      limit?: number;
-    } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    page?: number;
+    limit?: number;
+  } | null;
 
   if (!body?.organizationId) {
     return c.json(
@@ -579,13 +592,17 @@ dispatchRoutes.post('/organizations/members', async (c) => {
 dispatchRoutes.post('/organizations/members/remove', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { organizationId?: string; userId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    userId?: string;
+  } | null;
 
   if (!body?.organizationId || !body.userId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'organizationId and userId are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'organizationId and userId are required',
+      },
       400,
     );
   }
@@ -616,9 +633,9 @@ dispatchRoutes.post('/organizations/members/remove', async (c) => {
 dispatchRoutes.post('/organizations/delete', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { organizationId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+  } | null;
 
   if (!body?.organizationId) {
     return c.json(
@@ -629,7 +646,10 @@ dispatchRoutes.post('/organizations/delete', async (c) => {
 
   if (tenant.userRole !== 'owner') {
     return c.json(
-      { code: 'FORBIDDEN', message: 'Only the owner can delete the organization' },
+      {
+        code: 'FORBIDDEN',
+        message: 'Only the owner can delete the organization',
+      },
       403,
     );
   }
@@ -652,16 +672,20 @@ dispatchRoutes.post('/organizations/delete', async (c) => {
     );
   }
 
-  await db.delete(organizations).where(eq(organizations.id, body.organizationId));
+  await db
+    .delete(organizations)
+    .where(eq(organizations.id, body.organizationId));
   return c.json({ success: true });
 });
 
 dispatchRoutes.post('/organizations/invites/list', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { organizationId?: string; page?: number; limit?: number }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    page?: number;
+    limit?: number;
+  } | null;
 
   if (!body?.organizationId) {
     return c.json(
@@ -708,20 +732,28 @@ dispatchRoutes.post('/organizations/invites/list', async (c) => {
 dispatchRoutes.post('/organizations/invites/create', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { organizationId?: string; email?: string; role?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    email?: string;
+    role?: string;
+  } | null;
 
   if (!body?.organizationId || !body.email) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'organizationId and email are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'organizationId and email are required',
+      },
       400,
     );
   }
 
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
-      { code: 'FORBIDDEN', message: 'Only owners and admins can invite members' },
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners and admins can invite members',
+      },
       403,
     );
   }
@@ -764,20 +796,27 @@ dispatchRoutes.post('/organizations/invites/create', async (c) => {
 dispatchRoutes.post('/organizations/invites/delete', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { organizationId?: string; inviteId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    inviteId?: string;
+  } | null;
 
   if (!body?.organizationId || !body.inviteId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'organizationId and inviteId are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'organizationId and inviteId are required',
+      },
       400,
     );
   }
 
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
-      { code: 'FORBIDDEN', message: 'Only owners and admins can cancel invites' },
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners and admins can cancel invites',
+      },
       403,
     );
   }
@@ -797,27 +836,36 @@ dispatchRoutes.post('/organizations/invites/delete', async (c) => {
     return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
   }
 
-  await db.delete(organizationInvites).where(eq(organizationInvites.id, body.inviteId));
+  await db
+    .delete(organizationInvites)
+    .where(eq(organizationInvites.id, body.inviteId));
   return c.json({ success: true });
 });
 
 dispatchRoutes.post('/organizations/invites/resend', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req
-    .json()
-    .catch(() => null)) as { organizationId?: string; inviteId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    organizationId?: string;
+    inviteId?: string;
+  } | null;
 
   if (!body?.organizationId || !body.inviteId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'organizationId and inviteId are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'organizationId and inviteId are required',
+      },
       400,
     );
   }
 
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
-      { code: 'FORBIDDEN', message: 'Only owners and admins can resend invites' },
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners and admins can resend invites',
+      },
       403,
     );
   }
@@ -852,7 +900,9 @@ dispatchRoutes.post('/organizations/invites/resend', async (c) => {
 dispatchRoutes.post('/invites/accept', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as { token?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    token?: string;
+  } | null;
 
   if (!body?.token) {
     return c.json(
@@ -879,7 +929,10 @@ dispatchRoutes.post('/invites/accept', async (c) => {
   }
 
   if (invite.acceptedAt) {
-    return c.json({ code: 'BAD_REQUEST', message: 'Invite already accepted' }, 400);
+    return c.json(
+      { code: 'BAD_REQUEST', message: 'Invite already accepted' },
+      400,
+    );
   }
 
   const [existingMember] = await db

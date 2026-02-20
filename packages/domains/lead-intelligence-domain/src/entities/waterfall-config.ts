@@ -44,15 +44,33 @@ export class WaterfallConfig {
     return new WaterfallConfig(WaterfallConfigPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get fieldName() { return this.props.fieldName; }
-  get providerOrder() { return this.props.providerOrder; }
-  get maxAttempts() { return this.props.maxAttempts; }
-  get timeoutMs() { return this.props.timeoutMs; }
-  get minConfidence() { return this.props.minConfidence; }
-  get cacheTtlDays() { return this.props.cacheTtlDays; }
-  get maxCostPerLead() { return this.props.maxCostPerLead; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get fieldName() {
+    return this.props.fieldName;
+  }
+  get providerOrder() {
+    return this.props.providerOrder;
+  }
+  get maxAttempts() {
+    return this.props.maxAttempts;
+  }
+  get timeoutMs() {
+    return this.props.timeoutMs;
+  }
+  get minConfidence() {
+    return this.props.minConfidence;
+  }
+  get cacheTtlDays() {
+    return this.props.cacheTtlDays;
+  }
+  get maxCostPerLead() {
+    return this.props.maxCostPerLead;
+  }
 
   update(input: {
     providerOrder?: string[];
@@ -62,12 +80,17 @@ export class WaterfallConfig {
     cacheTtlDays?: number;
     maxCostPerLead?: number | null;
   }): void {
-    if (input.providerOrder !== undefined) this.props.providerOrder = input.providerOrder;
-    if (input.maxAttempts !== undefined) this.props.maxAttempts = input.maxAttempts;
+    if (input.providerOrder !== undefined)
+      this.props.providerOrder = input.providerOrder;
+    if (input.maxAttempts !== undefined)
+      this.props.maxAttempts = input.maxAttempts;
     if (input.timeoutMs !== undefined) this.props.timeoutMs = input.timeoutMs;
-    if (input.minConfidence !== undefined) this.props.minConfidence = input.minConfidence;
-    if (input.cacheTtlDays !== undefined) this.props.cacheTtlDays = input.cacheTtlDays;
-    if (input.maxCostPerLead !== undefined) this.props.maxCostPerLead = input.maxCostPerLead;
+    if (input.minConfidence !== undefined)
+      this.props.minConfidence = input.minConfidence;
+    if (input.cacheTtlDays !== undefined)
+      this.props.cacheTtlDays = input.cacheTtlDays;
+    if (input.maxCostPerLead !== undefined)
+      this.props.maxCostPerLead = input.maxCostPerLead;
     this.props.updatedAt = new Date();
   }
 

@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const ChannelSchema = z.enum(['email', 'sms', 'push', 'webhook']);
 export type Channel = z.infer<typeof ChannelSchema>;
@@ -106,28 +106,36 @@ export class DeliveryJob {
 
   markSending(): void {
     if (this.props.status !== 'queued') {
-      throw new InvariantViolation(`Cannot mark job as sending from status "${this.props.status}"`);
+      throw new InvariantViolation(
+        `Cannot mark job as sending from status "${this.props.status}"`,
+      );
     }
     this.props.status = 'sending';
   }
 
   recordSuccess(): void {
     if (this.props.status !== 'sending') {
-      throw new InvariantViolation(`Cannot record success when job status is "${this.props.status}"`);
+      throw new InvariantViolation(
+        `Cannot record success when job status is "${this.props.status}"`,
+      );
     }
     this.props.sentCount += 1;
   }
 
   recordFailure(): void {
     if (this.props.status !== 'sending') {
-      throw new InvariantViolation(`Cannot record failure when job status is "${this.props.status}"`);
+      throw new InvariantViolation(
+        `Cannot record failure when job status is "${this.props.status}"`,
+      );
     }
     this.props.failedCount += 1;
   }
 
   complete(): void {
     if (this.props.status !== 'sending') {
-      throw new InvariantViolation(`Cannot complete job from status "${this.props.status}"`);
+      throw new InvariantViolation(
+        `Cannot complete job from status "${this.props.status}"`,
+      );
     }
 
     if (this.props.failedCount === this.props.recipientCount) {
@@ -142,7 +150,9 @@ export class DeliveryJob {
   }
 
   isComplete(): boolean {
-    return this.props.sentCount + this.props.failedCount >= this.props.recipientCount;
+    return (
+      this.props.sentCount + this.props.failedCount >= this.props.recipientCount
+    );
   }
 
   /** Return a plain object suitable for persistence. */

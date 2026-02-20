@@ -8,6 +8,8 @@ export const PublishJourneyCommandSchema = z.object({
 
 export type PublishJourneyCommand = z.infer<typeof PublishJourneyCommandSchema>;
 
-export function publishJourneyCommand(input: PublishJourneyCommand): PublishJourneyCommand {
+export function publishJourneyCommand(
+  input: PublishJourneyCommand,
+): PublishJourneyCommand {
   return PublishJourneyCommandSchema.parse(input);
 }

@@ -6,14 +6,36 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./bullmq": { "import": "./dist/bullmq/job-processor.js", "types": "./dist/bullmq/job-processor.d.ts" },
-    "./redis": { "import": "./dist/redis/connection.js", "types": "./dist/redis/connection.d.ts" },
-    "./health": { "import": "./dist/health/server.js", "types": "./dist/health/server.d.ts" },
-    "./database": { "import": "./dist/database/connection.js", "types": "./dist/database/connection.d.ts" },
-    "./scheduler": { "import": "./dist/scheduler/cron.js", "types": "./dist/scheduler/cron.d.ts" }
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./bullmq": {
+      "import": "./dist/bullmq/job-processor.js",
+      "types": "./dist/bullmq/job-processor.d.ts"
+    },
+    "./redis": {
+      "import": "./dist/redis/connection.js",
+      "types": "./dist/redis/connection.d.ts"
+    },
+    "./health": {
+      "import": "./dist/health/server.js",
+      "types": "./dist/health/server.d.ts"
+    },
+    "./database": {
+      "import": "./dist/database/connection.js",
+      "types": "./dist/database/connection.d.ts"
+    },
+    "./scheduler": {
+      "import": "./dist/scheduler/cron.js",
+      "types": "./dist/scheduler/cron.d.ts"
+    }
   },
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ./src"
+  },
   "dependencies": {
     "bullmq": "catalog:",
     "ioredis": "catalog:",
@@ -22,5 +44,8 @@
     "pino": "catalog:",
     "@mauntic/domain-kernel": "workspace:*"
   },
-  "devDependencies": { "typescript": "catalog:", "@types/node": "catalog:" }
+  "devDependencies": {
+    "typescript": "catalog:",
+    "@types/node": "catalog:"
+  }
 }

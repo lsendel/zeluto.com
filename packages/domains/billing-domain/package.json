@@ -18,8 +18,9 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "db:generate": "drizzle-kit generate"
+    "test": "vitest run --passWithNoTests",
+    "db:generate": "drizzle-kit generate",
+    "lint": "biome check ./src"
   },
   "dependencies": {
     "@mauntic/domain-kernel": "workspace:*",

@@ -1,10 +1,22 @@
-import { logQueueMetric, createDatabase, createLoggerFromEnv, runDlqHealthCheck } from '@mauntic/worker-lib';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { ScheduledEvent, AnalyticsEngineDataset, R2Bucket } from '@cloudflare/workers-types';
-import { AnalyticsService, DrizzleAnalyticsRepository } from '@mauntic/analytics-domain';
+import type {
+  AnalyticsEngineDataset,
+  R2Bucket,
+  ScheduledEvent,
+} from '@cloudflare/workers-types';
+import {
+  AnalyticsService,
+  DrizzleAnalyticsRepository,
+} from '@mauntic/analytics-domain';
 import type { Result } from '@mauntic/domain-kernel';
-import { KvWarmupCounterStore } from './infrastructure/warmup-counter-store.js';
+import {
+  createDatabase,
+  createLoggerFromEnv,
+  logQueueMetric,
+  runDlqHealthCheck,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { R2WarmupCounterStore } from './infrastructure/r2-warmup-counter-store.js';
+import { KvWarmupCounterStore } from './infrastructure/warmup-counter-store.js';
 
 export type AnalyticsJobType =
   | 'analytics.aggregate-hourly'
@@ -56,8 +68,8 @@ export async function queue(batch: MessageBatch, env: AnalyticsQueueEnv) {
   const warmupStore = env.WARMUP_R2
     ? new R2WarmupCounterStore(env.WARMUP_R2)
     : env.WARMUP_KV
-    ? new KvWarmupCounterStore(env.WARMUP_KV)
-    : undefined;
+      ? new KvWarmupCounterStore(env.WARMUP_KV)
+      : undefined;
   const repo = new DrizzleAnalyticsRepository(db, warmupStore);
   const service = new AnalyticsService(repo);
   const queueName = batch.queue ?? 'mauntic-analytics-jobs';
@@ -156,15 +168,19 @@ export async function scheduled(event: ScheduledEvent, env: AnalyticsQueueEnv) {
   // DLQ health check runs every 30 minutes
   if (event.cron === '*/30 * * * *') {
     if (env.KV) {
-      await runDlqHealthCheck(env.KV, [
-        'mauntic-analytics-jobs-dlq',
-        'mauntic-campaign-events-dlq',
-        'mauntic-delivery-events-dlq',
-        'mauntic-journey-events-dlq',
-        'mauntic-lead-intelligence-events-dlq',
-        'mauntic-revops-events-dlq',
-        'mauntic-scoring-events-dlq',
-      ], {});
+      await runDlqHealthCheck(
+        env.KV,
+        [
+          'mauntic-analytics-jobs-dlq',
+          'mauntic-campaign-events-dlq',
+          'mauntic-delivery-events-dlq',
+          'mauntic-journey-events-dlq',
+          'mauntic-lead-intelligence-events-dlq',
+          'mauntic-revops-events-dlq',
+          'mauntic-scoring-events-dlq',
+        ],
+        {},
+      );
     }
     return;
   }
@@ -174,16 +190,15 @@ export async function scheduled(event: ScheduledEvent, env: AnalyticsQueueEnv) {
     return;
   }
 
-  const scheduledFor = new Date(event.scheduledTime ?? Date.now()).toISOString();
+  const scheduledFor = new Date(
+    event.scheduledTime ?? Date.now(),
+  ).toISOString();
 
-  await Promise.all(
-    jobs.map((type) =>
-      env.ANALYTICS_JOBS.send({
-        type,
-        scheduledFor,
-      }),
-    ),
-  );
+  const messages = jobs.map((type) => ({
+    body: { type, scheduledFor },
+  }));
+
+  await env.ANALYTICS_JOBS.sendBatch(messages as any);
 }
 
 function normalizeMessage(body: unknown): AnalyticsJobMessage | null {
@@ -205,9 +220,14 @@ function normalizeMessage(body: unknown): AnalyticsJobMessage | null {
     if (typeof candidate.type === 'string') {
       return {
         type: candidate.type as AnalyticsJobType,
-        scheduledFor: typeof candidate.scheduledFor === 'string' ? candidate.scheduledFor : undefined,
+        scheduledFor:
+          typeof candidate.scheduledFor === 'string'
+            ? candidate.scheduledFor
+            : undefined,
         correlationId:
-          typeof candidate.correlationId === 'string' ? candidate.correlationId : undefined,
+          typeof candidate.correlationId === 'string'
+            ? candidate.correlationId
+            : undefined,
       };
     }
   }

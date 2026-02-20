@@ -225,12 +225,16 @@ export const revopsContract = c.router(
       path: '/sequences',
       body: z.object({
         name: z.string(),
-        steps: z.array(z.object({
-          type: z.string(),
-          delayDays: z.number(),
-          subject: z.string().optional(),
-          body: z.string().optional(),
-        })).optional(),
+        steps: z
+          .array(
+            z.object({
+              type: z.string(),
+              delayDays: z.number(),
+              subject: z.string().optional(),
+              body: z.string().optional(),
+            }),
+          )
+          .optional(),
       }),
       responses: {
         201: RevOpsSequenceSchema,

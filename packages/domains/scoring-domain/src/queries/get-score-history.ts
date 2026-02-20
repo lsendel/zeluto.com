@@ -10,6 +10,8 @@ export const GetScoreHistoryQuerySchema = z.object({
 
 export type GetScoreHistoryQuery = z.infer<typeof GetScoreHistoryQuerySchema>;
 
-export function getScoreHistoryQuery(input: GetScoreHistoryQuery): GetScoreHistoryQuery {
+export function getScoreHistoryQuery(
+  input: GetScoreHistoryQuery,
+): GetScoreHistoryQuery {
   return GetScoreHistoryQuerySchema.parse(input);
 }

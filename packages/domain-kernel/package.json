@@ -6,15 +6,44 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./value-objects": { "import": "./dist/value-objects/index.js", "types": "./dist/value-objects/index.d.ts" },
-    "./events": { "import": "./dist/events/index.js", "types": "./dist/events/index.d.ts" },
-    "./delivery": { "import": "./dist/delivery/index.js", "types": "./dist/delivery/index.d.ts" },
-    "./errors": { "import": "./dist/errors/index.js", "types": "./dist/errors/index.d.ts" },
-    "./tenant": { "import": "./dist/tenant/index.js", "types": "./dist/tenant/index.d.ts" },
-    "./types": { "import": "./dist/types/index.js", "types": "./dist/types/index.d.ts" }
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./value-objects": {
+      "import": "./dist/value-objects/index.js",
+      "types": "./dist/value-objects/index.d.ts"
+    },
+    "./events": {
+      "import": "./dist/events/index.js",
+      "types": "./dist/events/index.d.ts"
+    },
+    "./delivery": {
+      "import": "./dist/delivery/index.js",
+      "types": "./dist/delivery/index.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors/index.js",
+      "types": "./dist/errors/index.d.ts"
+    },
+    "./tenant": {
+      "import": "./dist/tenant/index.js",
+      "types": "./dist/tenant/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "types": "./dist/types/index.d.ts"
+    }
   },
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
-  "dependencies": { "zod": "catalog:" },
-  "devDependencies": { "typescript": "catalog:" }
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ./src"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
 }

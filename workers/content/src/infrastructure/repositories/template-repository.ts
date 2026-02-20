@@ -1,5 +1,5 @@
-import { eq, and, ilike, or, sql, desc } from 'drizzle-orm';
 import { templates } from '@mauntic/content-domain/drizzle';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type TemplateRow = typeof templates.$inferSelect;
@@ -30,10 +30,7 @@ export async function findAllTemplates(
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      or(
-        ilike(templates.name, pattern),
-        ilike(templates.subject, pattern),
-      )!,
+      or(ilike(templates.name, pattern), ilike(templates.subject, pattern))!,
     );
   }
 
@@ -59,7 +56,10 @@ export async function findAllTemplates(
 export async function createTemplate(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<TemplateInsert, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>,
+  data: Omit<
+    TemplateInsert,
+    'id' | 'organizationId' | 'createdAt' | 'updatedAt'
+  >,
 ): Promise<TemplateRow> {
   const [template] = await db
     .insert(templates)

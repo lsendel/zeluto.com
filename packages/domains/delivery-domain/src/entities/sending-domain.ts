@@ -1,7 +1,11 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
-export const SendingDomainStatusSchema = z.enum(['pending', 'verified', 'failed']);
+export const SendingDomainStatusSchema = z.enum([
+  'pending',
+  'verified',
+  'failed',
+]);
 export type SendingDomainStatus = z.infer<typeof SendingDomainStatusSchema>;
 
 export const DnsRecordSchema = z.object({

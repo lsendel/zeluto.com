@@ -48,21 +48,29 @@ export const ScoreDetailView: FC<ScoreDetailProps> = ({
 
       <div class="grid gap-4 sm:grid-cols-2">
         <div class="rounded-lg border border-gray-200 bg-white p-4">
-          <h3 class="text-sm font-semibold text-gray-900 mb-3">Score Components</h3>
+          <h3 class="text-sm font-semibold text-gray-900 mb-3">
+            Score Components
+          </h3>
           {Object.entries(components).map(([key, value]) => (
             <div class="flex justify-between items-center py-1">
-              <span class="text-sm text-gray-600 capitalize">{key.replace(/_/g, ' ')}</span>
+              <span class="text-sm text-gray-600 capitalize">
+                {key.replace(/_/g, ' ')}
+              </span>
               <span class="text-sm font-medium text-gray-900">{value}</span>
             </div>
           ))}
         </div>
 
         <div class="rounded-lg border border-gray-200 bg-white p-4">
-          <h3 class="text-sm font-semibold text-gray-900 mb-3">Top Contributors</h3>
+          <h3 class="text-sm font-semibold text-gray-900 mb-3">
+            Top Contributors
+          </h3>
           {topContributors.map((c) => (
             <div class="flex justify-between items-center py-1">
               <span class="text-sm text-gray-600">{c.factor}</span>
-              <span class="text-sm font-medium text-green-600">+{c.points}</span>
+              <span class="text-sm font-medium text-green-600">
+                +{c.points}
+              </span>
             </div>
           ))}
         </div>

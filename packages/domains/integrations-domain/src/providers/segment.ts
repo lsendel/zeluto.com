@@ -33,7 +33,9 @@ export class SegmentAdapter {
     });
   }
 
-  async track(event: SegmentEvent): Promise<{ success: boolean; error?: string }> {
+  async track(
+    event: SegmentEvent,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const endpoint = `${SEGMENT_API}/${event.type}`;
       const auth = btoa(`${this.writeKey}:`);
@@ -52,12 +54,18 @@ export class SegmentAdapter {
 
       if (!response.ok) {
         const body = await response.text();
-        return { success: false, error: `Segment returned ${response.status}: ${body}` };
+        return {
+          success: false,
+          error: `Segment returned ${response.status}: ${body}`,
+        };
       }
 
       return { success: true };
     } catch (error) {
-      return { success: false, error: `Segment request failed: ${error instanceof Error ? error.message : String(error)}` };
+      return {
+        success: false,
+        error: `Segment request failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   }
 

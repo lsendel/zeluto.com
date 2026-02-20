@@ -1,15 +1,18 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findFormById,
-  findAllForms,
   createForm,
-  updateForm,
-  deleteForm,
   createFormSubmission,
+  deleteForm,
+  findAllForms,
+  findFormById,
   findFormSubmissions,
+  updateForm,
 } from '../infrastructure/repositories/form-repository.js';
-import { validateSubmission, renderFormHtml } from '../services/form-processor.js';
+import {
+  renderFormHtml,
+  validateSubmission,
+} from '../services/form-processor.js';
 
 export const formRoutes = new Hono<Env>();
 
@@ -38,7 +41,10 @@ formRoutes.get('/api/v1/content/forms', async (c) => {
     });
   } catch (error) {
     console.error('List forms error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list forms' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list forms' },
+      500,
+    );
   }
 });
 
@@ -58,10 +64,16 @@ formRoutes.post('/api/v1/content/forms', async (c) => {
     }>();
 
     if (!body.name) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'name is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'name is required' },
+        400,
+      );
     }
     if (!body.fields || !Array.isArray(body.fields)) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'fields array is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'fields array is required' },
+        400,
+      );
     }
 
     const form = await createForm(db, tenant.organizationId, {
@@ -76,7 +88,10 @@ formRoutes.post('/api/v1/content/forms', async (c) => {
     return c.json(form, 201);
   } catch (error) {
     console.error('Create form error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create form' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create form' },
+      500,
+    );
   }
 });
 
@@ -94,7 +109,10 @@ formRoutes.get('/api/v1/content/forms/:id', async (c) => {
     return c.json(form);
   } catch (error) {
     console.error('Get form error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get form' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get form' },
+      500,
+    );
   }
 });
 
@@ -116,10 +134,12 @@ formRoutes.patch('/api/v1/content/forms/:id', async (c) => {
 
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
+    if (body.description !== undefined)
+      updateData.description = body.description;
     if (body.fields !== undefined) updateData.fields = body.fields;
     if (body.settings !== undefined) updateData.settings = body.settings;
-    if (body.redirectUrl !== undefined) updateData.redirectUrl = body.redirectUrl;
+    if (body.redirectUrl !== undefined)
+      updateData.redirectUrl = body.redirectUrl;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
     const form = await updateForm(db, tenant.organizationId, id, updateData);
@@ -130,7 +150,10 @@ formRoutes.patch('/api/v1/content/forms/:id', async (c) => {
     return c.json(form);
   } catch (error) {
     console.error('Update form error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update form' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update form' },
+      500,
+    );
   }
 });
 
@@ -148,7 +171,10 @@ formRoutes.delete('/api/v1/content/forms/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete form error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete form' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete form' },
+      500,
+    );
   }
 });
 
@@ -165,14 +191,20 @@ formRoutes.get('/api/v1/content/forms/:id/render', async (c) => {
     }
 
     if (!form.isActive) {
-      return c.json({ code: 'FORM_INACTIVE', message: 'This form is no longer active' }, 400);
+      return c.json(
+        { code: 'FORM_INACTIVE', message: 'This form is no longer active' },
+        400,
+      );
     }
 
     const html = renderFormHtml(form);
     return c.html(html);
   } catch (error) {
     console.error('Render form error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to render form' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to render form' },
+      500,
+    );
   }
 });
 
@@ -189,20 +221,32 @@ formRoutes.post('/api/v1/content/forms/:id/submit', async (c) => {
     }
 
     if (!form.isActive) {
-      return c.json({ code: 'FORM_INACTIVE', message: 'This form is no longer accepting submissions' }, 400);
+      return c.json(
+        {
+          code: 'FORM_INACTIVE',
+          message: 'This form is no longer accepting submissions',
+        },
+        400,
+      );
     }
 
     const body = await c.req.json<{ data: Record<string, unknown> }>();
     const submissionData = body.data ?? body;
 
     // Validate against field definitions
-    const validation = validateSubmission(form, submissionData as Record<string, unknown>);
+    const validation = validateSubmission(
+      form,
+      submissionData as Record<string, unknown>,
+    );
     if (!validation.valid) {
-      return c.json({
-        code: 'VALIDATION_ERROR',
-        message: 'Form validation failed',
-        errors: validation.errors,
-      }, 400);
+      return c.json(
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Form validation failed',
+          errors: validation.errors,
+        },
+        400,
+      );
     }
 
     // Store submission
@@ -210,7 +254,10 @@ formRoutes.post('/api/v1/content/forms/:id/submit', async (c) => {
       formId: id,
       data: submissionData,
       contactId: null,
-      ipAddress: c.req.header('CF-Connecting-IP') ?? c.req.header('X-Forwarded-For') ?? null,
+      ipAddress:
+        c.req.header('CF-Connecting-IP') ??
+        c.req.header('X-Forwarded-For') ??
+        null,
       userAgent: c.req.header('User-Agent') ?? null,
     });
 
@@ -245,7 +292,10 @@ formRoutes.post('/api/v1/content/forms/:id/submit', async (c) => {
     });
   } catch (error) {
     console.error('Submit form error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to process submission' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to process submission' },
+      500,
+    );
   }
 });
 
@@ -279,6 +329,9 @@ formRoutes.get('/api/v1/content/forms/:id/submissions', async (c) => {
     });
   } catch (error) {
     console.error('List submissions error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list submissions' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list submissions' },
+      500,
+    );
   }
 });

@@ -10,6 +10,8 @@ export const MergeContactsCommandSchema = z.object({
 
 export type MergeContactsCommand = z.infer<typeof MergeContactsCommandSchema>;
 
-export function mergeContactsCommand(input: MergeContactsCommand): MergeContactsCommand {
+export function mergeContactsCommand(
+  input: MergeContactsCommand,
+): MergeContactsCommand {
   return MergeContactsCommandSchema.parse(input);
 }

@@ -1,4 +1,8 @@
-import type { DeliveryProvider, DeliveryResult, PushPayload } from '@mauntic/domain-kernel';
+import type {
+  DeliveryProvider,
+  DeliveryResult,
+  PushPayload,
+} from '@mauntic/domain-kernel';
 
 export interface FcmProviderConfig {
   projectId: string;
@@ -88,8 +92,11 @@ export class FcmProvider implements DeliveryProvider<'push'> {
       return this.accessToken;
     }
 
-    const serviceAccount = JSON.parse(this.config.serviceAccountKey) as ServiceAccountKey;
-    const tokenUri = serviceAccount.token_uri || 'https://oauth2.googleapis.com/token';
+    const serviceAccount = JSON.parse(
+      this.config.serviceAccountKey,
+    ) as ServiceAccountKey;
+    const tokenUri =
+      serviceAccount.token_uri || 'https://oauth2.googleapis.com/token';
 
     const jwt = await this.createJwt(serviceAccount, now);
 
@@ -107,14 +114,20 @@ export class FcmProvider implements DeliveryProvider<'push'> {
       throw new Error(`Failed to get FCM access token: ${err}`);
     }
 
-    const result = (await response.json()) as { access_token: string; expires_in: number };
+    const result = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+    };
     this.accessToken = result.access_token;
     this.tokenExpiresAt = now + result.expires_in;
 
     return this.accessToken;
   }
 
-  private async createJwt(serviceAccount: ServiceAccountKey, now: number): Promise<string> {
+  private async createJwt(
+    serviceAccount: ServiceAccountKey,
+    now: number,
+  ): Promise<string> {
     const header = { alg: 'RS256', typ: 'JWT' };
     const payload = {
       iss: serviceAccount.client_email,
@@ -165,7 +178,10 @@ function base64urlEncodeBuffer(buffer: ArrayBuffer): string {
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
   }
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 async function importPkcs8Key(pem: string): Promise<CryptoKey> {

@@ -1,4 +1,13 @@
-import { pgSchema, uuid, varchar, text, timestamp, jsonb, boolean, integer } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  integer,
+  jsonb,
+  pgSchema,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 export const integrationsSchema = pgSchema('integrations');
 
@@ -45,17 +54,20 @@ export const webhooks = integrationsSchema.table('webhooks', {
 });
 
 // Webhook deliveries (audit log)
-export const webhookDeliveries = integrationsSchema.table('webhook_deliveries', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  webhookId: uuid('webhook_id')
-    .notNull()
-    .references(() => webhooks.id, { onDelete: 'cascade' }),
-  organizationId: uuid('organization_id').notNull(),
-  eventType: varchar('event_type', { length: 100 }).notNull(),
-  payload: jsonb('payload').notNull(),
-  responseStatus: integer('response_status'),
-  responseBody: text('response_body'),
-  attemptCount: integer('attempt_count').default(1).notNull(),
-  nextRetryAt: timestamp('next_retry_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const webhookDeliveries = integrationsSchema.table(
+  'webhook_deliveries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    webhookId: uuid('webhook_id')
+      .notNull()
+      .references(() => webhooks.id, { onDelete: 'cascade' }),
+    organizationId: uuid('organization_id').notNull(),
+    eventType: varchar('event_type', { length: 100 }).notNull(),
+    payload: jsonb('payload').notNull(),
+    responseStatus: integer('response_status'),
+    responseBody: text('response_body'),
+    attemptCount: integer('attempt_count').default(1).notNull(),
+    nextRetryAt: timestamp('next_retry_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+);

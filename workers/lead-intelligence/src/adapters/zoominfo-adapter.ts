@@ -1,8 +1,18 @@
-import type { EnrichmentProviderAdapter, EnrichmentRequest, EnrichmentAdapterResult } from '@mauntic/lead-intelligence-domain';
+import type {
+  EnrichmentAdapterResult,
+  EnrichmentProviderAdapter,
+  EnrichmentRequest,
+} from '@mauntic/lead-intelligence-domain';
 
 export class ZoomInfoAdapter implements EnrichmentProviderAdapter {
   readonly providerId = 'zoominfo';
-  readonly supportedFields = ['phone', 'company', 'title', 'industry', 'companySize'] as const;
+  readonly supportedFields = [
+    'phone',
+    'company',
+    'title',
+    'industry',
+    'companySize',
+  ] as const;
 
   constructor(
     private readonly apiKey: string,
@@ -27,25 +37,69 @@ export class ZoomInfoAdapter implements EnrichmentProviderAdapter {
       });
 
       if (!response.ok) {
-        return { success: false, fields: [], error: `HTTP ${response.status}`, latencyMs: Date.now() - start, cost: 0 };
+        return {
+          success: false,
+          fields: [],
+          error: `HTTP ${response.status}`,
+          latencyMs: Date.now() - start,
+          cost: 0,
+        };
       }
 
-      const data = await response.json() as { data?: Array<Record<string, unknown>> };
+      const data = (await response.json()) as { data?: Array<any> };
       const contact = data.data?.[0];
       if (!contact) {
-        return { success: false, fields: [], error: 'No match', latencyMs: Date.now() - start, cost: 0.05 };
+        return {
+          success: false,
+          fields: [],
+          error: 'No match',
+          latencyMs: Date.now() - start,
+          cost: 0.05,
+        };
       }
 
       const fields = [];
-      if (contact.phone) fields.push({ field: 'phone', value: contact.phone, confidence: 0.85 });
-      if (contact.company?.name) fields.push({ field: 'company', value: (contact.company as any).name, confidence: 0.9 });
-      if (contact.jobTitle) fields.push({ field: 'title', value: contact.jobTitle, confidence: 0.85 });
-      if (contact.company?.industry) fields.push({ field: 'industry', value: (contact.company as any).industry, confidence: 0.8 });
-      if (contact.company?.employeeCount) fields.push({ field: 'companySize', value: (contact.company as any).employeeCount, confidence: 0.85 });
+      if (contact.phone)
+        fields.push({ field: 'phone', value: contact.phone, confidence: 0.85 });
+      if (contact.company?.name)
+        fields.push({
+          field: 'company',
+          value: (contact.company as any).name,
+          confidence: 0.9,
+        });
+      if (contact.jobTitle)
+        fields.push({
+          field: 'title',
+          value: contact.jobTitle,
+          confidence: 0.85,
+        });
+      if (contact.company?.industry)
+        fields.push({
+          field: 'industry',
+          value: (contact.company as any).industry,
+          confidence: 0.8,
+        });
+      if (contact.company?.employeeCount)
+        fields.push({
+          field: 'companySize',
+          value: (contact.company as any).employeeCount,
+          confidence: 0.85,
+        });
 
-      return { success: true, fields, latencyMs: Date.now() - start, cost: 0.10 };
+      return {
+        success: true,
+        fields,
+        latencyMs: Date.now() - start,
+        cost: 0.1,
+      };
     } catch (error) {
-      return { success: false, fields: [], error: String(error), latencyMs: Date.now() - start, cost: 0 };
+      return {
+        success: false,
+        fields: [],
+        error: String(error),
+        latencyMs: Date.now() - start,
+        cost: 0,
+      };
     }
   }
 

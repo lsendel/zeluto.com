@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
 import { prospects } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ProspectRow = typeof prospects.$inferSelect;
@@ -13,7 +13,12 @@ export async function findProspectByContact(
   const [row] = await db
     .select()
     .from(prospects)
-    .where(and(eq(prospects.organization_id, orgId), eq(prospects.contact_id, contactId)));
+    .where(
+      and(
+        eq(prospects.organization_id, orgId),
+        eq(prospects.contact_id, contactId),
+      ),
+    );
   return row ?? null;
 }
 
@@ -36,7 +41,12 @@ export async function findProspectsByRecommendation(
   return db
     .select()
     .from(prospects)
-    .where(and(eq(prospects.organization_id, orgId), eq(prospects.recommendation, recommendation)))
+    .where(
+      and(
+        eq(prospects.organization_id, orgId),
+        eq(prospects.recommendation, recommendation),
+      ),
+    )
     .orderBy(desc(prospects.qualification_score));
 }
 

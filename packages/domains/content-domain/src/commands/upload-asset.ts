@@ -13,6 +13,8 @@ export const UploadAssetCommandSchema = z.object({
 
 export type UploadAssetCommand = z.infer<typeof UploadAssetCommandSchema>;
 
-export function uploadAssetCommand(input: UploadAssetCommand): UploadAssetCommand {
+export function uploadAssetCommand(
+  input: UploadAssetCommand,
+): UploadAssetCommand {
   return UploadAssetCommandSchema.parse(input);
 }

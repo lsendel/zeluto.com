@@ -72,7 +72,9 @@ export interface ScoreThresholdCrossedPayload {
   score: number;
 }
 
-export function routeScoreThresholdCrossedEvent(payload: ScoreThresholdCrossedPayload) {
+export function routeScoreThresholdCrossedEvent(
+  payload: ScoreThresholdCrossedPayload,
+) {
   return [
     {
       targetQueue: 'revops:routing',

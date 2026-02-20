@@ -1,4 +1,4 @@
-import type { Child, FC } from "../types.js";
+import type { Child, FC } from '../types.js';
 
 export interface CardProps {
   title?: string;
@@ -14,7 +14,7 @@ export interface CardProps {
 export const Card: FC<CardProps> = ({
   title,
   subtitle,
-  class: className = "",
+  class: className = '',
   children,
   footer,
   noPadding = false,
@@ -28,12 +28,10 @@ export const Card: FC<CardProps> = ({
           {title && (
             <h3 class="text-base font-semibold text-gray-900">{title}</h3>
           )}
-          {subtitle && (
-            <p class="mt-1 text-sm text-gray-500">{subtitle}</p>
-          )}
+          {subtitle && <p class="mt-1 text-sm text-gray-500">{subtitle}</p>}
         </div>
       )}
-      <div class={noPadding ? "" : "px-6 py-4"}>{children}</div>
+      <div class={noPadding ? '' : 'px-6 py-4'}>{children}</div>
       {footer && (
         <div class="border-t border-gray-200 bg-gray-50 px-6 py-3">
           {footer}

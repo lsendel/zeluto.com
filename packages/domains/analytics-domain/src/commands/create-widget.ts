@@ -12,6 +12,8 @@ export const CreateWidgetCommandSchema = z.object({
 
 export type CreateWidgetCommand = z.infer<typeof CreateWidgetCommandSchema>;
 
-export function createWidgetCommand(input: CreateWidgetCommand): CreateWidgetCommand {
+export function createWidgetCommand(
+  input: CreateWidgetCommand,
+): CreateWidgetCommand {
   return CreateWidgetCommandSchema.parse(input);
 }

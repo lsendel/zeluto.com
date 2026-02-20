@@ -29,7 +29,8 @@ export function createLogger({
 }: LoggerFactoryOptions): Logger {
   const emit = (level: string, data: Record<string, unknown>, msg?: string) => {
     const merged = { ...baseFields, ...data };
-    const event = typeof merged.event === 'string' ? merged.event : msg ?? 'log';
+    const event =
+      typeof merged.event === 'string' ? merged.event : (msg ?? 'log');
     const { event: _ignored, ...rest } = merged;
     const entry = {
       level,
@@ -67,10 +68,14 @@ export function createLogger({
   };
 
   return {
-    info: (data: Record<string, unknown>, msg?: string) => emit('info', data, msg),
-    warn: (data: Record<string, unknown>, msg?: string) => emit('warn', data, msg),
-    error: (data: Record<string, unknown>, msg?: string) => emit('error', data, msg),
-    debug: (data: Record<string, unknown>, msg?: string) => emit('debug', data, msg),
+    info: (data: Record<string, unknown>, msg?: string) =>
+      emit('info', data, msg),
+    warn: (data: Record<string, unknown>, msg?: string) =>
+      emit('warn', data, msg),
+    error: (data: Record<string, unknown>, msg?: string) =>
+      emit('error', data, msg),
+    debug: (data: Record<string, unknown>, msg?: string) =>
+      emit('debug', data, msg),
     child: (fields: Record<string, unknown>) =>
       createLogger({
         service,

@@ -1,5 +1,5 @@
-import { eq, and, ilike, or, sql, desc } from 'drizzle-orm';
 import { landingPages } from '@mauntic/content-domain/drizzle';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type LandingPageRow = typeof landingPages.$inferSelect;
@@ -13,7 +13,9 @@ export async function findLandingPageById(
   const [page] = await db
     .select()
     .from(landingPages)
-    .where(and(eq(landingPages.id, id), eq(landingPages.organizationId, orgId)));
+    .where(
+      and(eq(landingPages.id, id), eq(landingPages.organizationId, orgId)),
+    );
   return page ?? null;
 }
 
@@ -24,7 +26,9 @@ export async function findLandingPageBySlug(
   const [page] = await db
     .select()
     .from(landingPages)
-    .where(and(eq(landingPages.slug, slug), eq(landingPages.isPublished, true)));
+    .where(
+      and(eq(landingPages.slug, slug), eq(landingPages.isPublished, true)),
+    );
   return page ?? null;
 }
 
@@ -41,10 +45,7 @@ export async function findAllLandingPages(
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      or(
-        ilike(landingPages.name, pattern),
-        ilike(landingPages.slug, pattern),
-      )!,
+      or(ilike(landingPages.name, pattern), ilike(landingPages.slug, pattern))!,
     );
   }
 
@@ -70,7 +71,10 @@ export async function findAllLandingPages(
 export async function createLandingPage(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<LandingPageInsert, 'id' | 'organizationId' | 'createdAt' | 'updatedAt'>,
+  data: Omit<
+    LandingPageInsert,
+    'id' | 'organizationId' | 'createdAt' | 'updatedAt'
+  >,
 ): Promise<LandingPageRow> {
   const [page] = await db
     .insert(landingPages)

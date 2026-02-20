@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { ValidationError } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Schemas

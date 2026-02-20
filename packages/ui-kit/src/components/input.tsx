@@ -1,9 +1,17 @@
-import type { FC } from "../types.js";
+import type { FC } from '../types.js';
 
 export interface InputProps {
   name: string;
   label?: string;
-  type?: "text" | "email" | "password" | "number" | "tel" | "url" | "search" | "date";
+  type?:
+    | 'text'
+    | 'email'
+    | 'password'
+    | 'number'
+    | 'tel'
+    | 'url'
+    | 'search'
+    | 'date';
   placeholder?: string;
   value?: string;
   required?: boolean;
@@ -14,29 +22,29 @@ export interface InputProps {
   id?: string;
   autocomplete?: string;
   /** HTMX: URL to GET for validation */
-  "hx-get"?: string;
+  'hx-get'?: string;
   /** HTMX: URL to POST */
-  "hx-post"?: string;
+  'hx-post'?: string;
   /** HTMX: target element selector */
-  "hx-target"?: string;
+  'hx-target'?: string;
   /** HTMX: swap strategy */
-  "hx-swap"?: string;
+  'hx-swap'?: string;
   /** HTMX: trigger event */
-  "hx-trigger"?: string;
+  'hx-trigger'?: string;
 }
 
 export const Input: FC<InputProps> = (props) => {
   const {
     name,
     label,
-    type = "text",
+    type = 'text',
     placeholder,
     value,
     required = false,
     disabled = false,
     error,
     hint,
-    class: className = "",
+    class: className = '',
     id,
     autocomplete,
     ...htmxAttrs
@@ -47,17 +55,17 @@ export const Input: FC<InputProps> = (props) => {
   const hintId = `${inputId}-hint`;
 
   const inputClasses = [
-    "block w-full rounded-lg border px-3 py-2 text-sm",
-    "focus:outline-none focus:ring-2 focus:ring-offset-0",
-    "disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed",
-    "placeholder:text-gray-400",
+    'block w-full rounded-lg border px-3 py-2 text-sm',
+    'focus:outline-none focus:ring-2 focus:ring-offset-0',
+    'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
+    'placeholder:text-gray-400',
     error
-      ? "border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500"
-      : "border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-500",
+      ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500'
+      : 'border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-500',
     className,
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(' ');
 
   return (
     <div>
@@ -80,7 +88,7 @@ export const Input: FC<InputProps> = (props) => {
         disabled={disabled}
         autocomplete={autocomplete}
         class={inputClasses}
-        aria-invalid={error ? "true" : undefined}
+        aria-invalid={error ? 'true' : undefined}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
         {...htmxAttrs}
       />

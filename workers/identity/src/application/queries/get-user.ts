@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
-import { users, organizationMembers } from '@mauntic/identity-domain';
+import { organizationMembers, users } from '@mauntic/identity-domain';
+import { and, eq } from 'drizzle-orm';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 /**
@@ -9,7 +9,7 @@ import type { DrizzleDb } from '../../infrastructure/database.js';
 export async function getUser(
   db: DrizzleDb,
   userId: string,
-  organizationId: string
+  organizationId: string,
 ) {
   const results = await db
     .select({
@@ -26,15 +26,12 @@ export async function getUser(
       updatedAt: users.updatedAt,
     })
     .from(users)
-    .innerJoin(
-      organizationMembers,
-      eq(users.id, organizationMembers.userId)
-    )
+    .innerJoin(organizationMembers, eq(users.id, organizationMembers.userId))
     .where(
       and(
         eq(users.id, userId),
-        eq(organizationMembers.organizationId, organizationId)
-      )
+        eq(organizationMembers.organizationId, organizationId),
+      ),
     )
     .limit(1);
 

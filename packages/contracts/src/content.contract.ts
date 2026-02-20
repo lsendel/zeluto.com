@@ -3,9 +3,8 @@ import { z } from 'zod';
 import {
   ErrorSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
-  StringIdParamSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -152,7 +151,7 @@ const UpdateLandingPageBodySchema = z.object({
   templateId: z.number().nullable().optional(),
 });
 
-const UploadAssetBodySchema = z.object({
+const _UploadAssetBodySchema = z.object({
   name: z.string().min(1),
   folder: z.string().optional(),
 });
@@ -222,9 +221,11 @@ export const contentContract = c.router({
       method: 'POST',
       path: '/api/v1/content/templates/:id/duplicate',
       pathParams: IdParamSchema,
-      body: z.object({
-        name: z.string().min(1).optional(),
-      }).optional(),
+      body: z
+        .object({
+          name: z.string().min(1).optional(),
+        })
+        .optional(),
       responses: {
         201: TemplateSchema,
         404: ErrorSchema,
@@ -474,10 +475,12 @@ export const contentContract = c.router({
       method: 'GET',
       path: '/api/v1/content/assets/folders',
       responses: {
-        200: z.array(z.object({
-          name: z.string(),
-          assetCount: z.number(),
-        })),
+        200: z.array(
+          z.object({
+            name: z.string(),
+            assetCount: z.number(),
+          }),
+        ),
       },
     },
   },

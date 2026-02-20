@@ -8,6 +8,8 @@ export const StartExecutionCommandSchema = z.object({
 
 export type StartExecutionCommand = z.infer<typeof StartExecutionCommandSchema>;
 
-export function startExecutionCommand(input: StartExecutionCommand): StartExecutionCommand {
+export function startExecutionCommand(
+  input: StartExecutionCommand,
+): StartExecutionCommand {
   return StartExecutionCommandSchema.parse(input);
 }

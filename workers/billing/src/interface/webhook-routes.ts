@@ -1,8 +1,8 @@
+import { StripeWebhookHandler } from '@mauntic/billing-domain';
+import { createDatabase } from '@mauntic/worker-lib';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import { StripeWebhookHandler } from '@mauntic/billing-domain';
 import { verifyStripeWebhook } from '../infrastructure/stripe.js';
-import { createDatabase } from '@mauntic/worker-lib';
 
 export const webhookRoutes = new Hono<Env>();
 
@@ -11,7 +11,10 @@ webhookRoutes.post('/api/v1/billing/webhooks/stripe', async (c) => {
   const signature = c.req.header('stripe-signature');
 
   if (!signature) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'No signature provided' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'No signature provided' },
+      400,
+    );
   }
 
   const payload = await c.req.text();
@@ -32,6 +35,9 @@ webhookRoutes.post('/api/v1/billing/webhooks/stripe', async (c) => {
     return c.json({ received: true });
   } catch (error) {
     console.error('Webhook error:', error);
-    return c.json({ code: 'WEBHOOK_ERROR', message: 'Webhook processing failed' }, 400);
+    return c.json(
+      { code: 'WEBHOOK_ERROR', message: 'Webhook processing failed' },
+      400,
+    );
   }
 });

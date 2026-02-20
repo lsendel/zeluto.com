@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import { createJob } from '../infrastructure/repositories/research-repository.js';
-import { findInsightsByContact } from '../infrastructure/repositories/research-repository.js';
+import {
+  createJob,
+  findInsightsByContact,
+} from '../infrastructure/repositories/research-repository.js';
 
 export const researchRoutes = new Hono<Env>();
 
@@ -20,13 +22,21 @@ researchRoutes.post('/api/v1/revops/research', async (c) => {
 
     await c.env.EVENTS.send({
       type: 'revops.ResearchJobCreated',
-      data: { jobId: job.id, organizationId: tenant.organizationId, contactId: body.contactId, type: body.type },
+      data: {
+        jobId: job.id,
+        organizationId: tenant.organizationId,
+        contactId: body.contactId,
+        type: body.type,
+      },
     });
 
     return c.json({ jobId: job.id, message: 'Research job queued' }, 202);
   } catch (error) {
     console.error('Create research job error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create research job' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create research job' },
+      500,
+    );
   }
 });
 
@@ -36,10 +46,17 @@ researchRoutes.get('/api/v1/revops/contacts/:contactId/insights', async (c) => {
   const { contactId } = c.req.param();
 
   try {
-    const insights = await findInsightsByContact(db, tenant.organizationId, contactId);
+    const insights = await findInsightsByContact(
+      db,
+      tenant.organizationId,
+      contactId,
+    );
     return c.json(insights);
   } catch (error) {
     console.error('Get insights error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get insights' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get insights' },
+      500,
+    );
   }
 });

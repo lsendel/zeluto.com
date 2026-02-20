@@ -26,8 +26,14 @@ export interface DealPipelineProps {
   stageBreakdown: Record<string, { count: number; value: number }>;
 }
 
-export const DealPipelineView: FC<DealPipelineProps> = ({ deals, stageBreakdown }) => {
-  const totalValue = Object.values(stageBreakdown).reduce((s, v) => s + v.value, 0);
+export const DealPipelineView: FC<DealPipelineProps> = ({
+  deals,
+  stageBreakdown,
+}) => {
+  const totalValue = Object.values(stageBreakdown).reduce(
+    (s, v) => s + v.value,
+    0,
+  );
 
   return (
     <div id="deal-pipeline">
@@ -54,7 +60,9 @@ export const DealPipelineView: FC<DealPipelineProps> = ({ deals, stageBreakdown 
           const stats = stageBreakdown[stage] ?? { count: 0, value: 0 };
 
           return (
-            <div class={`rounded-lg border p-3 min-w-[180px] ${STAGE_COLORS[stage] ?? 'bg-gray-50 border-gray-200'}`}>
+            <div
+              class={`rounded-lg border p-3 min-w-[180px] ${STAGE_COLORS[stage] ?? 'bg-gray-50 border-gray-200'}`}
+            >
               <div class="mb-2">
                 <h3 class="text-xs font-semibold uppercase text-gray-600">
                   {stage.replace(/_/g, ' ')}
@@ -71,12 +79,18 @@ export const DealPipelineView: FC<DealPipelineProps> = ({ deals, stageBreakdown 
                     hx-target="#app-content"
                     hx-push-url="true"
                   >
-                    <p class="text-sm font-medium text-gray-900 truncate">{deal.name}</p>
-                    <p class="text-xs text-gray-500">${Number(deal.value).toLocaleString()}</p>
+                    <p class="text-sm font-medium text-gray-900 truncate">
+                      {deal.name}
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      ${Number(deal.value).toLocaleString()}
+                    </p>
                   </div>
                 ))}
                 {stageDeals.length > 5 && (
-                  <p class="text-xs text-gray-400 text-center">+{stageDeals.length - 5} more</p>
+                  <p class="text-xs text-gray-400 text-center">
+                    +{stageDeals.length - 5} more
+                  </p>
                 )}
               </div>
             </div>

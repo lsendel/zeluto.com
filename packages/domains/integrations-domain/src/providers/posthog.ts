@@ -31,7 +31,9 @@ export class PostHogAdapter {
     });
   }
 
-  async capture(event: PostHogEvent): Promise<{ success: boolean; error?: string }> {
+  async capture(
+    event: PostHogEvent,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await fetch(`${this.host}/capture/`, {
         method: 'POST',
@@ -50,12 +52,18 @@ export class PostHogAdapter {
 
       if (!response.ok) {
         const body = await response.text();
-        return { success: false, error: `PostHog returned ${response.status}: ${body}` };
+        return {
+          success: false,
+          error: `PostHog returned ${response.status}: ${body}`,
+        };
       }
 
       return { success: true };
     } catch (error) {
-      return { success: false, error: `PostHog request failed: ${error instanceof Error ? error.message : String(error)}` };
+      return {
+        success: false,
+        error: `PostHog request failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   }
 

@@ -15,6 +15,8 @@ export const CreateTemplateCommandSchema = z.object({
 
 export type CreateTemplateCommand = z.infer<typeof CreateTemplateCommandSchema>;
 
-export function createTemplateCommand(input: CreateTemplateCommand): CreateTemplateCommand {
+export function createTemplateCommand(
+  input: CreateTemplateCommand,
+): CreateTemplateCommand {
   return CreateTemplateCommandSchema.parse(input);
 }

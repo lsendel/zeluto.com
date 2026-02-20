@@ -23,21 +23,32 @@ const ENTITY_MAP: Record<string, string> = {
 export class HubSpotProvider implements SyncProvider {
   readonly name = 'hubspot';
 
-  async testConnection(config: Record<string, unknown>): Promise<{ success: boolean; message?: string }> {
+  async testConnection(
+    config: Record<string, unknown>,
+  ): Promise<{ success: boolean; message?: string }> {
     const { accessToken } = parseConfig(config);
 
     try {
-      const response = await fetch(`${BASE_URL}/crm/v3/objects/contacts?limit=1`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const response = await fetch(
+        `${BASE_URL}/crm/v3/objects/contacts?limit=1`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      );
 
       if (!response.ok) {
-        return { success: false, message: `HubSpot returned ${response.status}` };
+        return {
+          success: false,
+          message: `HubSpot returned ${response.status}`,
+        };
       }
 
       return { success: true, message: 'Connected to HubSpot' };
     } catch (error) {
-      return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : String(error)}` };
+      return {
+        success: false,
+        message: `Connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   }
 
@@ -52,13 +63,20 @@ export class HubSpotProvider implements SyncProvider {
     const params = new URLSearchParams({ limit: '100' });
     if (since) {
       // HubSpot uses filter API for date ranges
-      params.set('filterGroups', JSON.stringify([{
-        filters: [{
-          propertyName: 'lastmodifieddate',
-          operator: 'GTE',
-          value: since.getTime().toString(),
-        }],
-      }]));
+      params.set(
+        'filterGroups',
+        JSON.stringify([
+          {
+            filters: [
+              {
+                propertyName: 'lastmodifieddate',
+                operator: 'GTE',
+                value: since.getTime().toString(),
+              },
+            ],
+          },
+        ]),
+      );
     }
 
     try {
@@ -71,14 +89,18 @@ export class HubSpotProvider implements SyncProvider {
         throw new Error(`HubSpot query failed: ${response.status}`);
       }
 
-      const result = (await response.json()) as { results: Array<{ id: string; properties: Record<string, unknown> }> };
+      const result = (await response.json()) as {
+        results: Array<{ id: string; properties: Record<string, unknown> }>;
+      };
 
       return (result.results ?? []).map((record) => ({
         externalId: record.id,
         data: record.properties,
       }));
     } catch (error) {
-      throw new Error(`HubSpot pull failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `HubSpot pull failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -113,10 +135,14 @@ export class HubSpotProvider implements SyncProvider {
           recordsSynced++;
         } else {
           const body = await response.text();
-          errors.push(`Failed to sync record ${record.externalId ?? 'new'}: ${response.status} ${body}`);
+          errors.push(
+            `Failed to sync record ${record.externalId ?? 'new'}: ${response.status} ${body}`,
+          );
         }
       } catch (error) {
-        errors.push(`Error syncing record: ${error instanceof Error ? error.message : String(error)}`);
+        errors.push(
+          `Error syncing record: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 

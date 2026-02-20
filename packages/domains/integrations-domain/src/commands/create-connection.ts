@@ -8,8 +8,12 @@ export const CreateConnectionCommandSchema = z.object({
   config: z.record(z.string(), z.unknown()),
 });
 
-export type CreateConnectionCommand = z.infer<typeof CreateConnectionCommandSchema>;
+export type CreateConnectionCommand = z.infer<
+  typeof CreateConnectionCommandSchema
+>;
 
-export function createConnectionCommand(input: CreateConnectionCommand): CreateConnectionCommand {
+export function createConnectionCommand(
+  input: CreateConnectionCommand,
+): CreateConnectionCommand {
   return CreateConnectionCommandSchema.parse(input);
 }

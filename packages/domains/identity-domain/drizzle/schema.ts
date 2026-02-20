@@ -1,4 +1,11 @@
-import { pgSchema, text, timestamp, boolean, varchar, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  pgSchema,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 export const identitySchema = pgSchema('identity');
 
@@ -76,35 +83,43 @@ export const organizations = identitySchema.table('organizations', {
 
 // Organization members — links users to orgs with roles
 // Field names match Better Auth's organization plugin expectations
-export const organizationMembers = identitySchema.table('organization_members', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  organizationId: uuid('organization_id')
-    .notNull()
-    .references(() => organizations.id, { onDelete: 'cascade' }),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  role: varchar('role', { length: 20 }).default('member').notNull(),
-  invitedBy: uuid('invited_by').references(() => users.id, { onDelete: 'set null' }),
-  joinedAt: timestamp('joined_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const organizationMembers = identitySchema.table(
+  'organization_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 20 }).default('member').notNull(),
+    invitedBy: uuid('invited_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    joinedAt: timestamp('joined_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+);
 
 // Organization invites
 // Field names match Better Auth's organization plugin expectations
-export const organizationInvites = identitySchema.table('organization_invites', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  organizationId: uuid('organization_id')
-    .notNull()
-    .references(() => organizations.id, { onDelete: 'cascade' }),
-  email: varchar('email', { length: 320 }).notNull(),
-  role: varchar('role', { length: 20 }).default('member').notNull(),
-  status: varchar('status', { length: 20 }).default('pending').notNull(),
-  token: text('token').notNull().unique(),
-  invitedBy: uuid('invited_by')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  expiresAt: timestamp('expires_at').notNull(),
-  acceptedAt: timestamp('accepted_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const organizationInvites = identitySchema.table(
+  'organization_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    email: varchar('email', { length: 320 }).notNull(),
+    role: varchar('role', { length: 20 }).default('member').notNull(),
+    status: varchar('status', { length: 20 }).default('pending').notNull(),
+    token: text('token').notNull().unique(),
+    invitedBy: uuid('invited_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at').notNull(),
+    acceptedAt: timestamp('accepted_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+);

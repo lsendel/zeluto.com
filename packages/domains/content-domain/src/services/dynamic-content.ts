@@ -32,7 +32,10 @@ export interface VariantContext {
  *   {{contact.firstName|"there"}} - with fallback
  *   {{custom.someField}}        - custom data access
  */
-export function personalizeContent(content: string, context: VariantContext): string {
+export function personalizeContent(
+  content: string,
+  context: VariantContext,
+): string {
   // Replace {{contact.<field>}} and {{contact.<field>|"fallback"}}
   let result = content.replace(
     /\{\{contact\.(\w+)(?:\|"([^"]*)")?\}\}/g,
@@ -71,7 +74,10 @@ export function personalizeContent(content: string, context: VariantContext): st
  * Multiple variant blocks can exist; matching ones are included,
  * non-matching ones are removed.
  */
-export function evaluateVariants(content: string, context: VariantContext): string {
+export function evaluateVariants(
+  content: string,
+  context: VariantContext,
+): string {
   // Process segment-based variants
   let result = content.replace(
     /\{\{#variant\s+segment="([^"]+)"\}\}([\s\S]*?)\{\{\/variant\}\}/g,
@@ -110,7 +116,10 @@ export function evaluateVariants(content: string, context: VariantContext): stri
  * 1. Evaluate conditional variant blocks
  * 2. Replace personalization tokens
  */
-export function renderDynamicContent(content: string, context: VariantContext): string {
+export function renderDynamicContent(
+  content: string,
+  context: VariantContext,
+): string {
   const withVariants = evaluateVariants(content, context);
   return personalizeContent(withVariants, context);
 }

@@ -7,6 +7,8 @@ export const DeleteCampaignCommandSchema = z.object({
 
 export type DeleteCampaignCommand = z.infer<typeof DeleteCampaignCommandSchema>;
 
-export function deleteCampaignCommand(input: DeleteCampaignCommand): DeleteCampaignCommand {
+export function deleteCampaignCommand(
+  input: DeleteCampaignCommand,
+): DeleteCampaignCommand {
   return DeleteCampaignCommandSchema.parse(input);
 }

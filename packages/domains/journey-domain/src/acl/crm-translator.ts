@@ -17,7 +17,9 @@ export interface JourneyTriggerInput {
  *
  * Returns null if the event is not relevant to the Journey context.
  */
-export function translateCrmEvent(event: DomainEvent): JourneyTriggerInput | null {
+export function translateCrmEvent(
+  event: DomainEvent,
+): JourneyTriggerInput | null {
   switch (event.type) {
     case 'crm.ContactCreated':
       return {

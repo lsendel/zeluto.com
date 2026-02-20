@@ -13,8 +13,14 @@ export class ProviderResolver {
    * Find the highest-priority active provider config for the given org + channel.
    * Returns null if no active provider is configured.
    */
-  async resolve(orgId: string, channel: Channel): Promise<ProviderConfig | null> {
-    const configs = await this.providerConfigRepo.findActiveByOrgAndChannel(orgId, channel);
+  async resolve(
+    orgId: string,
+    channel: Channel,
+  ): Promise<ProviderConfig | null> {
+    const configs = await this.providerConfigRepo.findActiveByOrgAndChannel(
+      orgId,
+      channel,
+    );
 
     if (configs.length === 0) {
       return null;
@@ -30,7 +36,10 @@ export class ProviderResolver {
    * Useful for fallback scenarios.
    */
   async resolveAll(orgId: string, channel: Channel): Promise<ProviderConfig[]> {
-    const configs = await this.providerConfigRepo.findActiveByOrgAndChannel(orgId, channel);
+    const configs = await this.providerConfigRepo.findActiveByOrgAndChannel(
+      orgId,
+      channel,
+    );
     return [...configs].sort((a, b) => b.priority - a.priority);
   }
 }

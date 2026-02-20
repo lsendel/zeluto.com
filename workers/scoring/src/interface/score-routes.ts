@@ -9,20 +9,28 @@ scoreRoutes.get('/api/v1/scoring/contacts/:contactId/score', async (c) => {
   const tenant = c.get('tenant');
 
   // TODO: Wire up LeadScoreRepository
-  return c.json({ contactId, organizationId: tenant.organizationId, totalScore: 0, grade: 'F' });
+  return c.json({
+    contactId,
+    organizationId: tenant.organizationId,
+    totalScore: 0,
+    grade: 'F',
+  });
 });
 
 // GET /api/v1/scoring/contacts/:contactId/score/history
-scoreRoutes.get('/api/v1/scoring/contacts/:contactId/score/history', async (c) => {
-  const { contactId } = c.req.param();
+scoreRoutes.get(
+  '/api/v1/scoring/contacts/:contactId/score/history',
+  async (c) => {
+    const { contactId } = c.req.param();
 
-  // TODO: Wire up ScoreHistoryRepository
-  return c.json([]);
-});
+    // TODO: Wire up ScoreHistoryRepository
+    return c.json([]);
+  },
+);
 
 // POST /api/v1/scoring/scoring/recalculate
 scoreRoutes.post('/api/v1/scoring/scoring/recalculate', async (c) => {
-  const body = await c.req.json();
+  const _body = await c.req.json();
 
   // TODO: Enqueue scoring jobs via EVENTS queue
   return c.json({ message: 'Recalculation started', contactsProcessed: 0 });

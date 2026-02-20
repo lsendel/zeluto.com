@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
 import { waterfallConfigs } from '@mauntic/lead-intelligence-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type WaterfallConfigRow = typeof waterfallConfigs.$inferSelect;
@@ -13,10 +13,12 @@ export async function findWaterfallByField(
   const [row] = await db
     .select()
     .from(waterfallConfigs)
-    .where(and(
-      eq(waterfallConfigs.organization_id, orgId),
-      eq(waterfallConfigs.field_name, fieldName),
-    ));
+    .where(
+      and(
+        eq(waterfallConfigs.organization_id, orgId),
+        eq(waterfallConfigs.field_name, fieldName),
+      ),
+    );
   return row ?? null;
 }
 
@@ -60,7 +62,12 @@ export async function deleteWaterfall(
 ): Promise<boolean> {
   const result = await db
     .delete(waterfallConfigs)
-    .where(and(eq(waterfallConfigs.id, id), eq(waterfallConfigs.organization_id, orgId)))
+    .where(
+      and(
+        eq(waterfallConfigs.id, id),
+        eq(waterfallConfigs.organization_id, orgId),
+      ),
+    )
     .returning({ id: waterfallConfigs.id });
   return result.length > 0;
 }

@@ -1,5 +1,5 @@
-import { eq, and, ilike, sql, desc, inArray } from 'drizzle-orm';
-import { segments, segment_contacts } from '@mauntic/crm-domain/drizzle';
+import { segment_contacts, segments } from '@mauntic/crm-domain/drizzle';
+import { and, desc, eq, ilike, inArray, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type SegmentRow = typeof segments.$inferSelect;
@@ -53,7 +53,10 @@ export async function findAllSegments(
 export async function createSegment(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<SegmentInsert, 'id' | 'organization_id' | 'created_at' | 'updated_at'>,
+  data: Omit<
+    SegmentInsert,
+    'id' | 'organization_id' | 'created_at' | 'updated_at'
+  >,
 ): Promise<SegmentRow> {
   const [segment] = await db
     .insert(segments)
@@ -81,14 +84,17 @@ export async function deleteSegment(
   orgId: string,
   id: string,
 ): Promise<boolean> {
-  // Delete junction rows first
-  await db.delete(segment_contacts).where(eq(segment_contacts.segment_id, id));
+  return db.transaction(async (tx) => {
+    await tx
+      .delete(segment_contacts)
+      .where(eq(segment_contacts.segment_id, id));
 
-  const result = await db
-    .delete(segments)
-    .where(and(eq(segments.id, id), eq(segments.organization_id, orgId)))
-    .returning({ id: segments.id });
-  return result.length > 0;
+    const result = await tx
+      .delete(segments)
+      .where(and(eq(segments.id, id), eq(segments.organization_id, orgId)))
+      .returning({ id: segments.id });
+    return result.length > 0;
+  });
 }
 
 export async function addContactsToSegment(
@@ -98,29 +104,30 @@ export async function addContactsToSegment(
 ): Promise<number> {
   if (contactIds.length === 0) return 0;
 
-  const values = contactIds.map((contactId) => ({
-    segment_id: segmentId,
-    contact_id: contactId,
-  }));
+  return db.transaction(async (tx) => {
+    const values = contactIds.map((contactId) => ({
+      segment_id: segmentId,
+      contact_id: contactId,
+    }));
 
-  const result = await db
-    .insert(segment_contacts)
-    .values(values)
-    .onConflictDoNothing()
-    .returning();
+    const result = await tx
+      .insert(segment_contacts)
+      .values(values)
+      .onConflictDoNothing()
+      .returning();
 
-  // Update contact_count on the segment
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(segment_contacts)
-    .where(eq(segment_contacts.segment_id, segmentId));
+    const [countResult] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(segment_contacts)
+      .where(eq(segment_contacts.segment_id, segmentId));
 
-  await db
-    .update(segments)
-    .set({ contact_count: countResult?.count ?? 0, updated_at: new Date() })
-    .where(eq(segments.id, segmentId));
+    await tx
+      .update(segments)
+      .set({ contact_count: countResult?.count ?? 0, updated_at: new Date() })
+      .where(eq(segments.id, segmentId));
 
-  return result.length;
+    return result.length;
+  });
 }
 
 export async function removeContactsFromSegment(

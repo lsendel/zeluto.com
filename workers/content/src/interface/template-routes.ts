@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findTemplateById,
-  findAllTemplates,
   createTemplate,
-  updateTemplate,
   deleteTemplate,
+  findAllTemplates,
+  findTemplateById,
+  updateTemplate,
 } from '../infrastructure/repositories/template-repository.js';
 
 export const templateRoutes = new Hono<Env>();
@@ -35,7 +35,10 @@ templateRoutes.get('/api/v1/content/templates', async (c) => {
     });
   } catch (error) {
     console.error('List templates error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list templates' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list templates' },
+      500,
+    );
   }
 });
 
@@ -58,7 +61,10 @@ templateRoutes.post('/api/v1/content/templates', async (c) => {
     }>();
 
     if (!body.name || !body.type) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'name and type are required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'name and type are required' },
+        400,
+      );
     }
 
     const template = await createTemplate(db, tenant.organizationId, {
@@ -77,7 +83,10 @@ templateRoutes.post('/api/v1/content/templates', async (c) => {
     return c.json(template, 201);
   } catch (error) {
     console.error('Create template error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create template' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create template' },
+      500,
+    );
   }
 });
 
@@ -95,7 +104,10 @@ templateRoutes.get('/api/v1/content/templates/:id', async (c) => {
     return c.json(template);
   } catch (error) {
     console.error('Get template error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get template' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get template' },
+      500,
+    );
   }
 });
 
@@ -124,10 +136,16 @@ templateRoutes.patch('/api/v1/content/templates/:id', async (c) => {
     if (body.bodyHtml !== undefined) updateData.bodyHtml = body.bodyHtml;
     if (body.bodyText !== undefined) updateData.bodyText = body.bodyText;
     if (body.bodyJson !== undefined) updateData.bodyJson = body.bodyJson;
-    if (body.thumbnailUrl !== undefined) updateData.thumbnailUrl = body.thumbnailUrl;
+    if (body.thumbnailUrl !== undefined)
+      updateData.thumbnailUrl = body.thumbnailUrl;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
-    const template = await updateTemplate(db, tenant.organizationId, id, updateData);
+    const template = await updateTemplate(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!template) {
       return c.json({ code: 'NOT_FOUND', message: 'Template not found' }, 404);
     }
@@ -135,7 +153,10 @@ templateRoutes.patch('/api/v1/content/templates/:id', async (c) => {
     return c.json(template);
   } catch (error) {
     console.error('Update template error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update template' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update template' },
+      500,
+    );
   }
 });
 
@@ -153,7 +174,10 @@ templateRoutes.delete('/api/v1/content/templates/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete template error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete template' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete template' },
+      500,
+    );
   }
 });
 
@@ -169,7 +193,9 @@ templateRoutes.post('/api/v1/content/templates/:id/duplicate', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Template not found' }, 404);
     }
 
-    const body: { name?: string } = await c.req.json<{ name?: string }>().catch(() => ({}));
+    const body: { name?: string } = await c.req
+      .json<{ name?: string }>()
+      .catch(() => ({}));
 
     const duplicate = await createTemplate(db, tenant.organizationId, {
       name: body.name ?? `${original.name} (Copy)`,
@@ -187,6 +213,9 @@ templateRoutes.post('/api/v1/content/templates/:id/duplicate', async (c) => {
     return c.json(duplicate, 201);
   } catch (error) {
     console.error('Duplicate template error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to duplicate template' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to duplicate template' },
+      500,
+    );
   }
 });

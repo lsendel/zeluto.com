@@ -1,4 +1,13 @@
-import { pgSchema, uuid, varchar, timestamp, jsonb, integer, date, numeric } from 'drizzle-orm/pg-core';
+import {
+  date,
+  integer,
+  jsonb,
+  numeric,
+  pgSchema,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 export const analyticsSchema = pgSchema('analytics');
 
@@ -25,21 +34,24 @@ export const contactActivity = analyticsSchema.table('contact_activity', {
 });
 
 // Campaign daily stats
-export const campaignDailyStats = analyticsSchema.table('campaign_daily_stats', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  campaignId: uuid('campaign_id').notNull(),
-  organizationId: uuid('organization_id').notNull(),
-  date: date('date').notNull(),
-  sent: integer('sent').default(0).notNull(),
-  delivered: integer('delivered').default(0).notNull(),
-  opened: integer('opened').default(0).notNull(),
-  uniqueOpened: integer('unique_opened').default(0).notNull(),
-  clicked: integer('clicked').default(0).notNull(),
-  uniqueClicked: integer('unique_clicked').default(0).notNull(),
-  bounced: integer('bounced').default(0).notNull(),
-  complained: integer('complained').default(0).notNull(),
-  unsubscribed: integer('unsubscribed').default(0).notNull(),
-});
+export const campaignDailyStats = analyticsSchema.table(
+  'campaign_daily_stats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    campaignId: uuid('campaign_id').notNull(),
+    organizationId: uuid('organization_id').notNull(),
+    date: date('date').notNull(),
+    sent: integer('sent').default(0).notNull(),
+    delivered: integer('delivered').default(0).notNull(),
+    opened: integer('opened').default(0).notNull(),
+    uniqueOpened: integer('unique_opened').default(0).notNull(),
+    clicked: integer('clicked').default(0).notNull(),
+    uniqueClicked: integer('unique_clicked').default(0).notNull(),
+    bounced: integer('bounced').default(0).notNull(),
+    complained: integer('complained').default(0).notNull(),
+    unsubscribed: integer('unsubscribed').default(0).notNull(),
+  },
+);
 
 // Journey daily stats
 export const journeyDailyStats = analyticsSchema.table('journey_daily_stats', {
@@ -65,18 +77,21 @@ export const funnelReports = analyticsSchema.table('funnel_reports', {
 });
 
 // Daily score distribution (aggregated per org per day)
-export const dailyScoreDistribution = analyticsSchema.table('daily_score_distribution', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  organizationId: uuid('organization_id').notNull(),
-  date: date('date').notNull(),
-  avgScore: numeric('avg_score', { precision: 5, scale: 2 }).notNull(),
-  minScore: integer('min_score').notNull(),
-  maxScore: integer('max_score').notNull(),
-  p50: integer('p50').notNull(),
-  p90: integer('p90').notNull(),
-  p95: integer('p95').notNull(),
-  totalContacts: integer('total_contacts').notNull(),
-});
+export const dailyScoreDistribution = analyticsSchema.table(
+  'daily_score_distribution',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').notNull(),
+    date: date('date').notNull(),
+    avgScore: numeric('avg_score', { precision: 5, scale: 2 }).notNull(),
+    minScore: integer('min_score').notNull(),
+    maxScore: integer('max_score').notNull(),
+    p50: integer('p50').notNull(),
+    p90: integer('p90').notNull(),
+    p95: integer('p95').notNull(),
+    totalContacts: integer('total_contacts').notNull(),
+  },
+);
 
 // Engagement cohorts by lead grade
 export const engagementCohorts = analyticsSchema.table('engagement_cohorts', {

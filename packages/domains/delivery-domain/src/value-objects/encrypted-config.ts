@@ -35,7 +35,10 @@ function base64Decode(b64: string): Uint8Array {
  * @param key - 64-character hex string representing a 256-bit key
  * @returns A string in the format `base64(iv):base64(ciphertext)`
  */
-export async function encryptConfig(plaintext: string, key: string): Promise<string> {
+export async function encryptConfig(
+  plaintext: string,
+  key: string,
+): Promise<string> {
   const encoder = new TextEncoder();
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
@@ -53,7 +56,7 @@ export async function encryptConfig(plaintext: string, key: string): Promise<str
     encoder.encode(plaintext),
   );
 
-  return base64Encode(iv) + ':' + base64Encode(new Uint8Array(encrypted));
+  return `${base64Encode(iv)}:${base64Encode(new Uint8Array(encrypted))}`;
 }
 
 /**
@@ -63,10 +66,15 @@ export async function encryptConfig(plaintext: string, key: string): Promise<str
  * @param key - 64-character hex string representing a 256-bit key
  * @returns The decrypted plaintext string
  */
-export async function decryptConfig(ciphertext: string, key: string): Promise<string> {
+export async function decryptConfig(
+  ciphertext: string,
+  key: string,
+): Promise<string> {
   const [ivB64, dataB64] = ciphertext.split(':');
   if (!ivB64 || !dataB64) {
-    throw new Error('Invalid ciphertext format: expected base64(iv):base64(data)');
+    throw new Error(
+      'Invalid ciphertext format: expected base64(iv):base64(data)',
+    );
   }
 
   const iv = base64Decode(ivB64);

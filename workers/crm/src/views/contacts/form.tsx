@@ -15,7 +15,7 @@ export const ContactFormView: FC<ContactFormProps> = ({
   const isEdit = !!contact;
   const title = isEdit ? 'Edit Contact' : 'New Contact';
   const submitUrl = isEdit
-    ? `/api/v1/crm/contacts/${contact!.id}`
+    ? `/api/v1/crm/contacts/${contact?.id}`
     : '/api/v1/crm/contacts';
 
   return (
@@ -48,7 +48,10 @@ export const ContactFormView: FC<ContactFormProps> = ({
         <div class="space-y-6">
           {/* Email */}
           <div>
-            <label for="email" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="email"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Email
             </label>
             <input
@@ -66,7 +69,11 @@ export const ContactFormView: FC<ContactFormProps> = ({
               aria-describedby={errors.email ? 'email-error' : undefined}
             />
             {errors.email && (
-              <p id="email-error" class="mt-1 text-sm text-red-600" role="alert">
+              <p
+                id="email-error"
+                class="mt-1 text-sm text-red-600"
+                role="alert"
+              >
                 {errors.email}
               </p>
             )}
@@ -75,7 +82,10 @@ export const ContactFormView: FC<ContactFormProps> = ({
           {/* Name fields */}
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="firstName" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="firstName"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 First Name
               </label>
               <input
@@ -97,7 +107,10 @@ export const ContactFormView: FC<ContactFormProps> = ({
               )}
             </div>
             <div>
-              <label for="lastName" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="lastName"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Last Name
               </label>
               <input
@@ -122,7 +135,10 @@ export const ContactFormView: FC<ContactFormProps> = ({
 
           {/* Phone */}
           <div>
-            <label for="phone" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="phone"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Phone
             </label>
             <input
@@ -147,7 +163,10 @@ export const ContactFormView: FC<ContactFormProps> = ({
           {/* Status (only on edit) */}
           {isEdit && (
             <div>
-              <label for="status" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="status"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Status
               </label>
               <select
@@ -158,13 +177,22 @@ export const ContactFormView: FC<ContactFormProps> = ({
                 <option value="active" selected={contact?.status === 'active'}>
                   Active
                 </option>
-                <option value="unsubscribed" selected={contact?.status === 'unsubscribed'}>
+                <option
+                  value="unsubscribed"
+                  selected={contact?.status === 'unsubscribed'}
+                >
                   Unsubscribed
                 </option>
-                <option value="bounced" selected={contact?.status === 'bounced'}>
+                <option
+                  value="bounced"
+                  selected={contact?.status === 'bounced'}
+                >
                   Bounced
                 </option>
-                <option value="do_not_contact" selected={contact?.status === 'do_not_contact'}>
+                <option
+                  value="do_not_contact"
+                  selected={contact?.status === 'do_not_contact'}
+                >
                   Do Not Contact
                 </option>
               </select>
@@ -182,7 +210,9 @@ export const ContactFormView: FC<ContactFormProps> = ({
           </button>
           <button
             type="button"
-            hx-get={isEdit ? `/app/crm/contacts/${contact!.id}` : '/app/crm/contacts'}
+            hx-get={
+              isEdit ? `/app/crm/contacts/${contact?.id}` : '/app/crm/contacts'
+            }
             hx-target="#app-content"
             hx-push-url="true"
             class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"

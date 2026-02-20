@@ -1,5 +1,8 @@
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { DrizzleContactRepository, SegmentNotFoundError } from '../infrastructure/repositories/drizzle-contact-repository.js';
+import {
+  DrizzleContactRepository,
+  SegmentNotFoundError,
+} from '../infrastructure/repositories/drizzle-contact-repository.js';
 
 export type SegmentQueryInput = {
   organizationId: string;
@@ -51,10 +54,14 @@ export async function querySegmentContacts(
   const offset = decodeCursor(input.cursor);
 
   const repo = new DrizzleContactRepository(db);
-  const result = await repo.findBySegment(input.organizationId, input.segmentId, {
-    offset,
-    limit,
-  });
+  const result = await repo.findBySegment(
+    input.organizationId,
+    input.segmentId,
+    {
+      offset,
+      limit,
+    },
+  );
 
   return {
     contacts: result.data.map((contact) => ({
@@ -65,7 +72,8 @@ export async function querySegmentContacts(
       customFields: contact.customFields,
     })),
     total: result.total,
-    nextCursor: result.nextOffset !== null ? encodeCursor(result.nextOffset) : null,
+    nextCursor:
+      result.nextOffset !== null ? encodeCursor(result.nextOffset) : null,
   };
 }
 

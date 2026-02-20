@@ -45,7 +45,8 @@ function enrichCorrelationId<T extends DomainEvent>(
     ...event,
     metadata: {
       ...event.metadata,
-      correlationId: correlationId ?? event.metadata.correlationId ?? crypto.randomUUID(),
+      correlationId:
+        correlationId ?? event.metadata.correlationId ?? crypto.randomUUID(),
     },
   };
 }

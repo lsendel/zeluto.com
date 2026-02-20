@@ -29,15 +29,23 @@ export interface ResearchResult {
 
 // Insight types for company research
 export type CompanyInsightType =
-  | 'company_profile' | 'funding_history' | 'tech_stack'
-  | 'hiring_signals' | 'recent_news' | 'competitive_landscape'
+  | 'company_profile'
+  | 'funding_history'
+  | 'tech_stack'
+  | 'hiring_signals'
+  | 'recent_news'
+  | 'competitive_landscape'
   | 'growth_indicators';
 
 // Insight types for person research
 export type PersonInsightType =
-  | 'professional_background' | 'recent_publications'
-  | 'shared_connections' | 'career_trajectory' | 'interests'
-  | 'social_presence' | 'speaking_engagements';
+  | 'professional_background'
+  | 'recent_publications'
+  | 'shared_connections'
+  | 'career_trajectory'
+  | 'interests'
+  | 'social_presence'
+  | 'speaking_engagements';
 
 const QUALITY_THRESHOLD = 0.7;
 
@@ -45,19 +53,21 @@ export class ResearchAgent {
   constructor(private readonly llm: LLMProvider) {}
 
   async research(request: ResearchRequest): Promise<ResearchResult> {
-    const prompt = request.type === 'company'
-      ? this.buildCompanyPrompt(request)
-      : this.buildPersonPrompt(request);
+    const prompt =
+      request.type === 'company'
+        ? this.buildCompanyPrompt(request)
+        : this.buildPersonPrompt(request);
 
     const response = await this.llm.complete(prompt, {
       temperature: 0.3,
       maxTokens: 2048,
-      systemPrompt: 'You are a sales research analyst. Provide structured, actionable insights.',
+      systemPrompt:
+        'You are a sales research analyst. Provide structured, actionable insights.',
     });
 
     const insights = this.parseInsights(response.content);
     const filtered = insights.filter(
-      i => i.relevance * i.freshness >= QUALITY_THRESHOLD,
+      (i) => i.relevance * i.freshness >= QUALITY_THRESHOLD,
     );
 
     return {
@@ -82,11 +92,13 @@ Format each insight as: TYPE: content (relevance: 0-1, freshness: 0-1)`;
 
   private parseInsights(content: string): ResearchInsight[] {
     // Simple parsing of structured LLM output
-    const lines = content.split('\n').filter(l => l.trim());
+    const lines = content.split('\n').filter((l) => l.trim());
     const insights: ResearchInsight[] = [];
 
     for (const line of lines) {
-      const match = line.match(/^(\w+):\s*(.+?)(?:\s*\(relevance:\s*([\d.]+),\s*freshness:\s*([\d.]+)\))?$/);
+      const match = line.match(
+        /^(\w+):\s*(.+?)(?:\s*\(relevance:\s*([\d.]+),\s*freshness:\s*([\d.]+)\))?$/,
+      );
       if (match) {
         insights.push({
           insightType: match[1].toLowerCase(),

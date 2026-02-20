@@ -41,7 +41,12 @@ export class Forecast {
         bestCaseValue,
         commitValue,
         closedValue,
-        weightedValue: Forecast.calculateWeighted(closedValue, commitValue, bestCaseValue, pipelineValue),
+        weightedValue: Forecast.calculateWeighted(
+          closedValue,
+          commitValue,
+          bestCaseValue,
+          pipelineValue,
+        ),
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
@@ -53,19 +58,42 @@ export class Forecast {
   }
 
   // Weighted calculation: closed×1.0 + commit×1.0 + best_case×0.5 + pipeline×0.25
-  static calculateWeighted(closed: number, commit: number, bestCase: number, pipeline: number): number {
+  static calculateWeighted(
+    closed: number,
+    commit: number,
+    bestCase: number,
+    pipeline: number,
+  ): number {
     return closed * 1.0 + commit * 1.0 + bestCase * 0.5 + pipeline * 0.25;
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get period() { return this.props.period; }
-  get repId() { return this.props.repId; }
-  get pipelineValue() { return this.props.pipelineValue; }
-  get bestCaseValue() { return this.props.bestCaseValue; }
-  get commitValue() { return this.props.commitValue; }
-  get closedValue() { return this.props.closedValue; }
-  get weightedValue() { return this.props.weightedValue; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get period() {
+    return this.props.period;
+  }
+  get repId() {
+    return this.props.repId;
+  }
+  get pipelineValue() {
+    return this.props.pipelineValue;
+  }
+  get bestCaseValue() {
+    return this.props.bestCaseValue;
+  }
+  get commitValue() {
+    return this.props.commitValue;
+  }
+  get closedValue() {
+    return this.props.closedValue;
+  }
+  get weightedValue() {
+    return this.props.weightedValue;
+  }
 
   updateValues(input: {
     pipelineValue?: number;
@@ -73,12 +101,19 @@ export class Forecast {
     commitValue?: number;
     closedValue?: number;
   }): void {
-    if (input.pipelineValue !== undefined) this.props.pipelineValue = input.pipelineValue;
-    if (input.bestCaseValue !== undefined) this.props.bestCaseValue = input.bestCaseValue;
-    if (input.commitValue !== undefined) this.props.commitValue = input.commitValue;
-    if (input.closedValue !== undefined) this.props.closedValue = input.closedValue;
+    if (input.pipelineValue !== undefined)
+      this.props.pipelineValue = input.pipelineValue;
+    if (input.bestCaseValue !== undefined)
+      this.props.bestCaseValue = input.bestCaseValue;
+    if (input.commitValue !== undefined)
+      this.props.commitValue = input.commitValue;
+    if (input.closedValue !== undefined)
+      this.props.closedValue = input.closedValue;
     this.props.weightedValue = Forecast.calculateWeighted(
-      this.props.closedValue, this.props.commitValue, this.props.bestCaseValue, this.props.pipelineValue,
+      this.props.closedValue,
+      this.props.commitValue,
+      this.props.bestCaseValue,
+      this.props.pipelineValue,
     );
     this.props.updatedAt = new Date();
   }

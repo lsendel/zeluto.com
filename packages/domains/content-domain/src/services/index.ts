@@ -1,7 +1,7 @@
 export {
   type ContactAttributes,
-  type VariantContext,
-  personalizeContent,
   evaluateVariants,
+  personalizeContent,
   renderDynamicContent,
+  type VariantContext,
 } from './dynamic-content.js';

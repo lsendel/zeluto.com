@@ -57,7 +57,7 @@ export async function apiRequest<T = unknown>(
   };
 
   if (token) {
-    requestHeaders['Authorization'] = `Bearer ${token}`;
+    requestHeaders.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(`${BASE_URL}${path}`, {
@@ -102,7 +102,7 @@ export async function createTestUser(
 ): Promise<TestUser> {
   const email = overrides.email ?? uniqueEmail();
   const name = overrides.name ?? uniqueName('Test User');
-  const password = overrides.password ?? 'TestPassword123!';
+  const _password = overrides.password ?? 'TestPassword123!';
 
   // TODO: Call POST /api/v1/auth/signup and return user + token
   // const { status, body } = await apiRequest('/api/v1/auth/signup', {
@@ -127,7 +127,7 @@ export async function createTestUser(
  * TODO: Implement once the identity worker is running.
  */
 export async function createTestOrganization(
-  token: string,
+  _token: string,
   overrides: Partial<{ name: string; slug: string }> = {},
 ): Promise<TestOrganization> {
   const name = overrides.name ?? uniqueName('Test Org');
@@ -155,8 +155,8 @@ export async function createTestOrganization(
  * TODO: Implement once the identity worker is running.
  */
 export async function loginTestUser(
-  email: string,
-  password: string,
+  _email: string,
+  _password: string,
 ): Promise<{ token: string }> {
   // TODO: Call POST /api/v1/auth/login
   // const { status, body } = await apiRequest('/api/v1/auth/login', {

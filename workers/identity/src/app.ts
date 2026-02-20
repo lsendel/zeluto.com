@@ -1,17 +1,16 @@
+import type { TenantContext } from '@mauntic/domain-kernel';
+import { tenantMiddleware } from '@mauntic/worker-lib';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { tenantMiddleware } from '@mauntic/worker-lib';
-import type { TenantContext } from '@mauntic/domain-kernel';
-import type { Env } from './infrastructure/database.js';
-import { createDatabase } from './infrastructure/database.js';
-import type { DrizzleDb } from './infrastructure/database.js';
-import authRoutes from './interface/auth-routes.js';
-import userRoutes from './interface/user-routes.js';
-import orgRoutes from './interface/org-routes.js';
-import { validateSessionFromHeaders } from './application/session-service.js';
-import identityDispatchRoutes from './interface/dispatch-routes.js';
 import { createOrg } from './application/commands/create-org.js';
+import { validateSessionFromHeaders } from './application/session-service.js';
+import type { DrizzleDb, Env } from './infrastructure/database.js';
+import { createDatabase } from './infrastructure/database.js';
+import authRoutes from './interface/auth-routes.js';
+import identityDispatchRoutes from './interface/dispatch-routes.js';
+import orgRoutes from './interface/org-routes.js';
+import userRoutes from './interface/user-routes.js';
 
 type AppEnv = {
   Bindings: Env;
@@ -27,7 +26,7 @@ app.use(
   cors({
     origin: (origin) => origin, // Allow all origins in development; restrict in production
     credentials: true,
-  })
+  }),
 );
 
 // Health check
@@ -80,7 +79,10 @@ app.post('/__dispatch/identity/onboarding/create-org', async (c) => {
 
   if (!body?.name || !body.slug || !body.creatorUserId) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'name, slug, and creatorUserId are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'name, slug, and creatorUserId are required',
+      },
       400,
     );
   }

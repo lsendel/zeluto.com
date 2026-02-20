@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
-const schemas = [
+const _schemas = [
   'identity',
   'billing',
   'crm',
@@ -36,7 +36,8 @@ async function applyRLS() {
       AND column_name = 'organization_id'
       AND table_type = 'BASE TABLE'
     ORDER BY table_schema, table_name
-  `, [schemas];
+  `,
+    [_schemas];
 
   const tables = result.rows as Array<{
     table_schema: string;

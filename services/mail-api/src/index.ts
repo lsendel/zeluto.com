@@ -1,4 +1,8 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http';
 import { createTransport, type Transporter } from 'nodemailer';
 import pino from 'pino';
 import { DnsVerifier } from './dns-verifier.js';
@@ -75,8 +79,14 @@ function json(res: ServerResponse, status: number, data: unknown): void {
   res.end(JSON.stringify(data));
 }
 
-function parseUrl(req: IncomingMessage): { pathname: string; query: URLSearchParams } {
-  const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+function parseUrl(req: IncomingMessage): {
+  pathname: string;
+  query: URLSearchParams;
+} {
+  const url = new URL(
+    req.url ?? '/',
+    `http://${req.headers.host ?? 'localhost'}`,
+  );
   return { pathname: url.pathname, query: url.searchParams };
 }
 
@@ -84,7 +94,10 @@ function parseUrl(req: IncomingMessage): { pathname: string; query: URLSearchPar
 // Route handlers
 // ---------------------------------------------------------------------------
 
-async function handleSend(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleSend(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   try {
     const body = JSON.parse(await readBody(req)) as {
       to: string;
@@ -121,7 +134,10 @@ async function handleSend(req: IncomingMessage, res: ServerResponse): Promise<vo
       ipManager.recordSend(sourceIp, true);
     }
 
-    logger.info({ messageId: info.messageId, to: body.to }, 'Email sent via Postfix');
+    logger.info(
+      { messageId: info.messageId, to: body.to },
+      'Email sent via Postfix',
+    );
     json(res, 200, { success: true, messageId: info.messageId });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -148,7 +164,10 @@ function handleGetDomains(req: IncomingMessage, res: ServerResponse): void {
   json(res, 200, { domains: result });
 }
 
-async function handleVerifyDomain(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleVerifyDomain(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   try {
     const body = JSON.parse(await readBody(req)) as {
       domain: string;
@@ -156,11 +175,16 @@ async function handleVerifyDomain(req: IncomingMessage, res: ServerResponse): Pr
     };
 
     if (!body.domain || !body.organizationId) {
-      json(res, 400, { error: 'Missing required fields: domain, organizationId' });
+      json(res, 400, {
+        error: 'Missing required fields: domain, organizationId',
+      });
       return;
     }
 
-    logger.info({ domain: body.domain, orgId: body.organizationId }, 'Starting domain verification');
+    logger.info(
+      { domain: body.domain, orgId: body.organizationId },
+      'Starting domain verification',
+    );
 
     const verification = await dnsVerifier.verifyAll(body.domain);
 
@@ -172,7 +196,11 @@ async function handleVerifyDomain(req: IncomingMessage, res: ServerResponse): Pr
       id: existing?.id ?? crypto.randomUUID(),
       organizationId: body.organizationId,
       domain: body.domain,
-      verified: verification.mx && verification.spf && verification.dkim && verification.dmarc,
+      verified:
+        verification.mx &&
+        verification.spf &&
+        verification.dkim &&
+        verification.dmarc,
       mxVerified: verification.mx,
       spfVerified: verification.spf,
       dkimVerified: verification.dkim,
@@ -210,7 +238,10 @@ function handleHealth(_req: IncomingMessage, res: ServerResponse): void {
 // Router
 // ---------------------------------------------------------------------------
 
-async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handleRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   const { pathname } = parseUrl(req);
   const method = req.method ?? 'GET';
 

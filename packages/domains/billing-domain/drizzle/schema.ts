@@ -1,4 +1,11 @@
-import { pgSchema, uuid, varchar, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  integer,
+  pgSchema,
+  timestamp,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 export const billingSchema = pgSchema('billing');
 
@@ -16,7 +23,9 @@ export const plans = billingSchema.table('plans', {
 
 export const planLimits = billingSchema.table('plan_limits', {
   id: uuid('id').primaryKey().defaultRandom(),
-  planId: uuid('plan_id').notNull().references(() => plans.id),
+  planId: uuid('plan_id')
+    .notNull()
+    .references(() => plans.id),
   resource: varchar('resource', { length: 50 }).notNull(), // contacts, emails_per_month, journeys, campaigns, team_members, integrations, storage_bytes, api_calls_per_month
   limitValue: integer('limit_value').notNull(), // -1 = unlimited
 });
@@ -24,7 +33,9 @@ export const planLimits = billingSchema.table('plan_limits', {
 export const subscriptions = billingSchema.table('subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id').notNull(),
-  planId: uuid('plan_id').notNull().references(() => plans.id),
+  planId: uuid('plan_id')
+    .notNull()
+    .references(() => plans.id),
   status: varchar('status', { length: 20 }).notNull(), // active, past_due, canceled, trialing
   stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
   stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }),

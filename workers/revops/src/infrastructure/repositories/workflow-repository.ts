@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
-import { workflows, workflowExecutions } from '@mauntic/revops-domain/drizzle';
+import { workflowExecutions, workflows } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type WorkflowRow = typeof workflows.$inferSelect;
@@ -38,11 +38,13 @@ export async function findWorkflowsByTrigger(
   return db
     .select()
     .from(workflows)
-    .where(and(
-      eq(workflows.organization_id, orgId),
-      eq(workflows.trigger, trigger),
-      eq(workflows.enabled, true),
-    ));
+    .where(
+      and(
+        eq(workflows.organization_id, orgId),
+        eq(workflows.trigger, trigger),
+        eq(workflows.enabled, true),
+      ),
+    );
 }
 
 export async function createWorkflow(
@@ -91,9 +93,11 @@ export async function findExecutionsByWorkflow(
   return db
     .select()
     .from(workflowExecutions)
-    .where(and(
-      eq(workflowExecutions.organization_id, orgId),
-      eq(workflowExecutions.workflow_id, workflowId),
-    ))
+    .where(
+      and(
+        eq(workflowExecutions.organization_id, orgId),
+        eq(workflowExecutions.workflow_id, workflowId),
+      ),
+    )
     .orderBy(desc(workflowExecutions.triggered_at));
 }

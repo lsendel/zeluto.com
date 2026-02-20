@@ -2,9 +2,8 @@ import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import {
   ErrorSchema,
-  IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -41,7 +40,17 @@ export const DeliveryEventSchema = z.object({
   jobId: z.string().uuid(),
   contactId: z.number(),
   channel: z.enum(['email', 'sms', 'push', 'webhook']),
-  eventType: z.enum(['queued', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed', 'failed']),
+  eventType: z.enum([
+    'queued',
+    'sent',
+    'delivered',
+    'opened',
+    'clicked',
+    'bounced',
+    'complained',
+    'unsubscribed',
+    'failed',
+  ]),
   providerMessageId: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -67,12 +76,14 @@ export const SendingDomainSchema = z.object({
   id: z.string().uuid(),
   domain: z.string(),
   status: z.enum(['pending', 'verified', 'failed']),
-  dnsRecords: z.array(z.object({
-    type: z.string(),
-    name: z.string(),
-    value: z.string(),
-    verified: z.boolean(),
-  })),
+  dnsRecords: z.array(
+    z.object({
+      type: z.string(),
+      name: z.string(),
+      value: z.string(),
+      verified: z.boolean(),
+    }),
+  ),
   verifiedAt: z.string().nullable(),
   createdAt: z.string(),
 });
@@ -98,7 +109,14 @@ export const ProviderSchema = z.object({
 
 export const TrackingEventSchema = z.object({
   messageId: z.string(),
-  event: z.enum(['delivered', 'opened', 'clicked', 'bounced', 'complained', 'unsubscribed']),
+  event: z.enum([
+    'delivered',
+    'opened',
+    'clicked',
+    'bounced',
+    'complained',
+    'unsubscribed',
+  ]),
   timestamp: z.string(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
@@ -116,7 +134,7 @@ const SendMessageBodySchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-const CreateProviderBodySchema = z.object({
+const _CreateProviderBodySchema = z.object({
   name: z.string().min(1),
   type: z.enum(['email', 'sms', 'push', 'webhook']),
   provider: z.string().min(1),
@@ -124,7 +142,7 @@ const CreateProviderBodySchema = z.object({
   config: z.record(z.string(), z.unknown()),
 });
 
-const UpdateProviderBodySchema = z.object({
+const _UpdateProviderBodySchema = z.object({
   name: z.string().min(1).optional(),
   isDefault: z.boolean().optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -132,12 +150,14 @@ const UpdateProviderBodySchema = z.object({
 
 const SendBatchBodySchema = z.object({
   channel: z.enum(['email', 'sms', 'push', 'webhook']),
-  messages: z.array(z.object({
-    to: z.string(),
-    subject: z.string().optional(),
-    body: z.string(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })),
+  messages: z.array(
+    z.object({
+      to: z.string(),
+      subject: z.string().optional(),
+      body: z.string(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
+    }),
+  ),
   providerId: z.string().uuid().optional(),
   idempotencyKey: z.string().optional(),
 });
@@ -211,7 +231,9 @@ export const deliveryContract = c.router({
       path: '/api/v1/delivery/jobs',
       query: PaginationQuerySchema.extend({
         channel: z.enum(['email', 'sms', 'push', 'webhook']).optional(),
-        status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
+        status: z
+          .enum(['pending', 'processing', 'completed', 'failed'])
+          .optional(),
       }),
       responses: {
         200: PaginatedResponseSchema(DeliveryJobSchema),
@@ -311,7 +333,9 @@ export const deliveryContract = c.router({
       method: 'GET',
       path: '/api/v1/delivery/suppressions',
       query: PaginationQuerySchema.extend({
-        reason: z.enum(['bounce', 'complaint', 'unsubscribe', 'manual']).optional(),
+        reason: z
+          .enum(['bounce', 'complaint', 'unsubscribe', 'manual'])
+          .optional(),
       }),
       responses: {
         200: PaginatedResponseSchema(SuppressionSchema),
@@ -345,7 +369,9 @@ export const deliveryContract = c.router({
       responses: {
         200: z.object({
           suppressed: z.boolean(),
-          reason: z.enum(['bounce', 'complaint', 'unsubscribe', 'manual']).nullable(),
+          reason: z
+            .enum(['bounce', 'complaint', 'unsubscribe', 'manual'])
+            .nullable(),
         }),
       },
     },
@@ -394,12 +420,14 @@ export const deliveryContract = c.router({
       pathParams: z.object({ id: z.string().uuid() }),
       responses: {
         200: z.object({
-          records: z.array(z.object({
-            type: z.string(),
-            name: z.string(),
-            value: z.string(),
-            verified: z.boolean(),
-          })),
+          records: z.array(
+            z.object({
+              type: z.string(),
+              name: z.string(),
+              value: z.string(),
+              verified: z.boolean(),
+            }),
+          ),
         }),
         404: ErrorSchema,
       },

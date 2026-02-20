@@ -14,6 +14,8 @@ export const CreateCampaignCommandSchema = z.object({
 
 export type CreateCampaignCommand = z.infer<typeof CreateCampaignCommandSchema>;
 
-export function createCampaignCommand(input: CreateCampaignCommand): CreateCampaignCommand {
+export function createCampaignCommand(
+  input: CreateCampaignCommand,
+): CreateCampaignCommand {
   return CreateCampaignCommandSchema.parse(input);
 }

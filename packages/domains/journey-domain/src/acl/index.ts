@@ -1,4 +1,4 @@
 export {
-  translateCrmEvent,
   type JourneyTriggerInput,
+  translateCrmEvent,
 } from './crm-translator.js';

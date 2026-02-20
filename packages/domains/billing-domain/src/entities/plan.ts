@@ -30,10 +30,12 @@ export const CreatePlanSchema = z.object({
   priceYearly: z.number().int().min(0),
   stripePriceIdMonthly: z.string().optional(),
   stripePriceIdYearly: z.string().optional(),
-  limits: z.array(z.object({
-    resource: z.string(),
-    limitValue: z.number().int(),
-  })),
+  limits: z.array(
+    z.object({
+      resource: z.string(),
+      limitValue: z.number().int(),
+    }),
+  ),
 });
 
 export type CreatePlan = z.infer<typeof CreatePlanSchema>;

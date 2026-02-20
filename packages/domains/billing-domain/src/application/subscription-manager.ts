@@ -1,7 +1,7 @@
-import type Stripe from 'stripe';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { eq } from 'drizzle-orm';
-import { subscriptions, plans } from '../../drizzle/schema.js';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import type Stripe from 'stripe';
+import { subscriptions } from '../../drizzle/schema.js';
 import { SubscriptionAggregate } from '../entities/subscription.js';
 import { PlanService } from '../services/plan-service.js';
 
@@ -29,9 +29,10 @@ export class SubscriptionManager {
     // Get plan details
     const plan = await this.planService.getPlan(planId);
 
-    const priceId = interval === 'month'
-      ? plan.stripePriceIdMonthly
-      : plan.stripePriceIdYearly;
+    const priceId =
+      interval === 'month'
+        ? plan.stripePriceIdMonthly
+        : plan.stripePriceIdYearly;
 
     if (!priceId) {
       throw new Error(`No Stripe price configured for ${interval}ly billing`);
@@ -127,13 +128,17 @@ export class SubscriptionManager {
     );
 
     // Determine which price to use based on current billing interval
-    const currentInterval = stripeSubscription.items.data[0]?.price.recurring?.interval;
-    const newPriceId = currentInterval === 'year'
-      ? comparison.newPlan.stripePriceIdYearly
-      : comparison.newPlan.stripePriceIdMonthly;
+    const currentInterval =
+      stripeSubscription.items.data[0]?.price.recurring?.interval;
+    const newPriceId =
+      currentInterval === 'year'
+        ? comparison.newPlan.stripePriceIdYearly
+        : comparison.newPlan.stripePriceIdMonthly;
 
     if (!newPriceId) {
-      throw new Error('New plan does not have a price configured for current interval');
+      throw new Error(
+        'New plan does not have a price configured for current interval',
+      );
     }
 
     // Update the subscription in Stripe

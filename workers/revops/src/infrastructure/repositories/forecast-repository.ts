@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
 import { forecasts } from '@mauntic/revops-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ForecastRow = typeof forecasts.$inferSelect;
@@ -13,7 +13,9 @@ export async function findForecastByPeriod(
   const [row] = await db
     .select()
     .from(forecasts)
-    .where(and(eq(forecasts.organization_id, orgId), eq(forecasts.period, period)));
+    .where(
+      and(eq(forecasts.organization_id, orgId), eq(forecasts.period, period)),
+    );
   return row ?? null;
 }
 
@@ -25,7 +27,9 @@ export async function findForecastsByRep(
   return db
     .select()
     .from(forecasts)
-    .where(and(eq(forecasts.organization_id, orgId), eq(forecasts.rep_id, repId)));
+    .where(
+      and(eq(forecasts.organization_id, orgId), eq(forecasts.rep_id, repId)),
+    );
 }
 
 export async function upsertForecast(

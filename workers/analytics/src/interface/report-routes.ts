@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findReportById,
-  findAllReports,
   createReport,
-  updateReport,
   deleteReport,
+  findAllReports,
+  findReportById,
+  updateReport,
 } from '../infrastructure/repositories/report-repository.js';
 
 export const reportRoutes = new Hono<Env>();
@@ -34,7 +34,10 @@ reportRoutes.get('/api/v1/analytics/reports', async (c) => {
     });
   } catch (error) {
     console.error('List reports error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list reports' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list reports' },
+      500,
+    );
   }
 });
 
@@ -51,7 +54,10 @@ reportRoutes.post('/api/v1/analytics/reports', async (c) => {
     }>();
 
     if (!body.name) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'name is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'name is required' },
+        400,
+      );
     }
 
     const report = await createReport(db, tenant.organizationId, {
@@ -63,7 +69,10 @@ reportRoutes.post('/api/v1/analytics/reports', async (c) => {
     return c.json(report, 201);
   } catch (error) {
     console.error('Create report error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create report' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create report' },
+      500,
+    );
   }
 });
 
@@ -81,7 +90,10 @@ reportRoutes.get('/api/v1/analytics/reports/:id', async (c) => {
     return c.json(report);
   } catch (error) {
     console.error('Get report error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get report' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get report' },
+      500,
+    );
   }
 });
 
@@ -101,7 +113,12 @@ reportRoutes.patch('/api/v1/analytics/reports/:id', async (c) => {
     if (body.name !== undefined) updateData.name = body.name;
     if (body.config !== undefined) updateData.steps = body.config;
 
-    const report = await updateReport(db, tenant.organizationId, id, updateData);
+    const report = await updateReport(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!report) {
       return c.json({ code: 'NOT_FOUND', message: 'Report not found' }, 404);
     }
@@ -109,7 +126,10 @@ reportRoutes.patch('/api/v1/analytics/reports/:id', async (c) => {
     return c.json(report);
   } catch (error) {
     console.error('Update report error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update report' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update report' },
+      500,
+    );
   }
 });
 
@@ -127,7 +147,10 @@ reportRoutes.delete('/api/v1/analytics/reports/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete report error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete report' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete report' },
+      500,
+    );
   }
 });
 
@@ -171,6 +194,9 @@ reportRoutes.post('/api/v1/analytics/reports/:id/run', async (c) => {
     });
   } catch (error) {
     console.error('Run report error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to run report' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to run report' },
+      500,
+    );
   }
 });

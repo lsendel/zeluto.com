@@ -9,8 +9,12 @@ export const CreateLandingPageCommandSchema = z.object({
   templateId: z.string().uuid().optional(),
 });
 
-export type CreateLandingPageCommand = z.infer<typeof CreateLandingPageCommandSchema>;
+export type CreateLandingPageCommand = z.infer<
+  typeof CreateLandingPageCommandSchema
+>;
 
-export function createLandingPageCommand(input: CreateLandingPageCommand): CreateLandingPageCommand {
+export function createLandingPageCommand(
+  input: CreateLandingPageCommand,
+): CreateLandingPageCommand {
   return CreateLandingPageCommandSchema.parse(input);
 }

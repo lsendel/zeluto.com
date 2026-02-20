@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Scoring Engine', () => {
   describe('Grade Calculation', () => {
@@ -38,7 +38,10 @@ describe('Scoring Engine', () => {
   });
 
   describe('Rule-Based Scoring', () => {
-    const DEFAULT_WEIGHTS: Record<string, { points: number; category: string }> = {
+    const DEFAULT_WEIGHTS: Record<
+      string,
+      { points: number; category: string }
+    > = {
       company_size: { points: 15, category: 'fit' },
       industry_match: { points: 15, category: 'fit' },
       email_opens: { points: 5, category: 'engagement' },
@@ -48,7 +51,11 @@ describe('Scoring Engine', () => {
     };
 
     it('should calculate score from matching factors', () => {
-      const matchedFactors = ['company_size', 'email_clicks', 'pricing_page_visit'];
+      const matchedFactors = [
+        'company_size',
+        'email_clicks',
+        'pricing_page_visit',
+      ];
       const totalScore = matchedFactors.reduce(
         (sum, factor) => sum + (DEFAULT_WEIGHTS[factor]?.points ?? 0),
         0,
@@ -68,7 +75,10 @@ describe('Scoring Engine', () => {
     it('should identify top contributors sorted by points', () => {
       const matchedFactors = ['email_opens', 'demo_request', 'company_size'];
       const contributors = matchedFactors
-        .map((factor) => ({ factor, points: DEFAULT_WEIGHTS[factor]?.points ?? 0 }))
+        .map((factor) => ({
+          factor,
+          points: DEFAULT_WEIGHTS[factor]?.points ?? 0,
+        }))
         .sort((a, b) => b.points - a.points);
 
       expect(contributors[0].factor).toBe('demo_request');
@@ -113,9 +123,7 @@ describe('Scoring Engine', () => {
     });
 
     it('should detect no crossing when score stays in same range', () => {
-      const crossedUp = THRESHOLDS.filter(
-        (t) => 75 >= t && 70 < t,
-      );
+      const crossedUp = THRESHOLDS.filter((t) => 75 >= t && 70 < t);
 
       expect(crossedUp).toEqual([]);
     });

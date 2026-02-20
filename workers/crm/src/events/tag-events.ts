@@ -1,9 +1,9 @@
 import type {
-  TagCreatedEvent,
-  TagDeletedEvent,
   ContactTaggedEvent,
   ContactUntaggedEvent,
   DomainEventMetadata,
+  TagCreatedEvent,
+  TagDeletedEvent,
 } from '@mauntic/domain-kernel';
 
 function meta(organizationId: string): DomainEventMetadata {

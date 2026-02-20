@@ -1,9 +1,12 @@
-import type { EnrichmentProviderAdapter, EnrichmentRequest } from './enrichment-provider-adapter.js';
+import type { EnrichmentJob } from '../entities/enrichment-job.js';
+import { ProviderHealth } from '../entities/provider-health.js';
 import type { EnrichmentCacheRepository } from '../repositories/enrichment-cache-repository.js';
 import type { ProviderHealthRepository } from '../repositories/provider-health-repository.js';
 import type { WaterfallConfigRepository } from '../repositories/waterfall-config-repository.js';
-import type { EnrichmentJob } from '../entities/enrichment-job.js';
-import { ProviderHealth } from '../entities/provider-health.js';
+import type {
+  EnrichmentProviderAdapter,
+  EnrichmentRequest,
+} from './enrichment-provider-adapter.js';
 
 export interface EnrichmentOrchestratorDeps {
   adapters: Map<string, EnrichmentProviderAdapter>;
@@ -15,12 +18,20 @@ export interface EnrichmentOrchestratorDeps {
 export class EnrichmentOrchestrator {
   constructor(private readonly deps: EnrichmentOrchestratorDeps) {}
 
-  async execute(organizationId: string, job: EnrichmentJob, contactData: EnrichmentRequest): Promise<void> {
+  async execute(
+    organizationId: string,
+    job: EnrichmentJob,
+    contactData: EnrichmentRequest,
+  ): Promise<void> {
     job.start();
 
     for (const field of job.fieldRequests) {
       // Check cache first
-      const cached = await this.deps.cache.get(organizationId, job.contactId, field);
+      const cached = await this.deps.cache.get(
+        organizationId,
+        job.contactId,
+        field,
+      );
       if (cached && cached.expiresAt > new Date()) {
         job.addResult({
           field,
@@ -34,7 +45,10 @@ export class EnrichmentOrchestrator {
       }
 
       // Get waterfall config for this field
-      const config = await this.deps.waterfallConfig.findByField(organizationId, field);
+      const config = await this.deps.waterfallConfig.findByField(
+        organizationId,
+        field,
+      );
       if (!config) continue;
 
       let enriched = false;
@@ -43,10 +57,17 @@ export class EnrichmentOrchestrator {
         if (job.providersTried.length >= config.maxAttempts) break;
 
         // Check cost guard
-        if (config.maxCostPerLead != null && job.totalCost >= config.maxCostPerLead) break;
+        if (
+          config.maxCostPerLead != null &&
+          job.totalCost >= config.maxCostPerLead
+        )
+          break;
 
         // Check circuit breaker
-        let health = await this.deps.health.findByProvider(organizationId, providerId);
+        let health = await this.deps.health.findByProvider(
+          organizationId,
+          providerId,
+        );
         if (!health) {
           health = ProviderHealth.create(organizationId, providerId);
         }
@@ -59,7 +80,7 @@ export class EnrichmentOrchestrator {
           const result = await adapter.enrich(contactData);
 
           if (result.success) {
-            const fieldResult = result.fields.find(f => f.field === field);
+            const fieldResult = result.fields.find((f) => f.field === field);
             if (fieldResult && fieldResult.confidence >= config.minConfidence) {
               job.addResult({
                 field,
@@ -77,7 +98,9 @@ export class EnrichmentOrchestrator {
                 providerId,
                 value: fieldResult.value,
                 confidence: fieldResult.confidence,
-                expiresAt: new Date(Date.now() + config.cacheTtlDays * 24 * 60 * 60 * 1000),
+                expiresAt: new Date(
+                  Date.now() + config.cacheTtlDays * 24 * 60 * 60 * 1000,
+                ),
               });
 
               health.recordSuccess();
@@ -95,13 +118,13 @@ export class EnrichmentOrchestrator {
         }
       }
 
-      if (!enriched && !job.results.find(r => r.field === field)) {
+      if (!enriched && !job.results.find((r) => r.field === field)) {
         // Field exhausted all providers — no action needed, tracked by job state
       }
     }
 
-    const allFieldsAttempted = job.fieldRequests.every(
-      f => job.results.some(r => r.field === f),
+    const allFieldsAttempted = job.fieldRequests.every((f) =>
+      job.results.some((r) => r.field === f),
     );
 
     if (allFieldsAttempted) {

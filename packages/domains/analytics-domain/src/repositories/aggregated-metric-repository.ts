@@ -1,4 +1,7 @@
-import type { AggregatedMetric, MetricPeriod } from '../entities/aggregated-metric.js';
+import type {
+  AggregatedMetric,
+  MetricPeriod,
+} from '../entities/aggregated-metric.js';
 
 export interface AggregatedMetricQuery {
   metricType?: string;

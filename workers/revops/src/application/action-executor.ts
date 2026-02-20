@@ -1,5 +1,9 @@
+import type {
+  ActionExecutor,
+  WorkflowAction,
+  WorkflowContext,
+} from '@mauntic/revops-domain';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { ActionExecutor, WorkflowAction, WorkflowContext } from '@mauntic/revops-domain';
 import { updateDeal } from '../infrastructure/repositories/deal-repository.js';
 import { enrollContact } from '../infrastructure/repositories/sequence-repository.js';
 
@@ -13,7 +17,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
     private readonly events: Queue,
   ) {}
 
-  async execute(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  async execute(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     switch (action.type) {
       case 'send_email':
         return this.sendEmail(action, context);
@@ -32,14 +39,19 @@ export class RevOpsActionExecutor implements ActionExecutor {
       case 'move_stage':
         return this.moveStage(action, context);
       default:
-        console.warn(`Unknown workflow action type: ${action.type}`, { context });
+        console.warn(`Unknown workflow action type: ${action.type}`, {
+          context,
+        });
     }
   }
 
   /**
    * Enqueue an email send event for async delivery.
    */
-  private async sendEmail(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async sendEmail(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     await this.events.send({
       type: 'revops.SendEmail',
       data: {
@@ -61,7 +73,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Log task creation (placeholder -- could persist to a tasks table in the future).
    */
-  private async createTask(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async createTask(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     console.info('Workflow create_task action', {
       organizationId: context.organizationId,
       dealId: context.dealId,
@@ -75,7 +90,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Update a field on the deal record.
    */
-  private async updateField(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async updateField(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     if (!context.dealId) {
       console.warn('update_field action skipped: no dealId in context');
       return;
@@ -101,7 +119,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Assign a new owner/rep to the deal.
    */
-  private async assignOwner(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async assignOwner(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     if (!context.dealId) {
       console.warn('assign_owner action skipped: no dealId in context');
       return;
@@ -126,7 +147,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Log notification (could be enqueued to a notification service in the future).
    */
-  private async notify(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async notify(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     console.info('Workflow notify action', {
       organizationId: context.organizationId,
       dealId: context.dealId,
@@ -140,7 +164,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Make an outbound HTTP call to a webhook URL.
    */
-  private async callWebhook(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async callWebhook(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     const url = action.config.url as string | undefined;
     if (!url) {
       console.warn('call_webhook action skipped: no url specified');
@@ -152,7 +179,7 @@ export class RevOpsActionExecutor implements ActionExecutor {
         method: (action.config.method as string) ?? 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(action.config.headers as Record<string, string> ?? {}),
+          ...((action.config.headers as Record<string, string>) ?? {}),
         },
         body: JSON.stringify({
           trigger: context.trigger,
@@ -181,15 +208,22 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Enroll a contact into a sequence.
    */
-  private async addToSequence(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async addToSequence(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     const sequenceId = action.config.sequenceId as string | undefined;
-    const contactId = context.contactId ?? (action.config.contactId as string | undefined);
+    const contactId =
+      context.contactId ?? (action.config.contactId as string | undefined);
 
     if (!sequenceId || !contactId) {
-      console.warn('add_to_sequence action skipped: missing sequenceId or contactId', {
-        sequenceId,
-        contactId,
-      });
+      console.warn(
+        'add_to_sequence action skipped: missing sequenceId or contactId',
+        {
+          sequenceId,
+          contactId,
+        },
+      );
       return;
     }
 
@@ -207,7 +241,10 @@ export class RevOpsActionExecutor implements ActionExecutor {
   /**
    * Move a deal to a new stage.
    */
-  private async moveStage(action: WorkflowAction, context: WorkflowContext): Promise<void> {
+  private async moveStage(
+    action: WorkflowAction,
+    context: WorkflowContext,
+  ): Promise<void> {
     if (!context.dealId) {
       console.warn('move_stage action skipped: no dealId in context');
       return;

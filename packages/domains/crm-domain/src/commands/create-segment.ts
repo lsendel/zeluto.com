@@ -11,6 +11,8 @@ export const CreateSegmentCommandSchema = z.object({
 
 export type CreateSegmentCommand = z.infer<typeof CreateSegmentCommandSchema>;
 
-export function createSegmentCommand(input: CreateSegmentCommand): CreateSegmentCommand {
+export function createSegmentCommand(
+  input: CreateSegmentCommand,
+): CreateSegmentCommand {
   return CreateSegmentCommandSchema.parse(input);
 }

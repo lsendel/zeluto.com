@@ -18,6 +18,8 @@ export const ImportContactsCommandSchema = z.object({
 
 export type ImportContactsCommand = z.infer<typeof ImportContactsCommandSchema>;
 
-export function importContactsCommand(input: ImportContactsCommand): ImportContactsCommand {
+export function importContactsCommand(
+  input: ImportContactsCommand,
+): ImportContactsCommand {
   return ImportContactsCommandSchema.parse(input);
 }

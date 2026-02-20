@@ -1,5 +1,5 @@
-import { eq, and, inArray, sql } from 'drizzle-orm';
-import { tags, contact_tags } from '@mauntic/crm-domain/drizzle';
+import { contact_tags, tags } from '@mauntic/crm-domain/drizzle';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type TagRow = typeof tags.$inferSelect;
@@ -93,8 +93,5 @@ export async function findTagsByContact(
   if (junctions.length === 0) return [];
 
   const tagIds = junctions.map((j) => j.tag_id);
-  return db
-    .select()
-    .from(tags)
-    .where(inArray(tags.id, tagIds));
+  return db.select().from(tags).where(inArray(tags.id, tagIds));
 }

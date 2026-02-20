@@ -10,6 +10,8 @@ export const CreateCompanyCommandSchema = z.object({
 
 export type CreateCompanyCommand = z.infer<typeof CreateCompanyCommandSchema>;
 
-export function createCompanyCommand(input: CreateCompanyCommand): CreateCompanyCommand {
+export function createCompanyCommand(
+  input: CreateCompanyCommand,
+): CreateCompanyCommand {
   return CreateCompanyCommandSchema.parse(input);
 }

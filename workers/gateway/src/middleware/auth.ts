@@ -70,7 +70,10 @@ export function authMiddleware(): MiddlewareHandler<Env> {
       const sessionToken = extractSessionToken(c.req.raw.headers);
       if (sessionToken) {
         const cacheKey = sessionCacheKey(sessionToken);
-        const cached = await c.env.KV.get(cacheKey, 'json') as SessionData | null;
+        const cached = (await c.env.KV.get(
+          cacheKey,
+          'json',
+        )) as SessionData | null;
         if (cached) {
           c.set('user', cached.user);
           c.set('userId', cached.user.id);
@@ -94,9 +97,14 @@ export function authMiddleware(): MiddlewareHandler<Env> {
 
       if (!identityResponse.ok) {
         // Check if the user is authenticated but has no active organization
-        const errorBody = await identityResponse.json().catch(() => null) as { error?: string } | null;
+        const errorBody = (await identityResponse.json().catch(() => null)) as {
+          error?: string;
+        } | null;
 
-        if (identityResponse.status === 400 && errorBody?.error === 'NO_ACTIVE_ORGANIZATION') {
+        if (
+          identityResponse.status === 400 &&
+          errorBody?.error === 'NO_ACTIVE_ORGANIZATION'
+        ) {
           // User is authenticated but needs onboarding — allow through for specific paths
           if (
             path.startsWith('/app/onboarding') ||
@@ -164,7 +172,9 @@ export function authMiddleware(): MiddlewareHandler<Env> {
       // Cache validated session in KV (60s TTL)
       if (sessionToken) {
         const cacheKey = sessionCacheKey(sessionToken);
-        await c.env.KV.put(cacheKey, JSON.stringify(sessionData), { expirationTtl: 60 }).catch(() => {});
+        await c.env.KV.put(cacheKey, JSON.stringify(sessionData), {
+          expirationTtl: 60,
+        }).catch(() => {});
       }
 
       await next();
@@ -179,7 +189,9 @@ export function authMiddleware(): MiddlewareHandler<Env> {
   };
 }
 
-async function fetchIdentitySessionViaDispatch(c: any): Promise<Response | null> {
+async function fetchIdentitySessionViaDispatch(
+  c: any,
+): Promise<Response | null> {
   const dispatch = c.env.IDENTITY_DISPATCH;
   if (!dispatch) {
     return null;

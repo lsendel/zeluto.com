@@ -1,5 +1,5 @@
+import { AggregateRoot } from '@mauntic/domain-kernel';
 import { z } from 'zod';
-import { AggregateRoot, InvariantViolation } from '@mauntic/domain-kernel';
 
 export const GradeSchema = z.enum(['A', 'B', 'C', 'D', 'F']);
 export type Grade = z.infer<typeof GradeSchema>;
@@ -14,7 +14,9 @@ export const LeadScorePropsSchema = z.object({
   fitScore: z.number().int().min(0),
   intentScore: z.number().int().min(0),
   components: z.record(z.string(), z.number()).optional(),
-  topContributors: z.array(z.object({ factor: z.string(), points: z.number() })).optional(),
+  topContributors: z
+    .array(z.object({ factor: z.string(), points: z.number() }))
+    .optional(),
   scoredAt: z.coerce.date(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -81,7 +83,9 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
         sourceContext: 'scoring',
         timestamp: new Date().toISOString(),
         correlationId: props.contactId,
-        tenantContext: { organizationId: props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: props.organizationId as unknown as number,
+        },
       },
     });
 
@@ -92,18 +96,42 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
     return new LeadScore(LeadScorePropsSchema.parse(props));
   }
 
-  get organizationId() { return this.props.organizationId; }
-  get contactId() { return this.props.contactId; }
-  get totalScore() { return this.props.totalScore; }
-  get grade() { return this.props.grade; }
-  get engagementScore() { return this.props.engagementScore; }
-  get fitScore() { return this.props.fitScore; }
-  get intentScore() { return this.props.intentScore; }
-  get components() { return this.props.components; }
-  get topContributors() { return this.props.topContributors; }
-  get scoredAt() { return this.props.scoredAt; }
-  get createdAt() { return this.props.createdAt; }
-  get updatedAt() { return this.props.updatedAt; }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get totalScore() {
+    return this.props.totalScore;
+  }
+  get grade() {
+    return this.props.grade;
+  }
+  get engagementScore() {
+    return this.props.engagementScore;
+  }
+  get fitScore() {
+    return this.props.fitScore;
+  }
+  get intentScore() {
+    return this.props.intentScore;
+  }
+  get components() {
+    return this.props.components;
+  }
+  get topContributors() {
+    return this.props.topContributors;
+  }
+  get scoredAt() {
+    return this.props.scoredAt;
+  }
+  get createdAt() {
+    return this.props.createdAt;
+  }
+  get updatedAt() {
+    return this.props.updatedAt;
+  }
 
   updateScore(input: {
     totalScore: number;
@@ -122,7 +150,8 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
     this.props.fitScore = input.fitScore;
     this.props.intentScore = input.intentScore;
     if (input.components) this.props.components = input.components;
-    if (input.topContributors) this.props.topContributors = input.topContributors;
+    if (input.topContributors)
+      this.props.topContributors = input.topContributors;
     this.props.scoredAt = new Date();
     this.props.updatedAt = new Date();
 
@@ -133,7 +162,7 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
         contactId: this.props.contactId,
         score: totalScore,
         grade,
-        previousScore: this.props.totalScore, // Note: this is actually new score. Logic error potential here if we want previous. 
+        previousScore: this.props.totalScore, // Note: this is actually new score. Logic error potential here if we want previous.
         // Correct logic: we overrode props already. If we wanted previous, we should capture before update.
         // For now, simpler event data.
       },
@@ -143,7 +172,9 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
         sourceContext: 'scoring',
         timestamp: new Date().toISOString(),
         correlationId: this.props.contactId,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
   }

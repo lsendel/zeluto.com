@@ -1,4 +1,8 @@
-import type { DeliveryProvider, DeliveryResult, SmsPayload } from '@mauntic/domain-kernel';
+import type {
+  DeliveryProvider,
+  DeliveryResult,
+  SmsPayload,
+} from '@mauntic/domain-kernel';
 
 export interface TwilioProviderConfig {
   accountSid: string;

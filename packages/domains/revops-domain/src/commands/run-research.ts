@@ -8,6 +8,8 @@ export const RunResearchCommandSchema = z.object({
 
 export type RunResearchCommand = z.infer<typeof RunResearchCommandSchema>;
 
-export function runResearchCommand(input: RunResearchCommand): RunResearchCommand {
+export function runResearchCommand(
+  input: RunResearchCommand,
+): RunResearchCommand {
   return RunResearchCommandSchema.parse(input);
 }

@@ -10,6 +10,8 @@ export const UpdateSegmentCommandSchema = z.object({
 
 export type UpdateSegmentCommand = z.infer<typeof UpdateSegmentCommandSchema>;
 
-export function updateSegmentCommand(input: UpdateSegmentCommand): UpdateSegmentCommand {
+export function updateSegmentCommand(
+  input: UpdateSegmentCommand,
+): UpdateSegmentCommand {
   return UpdateSegmentCommandSchema.parse(input);
 }

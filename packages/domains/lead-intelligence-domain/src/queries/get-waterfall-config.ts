@@ -5,8 +5,12 @@ export const GetWaterfallConfigQuerySchema = z.object({
   fieldName: z.string().optional(),
 });
 
-export type GetWaterfallConfigQuery = z.infer<typeof GetWaterfallConfigQuerySchema>;
+export type GetWaterfallConfigQuery = z.infer<
+  typeof GetWaterfallConfigQuerySchema
+>;
 
-export function getWaterfallConfigQuery(input: GetWaterfallConfigQuery): GetWaterfallConfigQuery {
+export function getWaterfallConfigQuery(
+  input: GetWaterfallConfigQuery,
+): GetWaterfallConfigQuery {
   return GetWaterfallConfigQuerySchema.parse(input);
 }

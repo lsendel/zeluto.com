@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
-import { researchJobs, researchInsights } from '@mauntic/revops-domain/drizzle';
+import { researchInsights, researchJobs } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ResearchJobRow = typeof researchJobs.$inferSelect;
@@ -26,7 +26,12 @@ export async function findJobsByContact(
   return db
     .select()
     .from(researchJobs)
-    .where(and(eq(researchJobs.organization_id, orgId), eq(researchJobs.contact_id, contactId)))
+    .where(
+      and(
+        eq(researchJobs.organization_id, orgId),
+        eq(researchJobs.contact_id, contactId),
+      ),
+    )
     .orderBy(desc(researchJobs.created_at));
 }
 
@@ -45,7 +50,9 @@ export async function createJob(
 export async function updateJob(
   db: NeonHttpDatabase,
   id: string,
-  data: Partial<Omit<ResearchJobInsert, 'id' | 'organization_id' | 'created_at'>>,
+  data: Partial<
+    Omit<ResearchJobInsert, 'id' | 'organization_id' | 'created_at'>
+  >,
 ): Promise<ResearchJobRow | null> {
   const [row] = await db
     .update(researchJobs)
@@ -63,10 +70,12 @@ export async function findInsightsByContact(
   return db
     .select()
     .from(researchInsights)
-    .where(and(
-      eq(researchInsights.organization_id, orgId),
-      eq(researchInsights.contact_id, contactId),
-    ))
+    .where(
+      and(
+        eq(researchInsights.organization_id, orgId),
+        eq(researchInsights.contact_id, contactId),
+      ),
+    )
     .orderBy(desc(researchInsights.relevance));
 }
 

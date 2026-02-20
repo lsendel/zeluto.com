@@ -1,9 +1,9 @@
 import {
-  startHealthServer,
   createWorker,
-  registerScheduledJobs,
   type JobHandler,
+  registerScheduledJobs,
   type ScheduledJob,
+  startHealthServer,
 } from '@mauntic/process-lib';
 import pino from 'pino';
 
@@ -25,7 +25,10 @@ const enrichmentJobHandler: JobHandler<EnrichmentJobData> = {
   concurrency: 5,
   async process(job) {
     const { jobId, organizationId, contactId } = job.data;
-    logger.info({ jobId, organizationId, contactId }, 'Processing enrichment job');
+    logger.info(
+      { jobId, organizationId, contactId },
+      'Processing enrichment job',
+    );
 
     // TODO: Wire up EnrichmentOrchestrator with adapters + repos
     // 1. Load job from DB
@@ -48,7 +51,10 @@ const batchEnrichmentHandler: JobHandler<BatchEnrichmentData> = {
   concurrency: 2,
   async process(job) {
     const { jobIds, organizationId } = job.data;
-    logger.info({ count: jobIds.length, organizationId }, 'Processing batch enrichment');
+    logger.info(
+      { count: jobIds.length, organizationId },
+      'Processing batch enrichment',
+    );
 
     // TODO: Enqueue individual enrichment jobs
     return { success: true, count: jobIds.length };
@@ -88,7 +94,10 @@ async function main() {
     createWorker('enrichment:process-job', enrichmentJobHandler),
     createWorker('enrichment:process-batch', batchEnrichmentHandler),
     createWorker('enrichment:cache-cleanup', cacheCleanupHandler),
-    createWorker('enrichment:provider-health-check', providerHealthCheckHandler),
+    createWorker(
+      'enrichment:provider-health-check',
+      providerHealthCheckHandler,
+    ),
   ];
 
   const scheduledJobs: ScheduledJob[] = [
@@ -105,7 +114,9 @@ async function main() {
   ];
 
   await registerScheduledJobs('enrichment:cache-cleanup', [scheduledJobs[0]]);
-  await registerScheduledJobs('enrichment:provider-health-check', [scheduledJobs[1]]);
+  await registerScheduledJobs('enrichment:provider-health-check', [
+    scheduledJobs[1],
+  ]);
 
   logger.info('Enrichment engine started');
 

@@ -64,7 +64,10 @@ export class IpManager {
     // Load IPs from environment if available
     const envIps = process.env.SENDING_IPS;
     if (envIps && this.ips.size === 0) {
-      for (const addr of envIps.split(',').map((s) => s.trim()).filter(Boolean)) {
+      for (const addr of envIps
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)) {
         this.addIp(addr);
       }
     }
@@ -154,10 +157,16 @@ export class IpManager {
       ip.lastFailAt = new Date().toISOString();
 
       // Check failure rate for auto-failover
-      const failureRate = ip.dailySendCount > 0 ? ip.dailyFailCount / ip.dailySendCount : 0;
+      const failureRate =
+        ip.dailySendCount > 0 ? ip.dailyFailCount / ip.dailySendCount : 0;
       if (failureRate > FAILURE_RATE_THRESHOLD && ip.dailySendCount >= 10) {
         logger.warn(
-          { address, failureRate, sends: ip.dailySendCount, fails: ip.dailyFailCount },
+          {
+            address,
+            failureRate,
+            sends: ip.dailySendCount,
+            fails: ip.dailyFailCount,
+          },
           'IP failure rate exceeded threshold, disabling',
         );
         ip.enabled = false;
@@ -192,7 +201,8 @@ export class IpManager {
       dailyLimit: this.getDailyLimit(ip),
       dailySendCount: ip.dailySendCount,
       dailyFailCount: ip.dailyFailCount,
-      failureRate: ip.dailySendCount > 0 ? ip.dailyFailCount / ip.dailySendCount : 0,
+      failureRate:
+        ip.dailySendCount > 0 ? ip.dailyFailCount / ip.dailySendCount : 0,
     }));
   }
 

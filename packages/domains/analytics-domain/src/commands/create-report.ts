@@ -10,6 +10,8 @@ export const CreateReportCommandSchema = z.object({
 
 export type CreateReportCommand = z.infer<typeof CreateReportCommandSchema>;
 
-export function createReportCommand(input: CreateReportCommand): CreateReportCommand {
+export function createReportCommand(
+  input: CreateReportCommand,
+): CreateReportCommand {
   return CreateReportCommandSchema.parse(input);
 }

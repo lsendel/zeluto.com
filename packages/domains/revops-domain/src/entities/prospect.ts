@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
-export const ProspectRecommendationSchema = z.enum(['enrich', 'sequence', 'skip', 'manual_review']);
-export type ProspectRecommendation = z.infer<typeof ProspectRecommendationSchema>;
+export const ProspectRecommendationSchema = z.enum([
+  'enrich',
+  'sequence',
+  'skip',
+  'manual_review',
+]);
+export type ProspectRecommendation = z.infer<
+  typeof ProspectRecommendationSchema
+>;
 
 export const ProspectPropsSchema = z.object({
   id: z.string().uuid(),
@@ -40,7 +47,11 @@ export class Prospect {
         qualificationScore: score,
         icpMatch,
         dataCompleteness: completeness,
-        recommendation: Prospect.determineRecommendation(score, icpMatch, completeness),
+        recommendation: Prospect.determineRecommendation(
+          score,
+          icpMatch,
+          completeness,
+        ),
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
@@ -51,22 +62,44 @@ export class Prospect {
     return new Prospect(ProspectPropsSchema.parse(props));
   }
 
-  static determineRecommendation(score: number, icpMatch: number, completeness: number): ProspectRecommendation {
+  static determineRecommendation(
+    score: number,
+    icpMatch: number,
+    completeness: number,
+  ): ProspectRecommendation {
     if (completeness < 0.5) return 'enrich';
     if (score >= 70 && icpMatch >= 0.7) return 'sequence';
     if (score < 30 || icpMatch < 0.3) return 'skip';
     return 'manual_review';
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get contactId() { return this.props.contactId; }
-  get qualificationScore() { return this.props.qualificationScore; }
-  get icpMatch() { return this.props.icpMatch; }
-  get reasoning() { return this.props.reasoning; }
-  get recommendation() { return this.props.recommendation; }
-  get dataCompleteness() { return this.props.dataCompleteness; }
-  get qualifiedAt() { return this.props.qualifiedAt; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get qualificationScore() {
+    return this.props.qualificationScore;
+  }
+  get icpMatch() {
+    return this.props.icpMatch;
+  }
+  get reasoning() {
+    return this.props.reasoning;
+  }
+  get recommendation() {
+    return this.props.recommendation;
+  }
+  get dataCompleteness() {
+    return this.props.dataCompleteness;
+  }
+  get qualifiedAt() {
+    return this.props.qualifiedAt;
+  }
 
   qualify(input: {
     qualificationScore: number;
@@ -79,7 +112,9 @@ export class Prospect {
     this.props.reasoning = input.reasoning;
     this.props.dataCompleteness = input.dataCompleteness;
     this.props.recommendation = Prospect.determineRecommendation(
-      input.qualificationScore, input.icpMatch, input.dataCompleteness,
+      input.qualificationScore,
+      input.icpMatch,
+      input.dataCompleteness,
     );
     this.props.qualifiedAt = new Date();
     this.props.updatedAt = new Date();

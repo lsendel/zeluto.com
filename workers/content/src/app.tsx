@@ -1,13 +1,17 @@
+import type { TenantContext } from '@mauntic/domain-kernel';
+import {
+  createDatabase,
+  errorHandler,
+  tenantMiddleware,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { TenantContext } from '@mauntic/domain-kernel';
-import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-lib';
-import { templateRoutes } from './interface/template-routes.js';
+import { assetRoutes } from './interface/asset-routes.js';
 import { formRoutes } from './interface/form-routes.js';
 import { pageRoutes } from './interface/page-routes.js';
-import { assetRoutes } from './interface/asset-routes.js';
+import { templateRoutes } from './interface/template-routes.js';
 import { viewRoutes } from './interface/view-routes.js';
 
 export type Env = {

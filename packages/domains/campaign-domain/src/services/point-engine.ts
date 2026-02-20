@@ -1,5 +1,4 @@
-import type { PointRule } from '../entities/point-rule.js';
-import type { PointEventType } from '../entities/point-rule.js';
+import type { PointEventType, PointRule } from '../entities/point-rule.js';
 
 /**
  * Point calculation result after evaluating all active rules for an event.
@@ -24,7 +23,9 @@ export function calculatePoints(
   contactId: string,
   eventType: PointEventType,
 ): PointCalculation {
-  const activeRules = rules.filter((r) => r.isActive && r.eventType === eventType);
+  const activeRules = rules.filter(
+    (r) => r.isActive && r.eventType === eventType,
+  );
 
   const appliedRules = activeRules.map((rule) => ({
     ruleId: rule.id,

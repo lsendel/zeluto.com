@@ -1,13 +1,25 @@
-export { Contact, ContactPropsSchema, ContactStatusSchema, type ContactProps, type ContactStatus } from './contact.js';
-export { Company, CompanyPropsSchema, type CompanyProps } from './company.js';
-export { Segment, SegmentPropsSchema, SegmentTypeSchema, type SegmentProps, type SegmentType } from './segment.js';
-export { Tag, TagPropsSchema, type TagProps } from './tag.js';
+export { Company, type CompanyProps, CompanyPropsSchema } from './company.js';
+export {
+  Contact,
+  type ContactProps,
+  ContactPropsSchema,
+  type ContactStatus,
+  ContactStatusSchema,
+} from './contact.js';
 export {
   Field,
-  FieldPropsSchema,
-  FieldEntityTypeSchema,
-  FieldTypeSchema,
-  type FieldProps,
   type FieldEntityType,
+  FieldEntityTypeSchema,
+  type FieldProps,
+  FieldPropsSchema,
   type FieldType,
+  FieldTypeSchema,
 } from './field.js';
+export {
+  Segment,
+  type SegmentProps,
+  SegmentPropsSchema,
+  type SegmentType,
+  SegmentTypeSchema,
+} from './segment.js';
+export { Tag, type TagProps, TagPropsSchema } from './tag.js';

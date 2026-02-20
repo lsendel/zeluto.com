@@ -18,11 +18,23 @@ export function calculateDataQuality(contact: {
   title?: string | null;
   lastEnrichedAt?: Date | null;
 }): DataQualityScore {
-  const fields = ['email', 'firstName', 'lastName', 'phone', 'company', 'title'] as const;
-  const filled = fields.filter(f => contact[f] != null && contact[f] !== '').length;
+  const fields = [
+    'email',
+    'firstName',
+    'lastName',
+    'phone',
+    'company',
+    'title',
+  ] as const;
+  const filled = fields.filter(
+    (f) => contact[f] != null && contact[f] !== '',
+  ).length;
   const completeness = filled / fields.length;
 
-  const accuracy = contact.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email) ? 1.0 : 0.5;
+  const accuracy =
+    contact.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)
+      ? 1.0
+      : 0.5;
 
   const daysSinceEnrichment = contact.lastEnrichedAt
     ? (Date.now() - contact.lastEnrichedAt.getTime()) / (1000 * 60 * 60 * 24)

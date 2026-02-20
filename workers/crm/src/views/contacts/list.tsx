@@ -27,7 +27,11 @@ const Pagination: FC<{ total: number; page: number; limit: number }> = ({
   } else {
     pages.push(1);
     if (page > 3) pages.push('ellipsis');
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+    for (
+      let i = Math.max(2, page - 1);
+      i <= Math.min(totalPages - 1, page + 1);
+      i++
+    ) {
       pages.push(i);
     }
     if (page < totalPages - 2) pages.push('ellipsis');
@@ -154,27 +158,48 @@ export const ContactListView: FC<ContactListProps> = ({
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Name
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Email
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Status
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Last Activity
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody id="contact-table-body" class="divide-y divide-gray-200 bg-white">
+            <tbody
+              id="contact-table-body"
+              class="divide-y divide-gray-200 bg-white"
+            >
               {contacts.length === 0 ? (
                 <tr>
-                  <td colspan={5} class="px-6 py-12 text-center text-sm text-gray-500">
+                  <td
+                    colspan={5}
+                    class="px-6 py-12 text-center text-sm text-gray-500"
+                  >
                     No contacts found. Create your first contact to get started.
                   </td>
                 </tr>

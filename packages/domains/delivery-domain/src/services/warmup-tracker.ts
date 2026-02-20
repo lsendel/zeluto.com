@@ -91,7 +91,10 @@ export function isWarmupComplete(
  * @param now - The current date (defaults to now)
  * @returns Number of days since warmup began (1-based)
  */
-export function getDaysSinceStart(startDate: Date, now: Date = new Date()): number {
+export function getDaysSinceStart(
+  startDate: Date,
+  now: Date = new Date(),
+): number {
   const diffMs = now.getTime() - startDate.getTime();
   return Math.max(1, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
 }

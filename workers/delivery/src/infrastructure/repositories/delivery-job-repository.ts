@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { delivery_jobs } from '@mauntic/delivery-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type DeliveryJobRow = typeof delivery_jobs.$inferSelect;
@@ -13,7 +13,9 @@ export async function findJobById(
   const [job] = await db
     .select()
     .from(delivery_jobs)
-    .where(and(eq(delivery_jobs.id, id), eq(delivery_jobs.organization_id, orgId)));
+    .where(
+      and(eq(delivery_jobs.id, id), eq(delivery_jobs.organization_id, orgId)),
+    );
   return job ?? null;
 }
 
@@ -64,12 +66,19 @@ export async function updateJob(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Pick<DeliveryJobInsert, 'status' | 'sent_count' | 'failed_count' | 'completed_at'>>,
+  data: Partial<
+    Pick<
+      DeliveryJobInsert,
+      'status' | 'sent_count' | 'failed_count' | 'completed_at'
+    >
+  >,
 ): Promise<DeliveryJobRow | null> {
   const [job] = await db
     .update(delivery_jobs)
     .set(data)
-    .where(and(eq(delivery_jobs.id, id), eq(delivery_jobs.organization_id, orgId)))
+    .where(
+      and(eq(delivery_jobs.id, id), eq(delivery_jobs.organization_id, orgId)),
+    )
     .returning();
   return job ?? null;
 }
@@ -82,6 +91,11 @@ export async function findJobByIdempotencyKey(
   const [job] = await db
     .select()
     .from(delivery_jobs)
-    .where(and(eq(delivery_jobs.idempotency_key, key), eq(delivery_jobs.organization_id, orgId)));
+    .where(
+      and(
+        eq(delivery_jobs.idempotency_key, key),
+        eq(delivery_jobs.organization_id, orgId),
+      ),
+    );
   return job ?? null;
 }

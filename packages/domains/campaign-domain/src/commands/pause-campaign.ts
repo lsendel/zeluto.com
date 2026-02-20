@@ -8,6 +8,8 @@ export const PauseCampaignCommandSchema = z.object({
 
 export type PauseCampaignCommand = z.infer<typeof PauseCampaignCommandSchema>;
 
-export function pauseCampaignCommand(input: PauseCampaignCommand): PauseCampaignCommand {
+export function pauseCampaignCommand(
+  input: PauseCampaignCommand,
+): PauseCampaignCommand {
   return PauseCampaignCommandSchema.parse(input);
 }

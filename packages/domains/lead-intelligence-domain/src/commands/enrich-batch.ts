@@ -8,6 +8,8 @@ export const EnrichBatchCommandSchema = z.object({
 
 export type EnrichBatchCommand = z.infer<typeof EnrichBatchCommandSchema>;
 
-export function enrichBatchCommand(input: EnrichBatchCommand): EnrichBatchCommand {
+export function enrichBatchCommand(
+  input: EnrichBatchCommand,
+): EnrichBatchCommand {
   return EnrichBatchCommandSchema.parse(input);
 }
