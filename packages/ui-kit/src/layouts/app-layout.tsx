@@ -224,6 +224,26 @@ export const AppLayout: FC<AppLayoutProps> = ({
             <div class="flex-1 overflow-y-auto px-3 py-4">
               <SidebarNav groups={navGroups} />
             </div>
+
+            {/* Account & logout (desktop) */}
+            <div class="hidden border-t border-gray-200 px-4 py-4 lg:block">
+              <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Account
+              </p>
+              <p class="mt-1 text-sm font-medium text-gray-900 truncate">{userName}</p>
+              {userEmail && (
+                <p class="text-xs text-gray-500 truncate">{userEmail}</p>
+              )}
+              <button
+                type="button"
+                class="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+                hx-post="/api/auth/sign-out"
+                hx-swap="none"
+                hx-on--after-request="window.location.href='/login'"
+              >
+                Log out
+              </button>
+            </div>
           </aside>
 
           {/* Main content area */}
@@ -255,6 +275,17 @@ export const AppLayout: FC<AppLayoutProps> = ({
 
               {/* User menu */}
               <div class="flex items-center gap-4">
+                {/* Logout button */}
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 lg:hidden"
+                  hx-post="/api/auth/sign-out"
+                  hx-swap="none"
+                  hx-on--after-request="window.location.href='/login'"
+                >
+                  Log out
+                </button>
+
                 {/* Notifications */}
                 <button
                   type="button"
