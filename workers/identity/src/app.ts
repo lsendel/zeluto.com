@@ -7,6 +7,7 @@ import { createOrg } from './application/commands/create-org.js';
 import { validateSessionFromHeaders } from './application/session-service.js';
 import type { DrizzleDb, Env } from './infrastructure/database.js';
 import { createDatabase } from './infrastructure/database.js';
+import { DrizzleOrganizationRepository } from './infrastructure/repositories/drizzle-organization-repository.js';
 import authRoutes from './interface/auth-routes.js';
 import identityDispatchRoutes from './interface/dispatch-routes.js';
 import orgRoutes from './interface/org-routes.js';
@@ -88,8 +89,9 @@ app.post('/__dispatch/identity/onboarding/create-org', async (c) => {
   }
 
   const db = createDatabase(c.env);
+  const orgRepo = new DrizzleOrganizationRepository(db);
   try {
-    const org = await createOrg(db, {
+    const org = await createOrg(db, orgRepo, {
       name: body.name,
       slug: body.slug,
       creatorUserId: body.creatorUserId,

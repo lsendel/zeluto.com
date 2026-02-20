@@ -1,4 +1,5 @@
 import type { TenantContext } from '@mauntic/domain-kernel';
+import { asOrganizationId, asUserId } from '@mauntic/domain-kernel';
 import { Hono } from 'hono';
 import { blockUser, unblockUser } from '../application/commands/block-user.js';
 import {
@@ -8,6 +9,8 @@ import {
 import { getUser } from '../application/queries/get-user.js';
 import { listUsers } from '../application/queries/list-users.js';
 import type { DrizzleDb } from '../infrastructure/database.js';
+import { DrizzleMemberRepository } from '../infrastructure/repositories/drizzle-member-repository.js';
+import { DrizzleUserRepository } from '../infrastructure/repositories/drizzle-user-repository.js';
 import { serializeUser } from '../utils/serialize-user.js';
 
 type Env = {
@@ -79,7 +82,6 @@ userRoutes.patch('/api/v1/identity/users/:id/profile', async (c) => {
   const db = c.get('db');
   const userId = c.req.param('id');
 
-  // Only the user themselves or an admin/owner can update profiles
   if (
     tenant.userId !== userId &&
     tenant.userRole !== 'owner' &&
@@ -93,13 +95,14 @@ userRoutes.patch('/api/v1/identity/users/:id/profile', async (c) => {
 
   try {
     const body = await c.req.json();
-    const updated = await updateUser(db, {
+    const userRepo = new DrizzleUserRepository(db);
+    const updated = await updateUser(userRepo, {
       userId,
       name: body.name,
       image: body.image,
     });
 
-    return c.json(serializeUser(updated));
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'UserNotFoundError') {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
@@ -118,7 +121,6 @@ userRoutes.patch('/api/v1/identity/users/:id/role', async (c) => {
   const db = c.get('db');
   const userId = c.req.param('id');
 
-  // Only owner/admin can change user roles
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
       {
@@ -131,12 +133,13 @@ userRoutes.patch('/api/v1/identity/users/:id/role', async (c) => {
 
   try {
     const body = await c.req.json();
-    const updated = await updateUserRole(db, {
+    const userRepo = new DrizzleUserRepository(db);
+    const updated = await updateUserRole(userRepo, {
       userId,
       role: body.role,
     });
 
-    return c.json(serializeUser(updated));
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'UserNotFoundError') {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
@@ -155,7 +158,6 @@ userRoutes.post('/api/v1/identity/users/:id/block', async (c) => {
   const db = c.get('db');
   const userId = c.req.param('id');
 
-  // Only owner/admin can block users
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
       { code: 'FORBIDDEN', message: 'Only owners and admins can block users' },
@@ -164,11 +166,21 @@ userRoutes.post('/api/v1/identity/users/:id/block', async (c) => {
   }
 
   try {
-    const updated = await blockUser(db, userId, tenant.organizationId);
-    return c.json(serializeUser(updated));
+    const userRepo = new DrizzleUserRepository(db);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const updated = await blockUser(
+      userRepo,
+      memberRepo,
+      asUserId(userId),
+      asOrganizationId(tenant.organizationId),
+    );
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error) {
-      if (error.name === 'CannotBlockOwnerError') {
+      if (
+        error.name === 'CannotBlockOwnerError' ||
+        error.name === 'InvariantViolation'
+      ) {
         return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
       }
       if (
@@ -192,7 +204,6 @@ userRoutes.post('/api/v1/identity/users/:id/unblock', async (c) => {
   const db = c.get('db');
   const userId = c.req.param('id');
 
-  // Only owner/admin can unblock users
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
       {
@@ -204,8 +215,9 @@ userRoutes.post('/api/v1/identity/users/:id/unblock', async (c) => {
   }
 
   try {
-    const updated = await unblockUser(db, userId);
-    return c.json(serializeUser(updated));
+    const userRepo = new DrizzleUserRepository(db);
+    const updated = await unblockUser(userRepo, asUserId(userId));
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'UserNotFoundError') {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);

@@ -1,57 +1,40 @@
-import { organizationMembers, users } from '@mauntic/identity-domain';
-import { and, eq } from 'drizzle-orm';
-import type { DrizzleDb } from '../../infrastructure/database.js';
+import type { OrganizationId, UserId } from '@mauntic/domain-kernel';
+import type {
+  MemberRepository,
+  UserRepository,
+} from '@mauntic/identity-domain';
 
 export async function blockUser(
-  db: DrizzleDb,
-  userId: string,
-  organizationId: string,
+  userRepo: UserRepository,
+  memberRepo: MemberRepository,
+  userId: UserId,
+  organizationId: OrganizationId,
 ) {
-  // Check if user is the org owner - cannot block owner
-  const [membership] = await db
-    .select()
-    .from(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.userId, userId),
-        eq(organizationMembers.organizationId, organizationId),
-      ),
-    )
-    .limit(1);
-
-  if (!membership) {
+  const member = await memberRepo.findByOrgAndUser(organizationId, userId);
+  if (!member) {
     throw new UserNotInOrgError(userId, organizationId);
   }
 
-  if (membership.role === 'owner') {
-    throw new CannotBlockOwnerError();
-  }
-
-  const [updated] = await db
-    .update(users)
-    .set({ isBlocked: true, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning();
-
-  if (!updated) {
+  const user = await userRepo.findById(userId);
+  if (!user) {
     throw new UserNotFoundError(userId);
   }
 
-  return updated;
+  // Domain method enforces invariant: cannot block an owner
+  user.block();
+  await userRepo.save(user);
+  return user;
 }
 
-export async function unblockUser(db: DrizzleDb, userId: string) {
-  const [updated] = await db
-    .update(users)
-    .set({ isBlocked: false, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning();
-
-  if (!updated) {
+export async function unblockUser(userRepo: UserRepository, userId: UserId) {
+  const user = await userRepo.findById(userId);
+  if (!user) {
     throw new UserNotFoundError(userId);
   }
 
-  return updated;
+  user.unblock();
+  await userRepo.save(user);
+  return user;
 }
 
 export class CannotBlockOwnerError extends Error {
