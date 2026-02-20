@@ -19,4 +19,8 @@ export interface JourneyVersionRepository {
     journeyId: JourneyId,
   ): Promise<JourneyVersion[]>;
   save(version: JourneyVersion): Promise<void>;
+  getNextVersionNumber(
+    orgId: OrganizationId,
+    journeyId: JourneyId,
+  ): Promise<number>;
 }
