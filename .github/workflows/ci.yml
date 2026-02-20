@@ -11,29 +11,8 @@ env:
   PNPM_VERSION: 10
 
 jobs:
-  typecheck:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type check
-        run: pnpm turbo typecheck
-
-  lint:
-    name: Lint
+  quality:
+    name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,113 +33,8 @@ jobs:
         run: pnpm turbo lint
         continue-on-error: true
 
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Typecheck
+        run: pnpm turbo typecheck
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run unit tests
+      - name: Test
         run: pnpm turbo test
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [typecheck, test]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build all packages
-        run: pnpm turbo build
-
-  deploy-workers:
-    name: Deploy CF Workers
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    strategy:
-      matrix:
-        worker:
-          - mauntic-gateway
-          - mauntic-identity
-          - mauntic-billing
-          - mauntic-crm
-          - mauntic-journey
-          - mauntic-delivery
-          - mauntic-campaign
-          - mauntic-content
-          - mauntic-analytics
-          - mauntic-integrations
-          - mauntic-lead-intelligence
-          - mauntic-scoring
-          - mauntic-revops
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm turbo build
-
-      - name: Deploy worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: workers/${{ matrix.worker }}
-
-  deploy-services:
-    name: Deploy Fly.io Services
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    strategy:
-      matrix:
-        service:
-          - enrichment-engine
-          - scoring-engine
-          - revops-engine
-          - journey-executor
-          - analytics-aggregator
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-
-      - name: Deploy service
-        run: flyctl deploy --config services/${{ matrix.service }}/fly.toml
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
