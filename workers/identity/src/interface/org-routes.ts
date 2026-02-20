@@ -19,7 +19,7 @@ import type { DrizzleDb } from '../infrastructure/database.js';
 import { serializeInvite, serializeOrg } from './org-serializers.js';
 
 type Env = {
-  Bindings: { DB: Hyperdrive };
+  Bindings: { DB: Hyperdrive; EVENTS?: Queue };
   Variables: { tenant: TenantContext; db: DrizzleDb };
 };
 
@@ -705,7 +705,26 @@ orgRoutes.post(
         .where(eq(organizationInvites.id, inviteId))
         .returning();
 
-      // TODO: Trigger email notification via queue event
+      // Publish invite resent event for email notification
+      if (c.env.EVENTS) {
+        await c.env.EVENTS.send({
+          type: 'identity.MemberInvited',
+          data: {
+            organizationId: tenant.organizationId,
+            email: updated.email,
+            role: updated.role,
+            invitedBy: tenant.userId,
+          },
+          metadata: {
+            id: crypto.randomUUID(),
+            version: 1,
+            sourceContext: 'identity',
+            timestamp: new Date().toISOString(),
+            correlationId: updated.id,
+            tenantContext: { organizationId: tenant.organizationId },
+          },
+        });
+      }
 
       return c.json(serializeInvite(updated));
     } catch (error) {
