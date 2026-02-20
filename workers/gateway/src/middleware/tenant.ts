@@ -1,4 +1,8 @@
-import type { TenantContext } from '@mauntic/domain-kernel';
+import {
+  asOrganizationId,
+  asUserId,
+  type TenantContext,
+} from '@mauntic/domain-kernel';
 import type { Logger } from '@mauntic/worker-lib';
 import { cacheTenantContext } from '@mauntic/worker-lib';
 import type { MiddlewareHandler } from 'hono';
@@ -40,8 +44,8 @@ export function tenantMiddleware(): MiddlewareHandler<Env> {
     }
 
     const tenantContext: TenantContext = {
-      organizationId: organization.id,
-      userId: user.id,
+      organizationId: asOrganizationId(organization.id),
+      userId: asUserId(user.id),
       userRole: organization.role,
       plan: organization.plan,
     };

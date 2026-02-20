@@ -4,6 +4,11 @@ import type {
   SegmentRebuiltEvent,
   SegmentUpdatedEvent,
 } from '@mauntic/domain-kernel';
+import {
+  asOrganizationId,
+  asSegmentId,
+  asUserId,
+} from '@mauntic/domain-kernel';
 
 function meta(organizationId: string): DomainEventMetadata {
   return {
@@ -13,7 +18,7 @@ function meta(organizationId: string): DomainEventMetadata {
     timestamp: new Date().toISOString(),
     correlationId: crypto.randomUUID(),
     tenantContext: {
-      organizationId: organizationId as unknown as number,
+      organizationId: asOrganizationId(organizationId),
     },
   };
 }
@@ -27,10 +32,10 @@ export function segmentCreated(segment: {
   return {
     type: 'crm.SegmentCreated',
     data: {
-      organizationId: segment.organizationId as unknown as number,
-      segmentId: segment.id as unknown as number,
+      organizationId: asOrganizationId(segment.organizationId),
+      segmentId: asSegmentId(segment.id),
       name: segment.name,
-      createdBy: segment.createdBy as unknown as number,
+      createdBy: asUserId(segment.createdBy),
     },
     metadata: meta(segment.organizationId),
   };
@@ -44,8 +49,8 @@ export function segmentUpdated(segment: {
   return {
     type: 'crm.SegmentUpdated',
     data: {
-      organizationId: segment.organizationId as unknown as number,
-      segmentId: segment.id as unknown as number,
+      organizationId: asOrganizationId(segment.organizationId),
+      segmentId: asSegmentId(segment.id),
       fields: segment.fields,
     },
     metadata: meta(segment.organizationId),
@@ -61,8 +66,8 @@ export function segmentRebuilt(input: {
   return {
     type: 'crm.SegmentRebuilt',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      segmentId: input.segmentId as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      segmentId: asSegmentId(input.segmentId),
       contactCount: input.contactCount,
       previousCount: input.previousCount,
     },

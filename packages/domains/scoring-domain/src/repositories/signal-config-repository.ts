@@ -1,12 +1,13 @@
+import type { OrganizationId } from '@mauntic/domain-kernel';
 import type { SignalConfig } from '../entities/signal-config.js';
 
 export interface SignalConfigRepository {
   findBySignalType(
-    orgId: string,
+    orgId: OrganizationId,
     signalType: string,
   ): Promise<SignalConfig | null>;
-  findByOrganization(orgId: string): Promise<SignalConfig[]>;
-  findEnabled(orgId: string): Promise<SignalConfig[]>;
+  findByOrganization(orgId: OrganizationId): Promise<SignalConfig[]>;
+  findEnabled(orgId: OrganizationId): Promise<SignalConfig[]>;
   save(config: SignalConfig): Promise<void>;
-  delete(orgId: string, signalType: string): Promise<void>;
+  delete(orgId: OrganizationId, signalType: string): Promise<void>;
 }

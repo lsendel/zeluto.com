@@ -1,11 +1,11 @@
+import type { OrganizationId, UserId } from '@mauntic/domain-kernel';
 import {
-  organizationInvites,
-  organizationMembers,
-  users,
+  type InviteRepository,
+  type MemberRepository,
+  OrganizationInvite,
+  type UserRepository,
 } from '@mauntic/identity-domain';
-import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
-import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const InviteMemberInput = z.object({
   organizationId: z.string().uuid(),
@@ -16,25 +16,15 @@ export const InviteMemberInput = z.object({
 
 export type InviteMemberInput = z.infer<typeof InviteMemberInput>;
 
-/**
- * Generate a cryptographically random token for the invite.
- */
-function generateToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
 export async function inviteMember(
-  db: DrizzleDb,
+  userRepo: UserRepository,
+  memberRepo: MemberRepository,
+  inviteRepo: InviteRepository,
   input: InviteMemberInput,
   actorRole: string,
 ) {
   const parsed = InviteMemberInput.parse(input);
 
-  // Only owner/admin can invite
   if (actorRole !== 'owner' && actorRole !== 'admin') {
     throw new InsufficientPermissionsError(
       'Only owners and admins can invite members',
@@ -42,62 +32,32 @@ export async function inviteMember(
   }
 
   // Check if user with this email is already a member
-  const existingUser = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, parsed.email))
-    .limit(1);
-
-  if (existingUser.length > 0) {
-    const existingMembership = await db
-      .select({ id: organizationMembers.id })
-      .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, parsed.organizationId),
-          eq(organizationMembers.userId, existingUser[0].id),
-        ),
-      )
-      .limit(1);
-
-    if (existingMembership.length > 0) {
+  const existingUser = await userRepo.findByEmail(parsed.email);
+  if (existingUser) {
+    const membership = await memberRepo.findByOrgAndUser(
+      parsed.organizationId as OrganizationId,
+      existingUser.id as UserId,
+    );
+    if (membership) {
       throw new AlreadyMemberError(parsed.email);
     }
   }
 
   // Check for existing pending invite
-  const existingInvite = await db
-    .select({ id: organizationInvites.id })
-    .from(organizationInvites)
-    .where(
-      and(
-        eq(organizationInvites.organizationId, parsed.organizationId),
-        eq(organizationInvites.email, parsed.email),
-      ),
-    )
-    .limit(1);
-
-  if (existingInvite.length > 0) {
+  const existingInvites = await inviteRepo.findByOrganization(
+    parsed.organizationId as OrganizationId,
+  );
+  if (existingInvites.some((inv) => inv.email === parsed.email)) {
     throw new InviteAlreadyExistsError(parsed.email);
   }
 
-  // Generate token and set 7-day expiry
-  const token = generateToken();
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7);
-
-  const [invite] = await db
-    .insert(organizationInvites)
-    .values({
-      organizationId: parsed.organizationId,
-      email: parsed.email,
-      token,
-      role: parsed.role,
-      invitedBy: parsed.invitedBy,
-      expiresAt,
-    })
-    .returning();
-
+  const invite = OrganizationInvite.create({
+    organizationId: parsed.organizationId,
+    email: parsed.email,
+    role: parsed.role,
+    invitedBy: parsed.invitedBy,
+  });
+  await inviteRepo.save(invite);
   return invite;
 }
 

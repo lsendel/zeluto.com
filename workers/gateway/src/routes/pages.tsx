@@ -132,12 +132,10 @@ async function handleHtmxRequest(
   if (service) {
     const response = await forwardToService(c, service);
     if (response.status >= 500) {
-      c
-        .get('logger')
-        ?.warn(
-          { path, status: response.status },
-          'HTMX view fallback triggered',
-        );
+      c.get('logger')?.warn(
+        { path, status: response.status },
+        'HTMX view fallback triggered',
+      );
       return renderStubView(c, path);
     }
     return response;
@@ -255,10 +253,10 @@ function renderStubView(
         <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-600">
           <p>
             Viewing, segmentation, and enrichment will light up as soon as the
-            CRM worker finishes provisioning. In the meantime, use the{" "}
+            CRM worker finishes provisioning. In the meantime, use the{' '}
             <code class="rounded bg-white px-1.5 py-0.5 font-mono text-xs text-gray-800">
               + New Contact
-            </code>{" "}
+            </code>{' '}
             action above to capture leads—the form will post to the CRM worker
             once it is available.
           </p>

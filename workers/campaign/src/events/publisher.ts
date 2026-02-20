@@ -1,3 +1,9 @@
+import {
+  asCampaignId,
+  asContactId,
+  asOrganizationId,
+  asTemplateId,
+} from '@mauntic/domain-kernel';
 import type {
   CampaignCompletedEvent,
   CampaignStartedEvent,
@@ -22,11 +28,11 @@ export async function publishDeliveryBatch(
     const event: SendMessageEvent = {
       type: 'delivery.SendMessage',
       data: {
-        organizationId: Number(params.organizationId),
+        organizationId: asOrganizationId(params.organizationId),
         channel: 'email',
-        contactId: Number(contact.contactId),
-        templateId: Number(params.templateId),
-        campaignId: Number(params.campaignId),
+        contactId: asContactId(contact.contactId),
+        templateId: asTemplateId(params.templateId),
+        campaignId: asCampaignId(params.campaignId),
         idempotencyKey: `campaign:${params.campaignId}:${contact.contactId}`,
       },
       metadata: {
@@ -36,7 +42,7 @@ export async function publishDeliveryBatch(
         timestamp: new Date().toISOString(),
         correlationId: params.campaignId,
         tenantContext: {
-          organizationId: Number(params.organizationId),
+          organizationId: asOrganizationId(params.organizationId),
         },
       },
     };
@@ -66,8 +72,8 @@ export async function publishPointsAwarded(
   const event: PointsAwardedEvent = {
     type: 'misc.PointsAwarded',
     data: {
-      organizationId: Number(params.organizationId),
-      contactId: Number(params.contactId),
+      organizationId: asOrganizationId(params.organizationId),
+      contactId: asContactId(params.contactId),
       points: params.points,
       reason: params.reason,
     },
@@ -78,7 +84,7 @@ export async function publishPointsAwarded(
       timestamp: new Date().toISOString(),
       correlationId: params.contactId,
       tenantContext: {
-        organizationId: Number(params.organizationId),
+        organizationId: asOrganizationId(params.organizationId),
       },
     },
   };
@@ -100,8 +106,8 @@ export async function publishCampaignStarted(
   const event: CampaignStartedEvent = {
     type: 'campaign.CampaignStarted',
     data: {
-      organizationId: Number(params.organizationId),
-      campaignId: Number(params.campaignId),
+      organizationId: asOrganizationId(params.organizationId),
+      campaignId: asCampaignId(params.campaignId),
       startedAt: new Date().toISOString(),
       targetCount: params.targetCount,
     },
@@ -112,7 +118,7 @@ export async function publishCampaignStarted(
       timestamp: new Date().toISOString(),
       correlationId: params.campaignId,
       tenantContext: {
-        organizationId: Number(params.organizationId),
+        organizationId: asOrganizationId(params.organizationId),
       },
     },
   };
@@ -134,8 +140,8 @@ export async function publishCampaignCompleted(
   const event: CampaignCompletedEvent = {
     type: 'campaign.CampaignCompleted',
     data: {
-      organizationId: Number(params.organizationId),
-      campaignId: Number(params.campaignId),
+      organizationId: asOrganizationId(params.organizationId),
+      campaignId: asCampaignId(params.campaignId),
       completedAt: new Date().toISOString(),
       sentCount: params.sentCount,
     },
@@ -146,7 +152,7 @@ export async function publishCampaignCompleted(
       timestamp: new Date().toISOString(),
       correlationId: params.campaignId,
       tenantContext: {
-        organizationId: Number(params.organizationId),
+        organizationId: asOrganizationId(params.organizationId),
       },
     },
   };

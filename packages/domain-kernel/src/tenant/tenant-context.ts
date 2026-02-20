@@ -1,6 +1,8 @@
+import type { OrganizationId, UserId } from '../value-objects/branded-id.js';
+
 export interface TenantContext {
-  organizationId: string; // UUID
-  userId: string; // UUID
+  organizationId: OrganizationId;
+  userId: UserId;
   userRole: 'owner' | 'admin' | 'member' | 'viewer';
   plan: 'free' | 'starter' | 'pro' | 'enterprise';
 }

@@ -22,12 +22,33 @@ export class SegmentNotFoundError extends Error {
   }
 }
 
+const CONTACT_COLUMNS = {
+  id: contacts.id,
+  organization_id: contacts.organization_id,
+  email: contacts.email,
+  first_name: contacts.first_name,
+  last_name: contacts.last_name,
+  phone: contacts.phone,
+  status: contacts.status,
+  stage: contacts.stage,
+  custom_fields: contacts.custom_fields,
+  last_activity_at: contacts.last_activity_at,
+  lead_score: contacts.lead_score,
+  lead_grade: contacts.lead_grade,
+  intent_score: contacts.intent_score,
+  enrichment_status: contacts.enrichment_status,
+  last_enriched_at: contacts.last_enriched_at,
+  data_quality_score: contacts.data_quality_score,
+  created_at: contacts.created_at,
+  updated_at: contacts.updated_at,
+};
+
 export class DrizzleContactRepository implements ContactRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
   async findById(orgId: string, id: string): Promise<Contact | null> {
     const [row] = await this.db
-      .select()
+      .select(CONTACT_COLUMNS)
       .from(contacts)
       .where(and(eq(contacts.id, id), eq(contacts.organization_id, orgId)));
 
@@ -37,7 +58,7 @@ export class DrizzleContactRepository implements ContactRepository {
 
   async findByEmail(orgId: string, email: string): Promise<Contact | null> {
     const [row] = await this.db
-      .select()
+      .select(CONTACT_COLUMNS)
       .from(contacts)
       .where(
         and(eq(contacts.email, email), eq(contacts.organization_id, orgId)),
@@ -71,7 +92,7 @@ export class DrizzleContactRepository implements ContactRepository {
 
     const [rows, countResult] = await Promise.all([
       this.db
-        .select()
+        .select(CONTACT_COLUMNS)
         .from(contacts)
         .where(where)
         .orderBy(desc(contacts.created_at))
@@ -192,7 +213,7 @@ export class DrizzleContactRepository implements ContactRepository {
     }
 
     const rows = await this.db
-      .select()
+      .select(CONTACT_COLUMNS)
       .from(contacts)
       .where(where)
       .orderBy(desc(contacts.created_at))

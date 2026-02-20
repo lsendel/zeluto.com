@@ -1,3 +1,8 @@
+import {
+  asContactId,
+  asOrganizationId,
+  asTemplateId,
+} from '@mauntic/domain-kernel';
 import type { SendMessageEvent } from '@mauntic/domain-kernel/events';
 
 export interface SendEmailFromJourneyParams {
@@ -23,10 +28,10 @@ export async function publishSendEmailEvent(
   const event: SendMessageEvent = {
     type: 'delivery.SendMessage',
     data: {
-      organizationId: Number(params.organizationId),
+      organizationId: asOrganizationId(params.organizationId),
       channel: 'email',
-      contactId: Number(params.contactId),
-      templateId: params.templateId,
+      contactId: asContactId(params.contactId),
+      templateId: asTemplateId(String(params.templateId)),
       journeyExecutionId: params.executionId,
       idempotencyKey,
     },
@@ -38,7 +43,7 @@ export async function publishSendEmailEvent(
       correlationId: params.executionId,
       causationId: params.stepId,
       tenantContext: {
-        organizationId: Number(params.organizationId),
+        organizationId: asOrganizationId(params.organizationId),
       },
     },
   };
@@ -67,10 +72,10 @@ export async function publishSendSmsEvent(
   const event: SendMessageEvent = {
     type: 'delivery.SendMessage',
     data: {
-      organizationId: Number(params.organizationId),
+      organizationId: asOrganizationId(params.organizationId),
       channel: 'sms',
-      contactId: Number(params.contactId),
-      templateId: params.templateId,
+      contactId: asContactId(params.contactId),
+      templateId: asTemplateId(String(params.templateId)),
       journeyExecutionId: params.executionId,
       idempotencyKey,
     },
@@ -82,7 +87,7 @@ export async function publishSendSmsEvent(
       correlationId: params.executionId,
       causationId: params.stepId,
       tenantContext: {
-        organizationId: Number(params.organizationId),
+        organizationId: asOrganizationId(params.organizationId),
       },
     },
   };

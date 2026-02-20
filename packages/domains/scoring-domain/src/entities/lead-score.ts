@@ -1,4 +1,4 @@
-import { AggregateRoot } from '@mauntic/domain-kernel';
+import { AggregateRoot, type OrganizationId } from '@mauntic/domain-kernel';
 import { z } from 'zod';
 
 export const GradeSchema = z.enum(['A', 'B', 'C', 'D', 'F']);
@@ -84,7 +84,7 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
         timestamp: new Date().toISOString(),
         correlationId: props.contactId,
         tenantContext: {
-          organizationId: props.organizationId as unknown as number,
+          organizationId: props.organizationId as OrganizationId,
         },
       },
     });
@@ -173,7 +173,7 @@ export class LeadScore extends AggregateRoot<LeadScoreProps> {
         timestamp: new Date().toISOString(),
         correlationId: this.props.contactId,
         tenantContext: {
-          organizationId: this.props.organizationId as unknown as number,
+          organizationId: this.props.organizationId as OrganizationId,
         },
       },
     });

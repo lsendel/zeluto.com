@@ -3,6 +3,22 @@ import { leadScores } from '@mauntic/scoring-domain/drizzle';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const LEAD_SCORE_COLUMNS = {
+  id: leadScores.id,
+  organization_id: leadScores.organization_id,
+  contact_id: leadScores.contact_id,
+  total_score: leadScores.total_score,
+  grade: leadScores.grade,
+  engagement_score: leadScores.engagement_score,
+  fit_score: leadScores.fit_score,
+  intent_score: leadScores.intent_score,
+  components: leadScores.components,
+  top_contributors: leadScores.top_contributors,
+  scored_at: leadScores.scored_at,
+  created_at: leadScores.created_at,
+  updated_at: leadScores.updated_at,
+};
+
 function mapToEntity(row: typeof leadScores.$inferSelect): LeadScore {
   return LeadScore.reconstitute({
     id: row.id,
@@ -29,7 +45,7 @@ export class DrizzleLeadScoreRepository implements LeadScoreRepository {
     contactId: string,
   ): Promise<LeadScore | null> {
     const [row] = await this.db
-      .select()
+      .select(LEAD_SCORE_COLUMNS)
       .from(leadScores)
       .where(
         and(
@@ -58,7 +74,7 @@ export class DrizzleLeadScoreRepository implements LeadScoreRepository {
       conditions.push(eq(leadScores.grade, options.grade as any));
     }
     const query = this.db
-      .select()
+      .select(LEAD_SCORE_COLUMNS)
       .from(leadScores)
       .where(and(...conditions));
     const rows = await query
@@ -69,7 +85,7 @@ export class DrizzleLeadScoreRepository implements LeadScoreRepository {
 
   async findLeaderboard(orgId: string, limit: number): Promise<LeadScore[]> {
     const rows = await this.db
-      .select()
+      .select(LEAD_SCORE_COLUMNS)
       .from(leadScores)
       .where(eq(leadScores.organization_id, orgId))
       .orderBy(desc(leadScores.total_score))
@@ -121,5 +137,23 @@ export class DrizzleLeadScoreRepository implements LeadScoreRepository {
           eq(leadScores.contact_id, contactId),
         ),
       );
+  }
+
+  async findAllContactPairs(
+    limit: number,
+    offset: number,
+  ): Promise<Array<{ organizationId: string; contactId: string }>> {
+    const rows = await this.db
+      .select({
+        organization_id: leadScores.organization_id,
+        contact_id: leadScores.contact_id,
+      })
+      .from(leadScores)
+      .limit(limit)
+      .offset(offset);
+    return rows.map((r) => ({
+      organizationId: r.organization_id,
+      contactId: r.contact_id,
+    }));
   }
 }

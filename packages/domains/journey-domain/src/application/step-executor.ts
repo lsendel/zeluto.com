@@ -1,4 +1,10 @@
-import type { DomainEvent } from '@mauntic/domain-kernel';
+import type {
+  ContactId,
+  DomainEvent,
+  JourneyId,
+  JourneyStepId,
+  OrganizationId,
+} from '@mauntic/domain-kernel';
 import type { JourneyExecution } from '../entities/journey-execution.js';
 import type { JourneyStep } from '../entities/journey-step.js';
 import {
@@ -56,12 +62,12 @@ function executeAction(ctx: StepExecutionContext): StepExecutionResult {
     {
       type: 'journey.StepExecuted',
       data: {
-        organizationId: Number(ctx.execution.organizationId),
-        journeyId: Number(ctx.execution.journeyId),
+        organizationId: ctx.execution.organizationId as OrganizationId,
+        journeyId: ctx.execution.journeyId as JourneyId,
         executionId: ctx.execution.id,
-        stepId: ctx.step.id,
+        stepId: ctx.step.id as JourneyStepId,
         stepType: ctx.step.type,
-        contactId: Number(ctx.execution.contactId),
+        contactId: ctx.execution.contactId as ContactId,
       },
       metadata: {
         id: crypto.randomUUID(),
@@ -69,7 +75,9 @@ function executeAction(ctx: StepExecutionContext): StepExecutionResult {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: ctx.execution.id,
-        tenantContext: { organizationId: Number(ctx.execution.organizationId) },
+        tenantContext: {
+          organizationId: ctx.execution.organizationId as OrganizationId,
+        },
       },
     },
   ];

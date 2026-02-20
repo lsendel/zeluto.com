@@ -1,11 +1,12 @@
+import type { ContactId, OrganizationId } from '@mauntic/domain-kernel';
 import type { ScoreHistory } from '../entities/score-history.js';
 
 export interface ScoreHistoryRepository {
   findByContact(
-    orgId: string,
-    contactId: string,
+    orgId: OrganizationId,
+    contactId: ContactId,
     options?: { from?: string; to?: string; limit?: number },
   ): Promise<ScoreHistory[]>;
   save(entry: ScoreHistory): Promise<void>;
-  deleteOlderThan(orgId: string, beforeDate: string): Promise<number>;
+  deleteOlderThan(orgId: OrganizationId, beforeDate: string): Promise<number>;
 }

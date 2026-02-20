@@ -1,22 +1,26 @@
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type { DomainEvent } from '@mauntic/domain-kernel';
-import {
-  intentSignals,
-  leadScores,
-  signalAlerts,
-} from '@mauntic/scoring-domain/drizzle';
+import { asContactId, asOrganizationId } from '@mauntic/domain-kernel';
+import type {
+  IntentSignalRepository,
+  LeadScoreRepository,
+  SignalAlertRepository,
+} from '@mauntic/scoring-domain';
 import {
   createDatabase,
   createLoggerFromEnv,
   logQueueMetric,
 } from '@mauntic/worker-lib';
-import { and, eq, lt, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
   type ScoringContext,
   ScoringService,
 } from '../application/scoring-service.js';
 import { DrizzleLeadScoreRepository } from '../infrastructure/drizzle-lead-score-repository.js';
+import {
+  DrizzleIntentSignalRepository,
+  DrizzleSignalAlertRepository,
+} from '../infrastructure/drizzle-scoring-repositories.js';
 
 export interface ScoringQueueEnv {
   DATABASE_URL: string;
@@ -71,9 +75,11 @@ export async function handleScoringQueue(
   env: ScoringQueueEnv,
 ): Promise<void> {
   const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
-  const repo = new DrizzleLeadScoreRepository(db);
+  const leadScoreRepo = new DrizzleLeadScoreRepository(db);
+  const intentSignalRepo = new DrizzleIntentSignalRepository(db);
+  const signalAlertRepo = new DrizzleSignalAlertRepository(db);
   const publisher = new QueueDomainEventPublisher(env.EVENTS);
-  const service = new ScoringService(repo, publisher);
+  const service = new ScoringService(leadScoreRepo, publisher);
   const queueName = batch.queue ?? 'mauntic-scoring-events';
   const baseLogger = createLoggerFromEnv(
     'scoring-queue',
@@ -101,8 +107,8 @@ export async function handleScoringQueue(
         case 'scoring.CalculateScore': {
           const { organizationId, contactId, context } = payload.data;
           const result = await service.calculateScore(
-            String(organizationId),
-            String(contactId),
+            asOrganizationId(String(organizationId)),
+            asContactId(String(contactId)),
             context ?? {},
           );
           if (result.isFailure) {
@@ -111,15 +117,15 @@ export async function handleScoringQueue(
           break;
         }
         case 'scoring.BatchRecompute': {
-          await runBatchRecompute(db, env, payload.scheduledFor);
+          await runBatchRecompute(leadScoreRepo, env, payload.scheduledFor);
           break;
         }
         case 'scoring.SignalDecay': {
-          await runSignalDecay(db, payload.scheduledFor);
+          await runSignalDecay(intentSignalRepo, payload.scheduledFor);
           break;
         }
         case 'scoring.AlertExpiry': {
-          await runAlertExpiry(db, payload.scheduledFor);
+          await runAlertExpiry(signalAlertRepo, payload.scheduledFor);
           break;
         }
         default:
@@ -193,33 +199,25 @@ function extractMetadata(
     : undefined;
 }
 
-async function runBatchRecompute(
-  db: NeonHttpDatabase,
+export async function runBatchRecompute(
+  leadScoreRepo: LeadScoreRepository,
   env: ScoringQueueEnv,
   scheduledFor?: string,
 ): Promise<void> {
-  // Paginate through all lead scores globally and re-enqueue individual calculations
   let offset = 0;
   const batchSize = 100;
   let totalEnqueued = 0;
 
   while (true) {
-    const rows = await db
-      .select({
-        organization_id: leadScores.organization_id,
-        contact_id: leadScores.contact_id,
-      })
-      .from(leadScores)
-      .limit(batchSize)
-      .offset(offset);
-    if (rows.length === 0) break;
+    const pairs = await leadScoreRepo.findAllContactPairs(batchSize, offset);
+    if (pairs.length === 0) break;
 
-    const messages = rows.map((row) => ({
+    const messages = pairs.map((pair) => ({
       body: {
         type: 'scoring.CalculateScore' as const,
         data: {
-          organizationId: row.organization_id,
-          contactId: row.contact_id,
+          organizationId: pair.organizationId,
+          contactId: pair.contactId,
         },
       },
     }));
@@ -228,9 +226,9 @@ async function runBatchRecompute(
       await env.EVENTS.sendBatch(messages.slice(i, i + 100) as any);
     }
 
-    totalEnqueued += rows.length;
+    totalEnqueued += pairs.length;
     offset += batchSize;
-    if (rows.length < batchSize) break;
+    if (pairs.length < batchSize) break;
   }
 
   console.info(
@@ -239,36 +237,22 @@ async function runBatchRecompute(
   );
 }
 
-async function runSignalDecay(
-  db: NeonHttpDatabase,
+export async function runSignalDecay(
+  intentSignalRepo: IntentSignalRepository,
   scheduledFor?: string,
 ): Promise<void> {
-  // Delete all expired intent signals globally (cross-organization maintenance)
-  const result = await db
-    .delete(intentSignals)
-    .where(lt(intentSignals.expires_at, new Date()));
-  const deleted = result.rowCount ?? 0;
+  const deleted = await intentSignalRepo.deleteAllExpired();
   console.info(
     { scheduledFor, deletedCount: deleted, worker: 'scoring-queue' },
     'Signal decay: cleaned up expired intent signals',
   );
 }
 
-async function runAlertExpiry(
-  db: NeonHttpDatabase,
+export async function runAlertExpiry(
+  signalAlertRepo: SignalAlertRepository,
   scheduledFor?: string,
 ): Promise<void> {
-  // Mark all overdue open alerts as expired globally (cross-organization maintenance)
-  const result = await db
-    .update(signalAlerts)
-    .set({ status: 'expired' })
-    .where(
-      and(
-        eq(signalAlerts.status, 'open'),
-        lt(signalAlerts.deadline, new Date()),
-      ),
-    );
-  const expiredCount = result.rowCount ?? 0;
+  const expiredCount = await signalAlertRepo.expireOverdue();
   console.info(
     { scheduledFor, expiredCount, worker: 'scoring-queue' },
     'Alert expiry: marked overdue alerts as expired',

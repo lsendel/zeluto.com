@@ -1,13 +1,14 @@
 import type { TenantContext } from '@mauntic/domain-kernel';
+import { asOrganizationId, asUserId } from '@mauntic/domain-kernel';
 import {
+  OrganizationMember,
   organizationInvites,
   organizationMembers,
-  organizations,
   sessions,
   users,
 } from '@mauntic/identity-domain';
 import { tenantMiddleware } from '@mauntic/worker-lib';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { blockUser, unblockUser } from '../application/commands/block-user.js';
 import { createOrg } from '../application/commands/create-org.js';
@@ -23,6 +24,10 @@ import { listOrgs } from '../application/queries/list-orgs.js';
 import { listUsers } from '../application/queries/list-users.js';
 import type { DrizzleDb, Env } from '../infrastructure/database.js';
 import { createDatabase } from '../infrastructure/database.js';
+import { DrizzleInviteRepository } from '../infrastructure/repositories/drizzle-invite-repository.js';
+import { DrizzleMemberRepository } from '../infrastructure/repositories/drizzle-member-repository.js';
+import { DrizzleOrganizationRepository } from '../infrastructure/repositories/drizzle-organization-repository.js';
+import { DrizzleUserRepository } from '../infrastructure/repositories/drizzle-user-repository.js';
 import { serializeUser } from '../utils/serialize-user.js';
 import { serializeInvite, serializeOrg } from './org-serializers.js';
 
@@ -121,12 +126,13 @@ dispatchRoutes.post('/users/update-profile', async (c) => {
   }
 
   try {
-    const updated = await updateUser(db, {
+    const userRepo = new DrizzleUserRepository(db);
+    const updated = await updateUser(userRepo, {
       userId: body.userId,
       name: body.name,
       image: body.image,
     });
-    return c.json(updated);
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'UserNotFoundError') {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
@@ -165,11 +171,12 @@ dispatchRoutes.post('/users/update-role', async (c) => {
   }
 
   try {
-    const updated = await updateUserRole(db, {
+    const userRepo = new DrizzleUserRepository(db);
+    const updated = await updateUserRole(userRepo, {
       userId: body.userId,
       role,
     });
-    return c.json(updated);
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'UserNotFoundError') {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
@@ -204,11 +211,21 @@ dispatchRoutes.post('/users/block', async (c) => {
   }
 
   try {
-    const updated = await blockUser(db, body.userId, tenant.organizationId);
-    return c.json(updated);
+    const userRepo = new DrizzleUserRepository(db);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const updated = await blockUser(
+      userRepo,
+      memberRepo,
+      asUserId(body.userId),
+      asOrganizationId(tenant.organizationId),
+    );
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error) {
-      if (error.name === 'CannotBlockOwnerError') {
+      if (
+        error.name === 'CannotBlockOwnerError' ||
+        error.name === 'InvariantViolation'
+      ) {
         return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
       }
       if (
@@ -251,8 +268,9 @@ dispatchRoutes.post('/users/unblock', async (c) => {
   }
 
   try {
-    const updated = await unblockUser(db, body.userId);
-    return c.json(updated);
+    const userRepo = new DrizzleUserRepository(db);
+    const updated = await unblockUser(userRepo, asUserId(body.userId));
+    return c.json(serializeUser(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error && error.name === 'UserNotFoundError') {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
@@ -307,12 +325,6 @@ publicDispatchRoutes.use('*', async (c, next) => {
 });
 
 publicDispatchRoutes.post('/organizations/create', async (c) => {
-  // We don't have tenant context yet, so we get the userId from the auth session directly
-  // Note: The caller (gateway) must ensure the user is authenticated and provide the userId
-  // usually via a custom header or by expecting the session to be validated here.
-  // For this fix, let's assume the gateway passes x-user-id for trusted requests,
-  // or we need to extract it. Since this is an internal dispatch, we trust the caller.
-
   const db = c.get('db');
   const body = (await c.req.json().catch(() => null)) as {
     name?: string;
@@ -331,7 +343,8 @@ publicDispatchRoutes.post('/organizations/create', async (c) => {
   }
 
   try {
-    const org = await createOrg(db, {
+    const orgRepo = new DrizzleOrganizationRepository(db);
+    const org = await createOrg(db, orgRepo, {
       name: body.name,
       slug: body.slug,
       creatorUserId: body.creatorUserId,
@@ -346,7 +359,6 @@ publicDispatchRoutes.post('/organizations/create', async (c) => {
   }
 });
 
-// Alias for onboarding flow originating from the gateway
 publicDispatchRoutes.post('/onboarding/create-org', async (c) => {
   const db = c.get('db');
   const body = (await c.req.json().catch(() => null)) as {
@@ -366,7 +378,8 @@ publicDispatchRoutes.post('/onboarding/create-org', async (c) => {
   }
 
   try {
-    const org = await createOrg(db, {
+    const orgRepo = new DrizzleOrganizationRepository(db);
+    const org = await createOrg(db, orgRepo, {
       name: body.name,
       slug: body.slug,
       creatorUserId: body.creatorUserId,
@@ -401,8 +414,9 @@ dispatchRoutes.post('/organizations/update', async (c) => {
   }
 
   try {
+    const orgRepo = new DrizzleOrganizationRepository(db);
     const updated = await updateOrg(
-      db,
+      orgRepo,
       {
         organizationId: body.organizationId,
         name: body.name,
@@ -412,7 +426,7 @@ dispatchRoutes.post('/organizations/update', async (c) => {
       tenant.userId,
       tenant.userRole,
     );
-    return c.json(serializeOrg(updated));
+    return c.json(serializeOrg(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.name === 'OrgNotFoundError') {
@@ -445,16 +459,11 @@ dispatchRoutes.post('/organizations/switch', async (c) => {
   }
 
   try {
-    const [membership] = await db
-      .select()
-      .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, body.organizationId),
-          eq(organizationMembers.userId, tenant.userId),
-        ),
-      )
-      .limit(1);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const membership = await memberRepo.findByOrgAndUser(
+      asOrganizationId(body.organizationId),
+      asUserId(tenant.userId),
+    );
 
     if (!membership) {
       return c.json(
@@ -468,26 +477,25 @@ dispatchRoutes.post('/organizations/switch', async (c) => {
       .set({ activeOrganizationId: body.organizationId })
       .where(eq(sessions.userId, tenant.userId));
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, tenant.userId))
-      .limit(1);
+    const userRepo = new DrizzleUserRepository(db);
+    const user = await userRepo.findById(asUserId(tenant.userId));
 
     return c.json({
-      user: {
-        id: user.id,
-        name: user.name ?? '',
-        email: user.email,
-        emailVerified: user.emailVerified,
-        image: user.image ?? null,
-        role: user.role,
-        isBlocked: user.isBlocked ?? false,
-        lastSignedIn: user.lastSignedIn?.toISOString() ?? null,
-        loginMethod: user.loginMethod ?? null,
-        createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString(),
-      },
+      user: user
+        ? {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            emailVerified: user.emailVerified,
+            image: user.image,
+            role: user.role,
+            isBlocked: user.isBlocked,
+            lastSignedIn: user.lastSignedIn?.toISOString() ?? null,
+            loginMethod: user.loginMethod,
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          }
+        : null,
       organizationId: body.organizationId,
     });
   } catch (error) {
@@ -520,16 +528,11 @@ dispatchRoutes.post('/organizations/members', async (c) => {
   const offset = (page - 1) * limit;
 
   try {
-    const [membership] = await db
-      .select()
-      .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, body.organizationId),
-          eq(organizationMembers.userId, tenant.userId),
-        ),
-      )
-      .limit(1);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const membership = await memberRepo.findByOrgAndUser(
+      asOrganizationId(body.organizationId),
+      asUserId(tenant.userId),
+    );
 
     if (!membership) {
       return c.json(
@@ -608,7 +611,13 @@ dispatchRoutes.post('/organizations/members/remove', async (c) => {
   }
 
   try {
-    await removeMember(db, body.organizationId, body.userId, tenant.userRole);
+    const memberRepo = new DrizzleMemberRepository(db);
+    await removeMember(
+      memberRepo,
+      asOrganizationId(body.organizationId),
+      asUserId(body.userId),
+      tenant.userRole,
+    );
     return c.json({ success: true });
   } catch (error: unknown) {
     if (error instanceof Error) {
@@ -654,16 +663,11 @@ dispatchRoutes.post('/organizations/delete', async (c) => {
     );
   }
 
-  const [membership] = await db
-    .select()
-    .from(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.organizationId, body.organizationId),
-        eq(organizationMembers.userId, tenant.userId),
-      ),
-    )
-    .limit(1);
+  const memberRepo = new DrizzleMemberRepository(db);
+  const membership = await memberRepo.findByOrgAndUser(
+    asOrganizationId(body.organizationId),
+    asUserId(tenant.userId),
+  );
 
   if (!membership) {
     return c.json(
@@ -672,9 +676,8 @@ dispatchRoutes.post('/organizations/delete', async (c) => {
     );
   }
 
-  await db
-    .delete(organizations)
-    .where(eq(organizations.id, body.organizationId));
+  const orgRepo = new DrizzleOrganizationRepository(db);
+  await orgRepo.delete(asOrganizationId(body.organizationId));
   return c.json({ success: true });
 });
 
@@ -701,31 +704,17 @@ dispatchRoutes.post('/organizations/invites/list', async (c) => {
     );
   }
 
-  const page = typeof body.page === 'number' ? body.page : 1;
-  const limit = typeof body.limit === 'number' ? body.limit : 20;
-  const offset = (page - 1) * limit;
-
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(organizationInvites)
-    .where(eq(organizationInvites.organizationId, body.organizationId));
-
-  const total = countResult?.count ?? 0;
-
-  const invites = await db
-    .select()
-    .from(organizationInvites)
-    .where(eq(organizationInvites.organizationId, body.organizationId))
-    .orderBy(organizationInvites.createdAt)
-    .limit(limit)
-    .offset(offset);
+  const inviteRepo = new DrizzleInviteRepository(db);
+  const invites = await inviteRepo.findByOrganization(
+    asOrganizationId(body.organizationId),
+  );
 
   return c.json({
-    data: invites.map(serializeInvite),
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
+    data: invites.map((inv) => serializeInvite(inv.toProps())),
+    total: invites.length,
+    page: 1,
+    limit: invites.length,
+    totalPages: 1,
   });
 });
 
@@ -762,8 +751,13 @@ dispatchRoutes.post('/organizations/invites/create', async (c) => {
     body.role === 'admin' || body.role === 'member' ? body.role : undefined;
 
   try {
+    const userRepo = new DrizzleUserRepository(db);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const inviteRepo = new DrizzleInviteRepository(db);
     const invite = await inviteMember(
-      db,
+      userRepo,
+      memberRepo,
+      inviteRepo,
       {
         organizationId: body.organizationId,
         email: body.email,
@@ -772,7 +766,7 @@ dispatchRoutes.post('/organizations/invites/create', async (c) => {
       },
       tenant.userRole,
     );
-    return c.json(serializeInvite(invite), 201);
+    return c.json(serializeInvite(invite.toProps()), 201);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.name === 'InsufficientPermissionsError') {
@@ -821,24 +815,14 @@ dispatchRoutes.post('/organizations/invites/delete', async (c) => {
     );
   }
 
-  const [invite] = await db
-    .select()
-    .from(organizationInvites)
-    .where(
-      and(
-        eq(organizationInvites.id, body.inviteId),
-        eq(organizationInvites.organizationId, body.organizationId),
-      ),
-    )
-    .limit(1);
+  const inviteRepo = new DrizzleInviteRepository(db);
+  const invite = await inviteRepo.findById(body.inviteId);
 
-  if (!invite) {
+  if (!invite || invite.organizationId !== body.organizationId) {
     return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
   }
 
-  await db
-    .delete(organizationInvites)
-    .where(eq(organizationInvites.id, body.inviteId));
+  await inviteRepo.delete(body.inviteId);
   return c.json({ success: true });
 });
 
@@ -870,31 +854,27 @@ dispatchRoutes.post('/organizations/invites/resend', async (c) => {
     );
   }
 
-  const [invite] = await db
-    .select()
-    .from(organizationInvites)
-    .where(
-      and(
-        eq(organizationInvites.id, body.inviteId),
-        eq(organizationInvites.organizationId, body.organizationId),
-      ),
-    )
-    .limit(1);
+  const inviteRepo = new DrizzleInviteRepository(db);
+  const invite = await inviteRepo.findById(body.inviteId);
 
-  if (!invite) {
+  if (!invite || invite.organizationId !== body.organizationId) {
     return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
   }
 
+  // Extend expiry — entity doesn't expose expiresAt mutation, so use raw update
   const newExpiresAt = new Date();
   newExpiresAt.setDate(newExpiresAt.getDate() + 7);
 
-  const [updated] = await db
+  await db
     .update(organizationInvites)
     .set({ expiresAt: newExpiresAt })
-    .where(eq(organizationInvites.id, body.inviteId))
-    .returning();
+    .where(eq(organizationInvites.id, body.inviteId));
 
-  return c.json(serializeInvite(updated));
+  const updated = await inviteRepo.findById(body.inviteId);
+  if (!updated) {
+    return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
+  }
+  return c.json(serializeInvite(updated.toProps()));
 });
 
 dispatchRoutes.post('/invites/accept', async (c) => {
@@ -911,12 +891,10 @@ dispatchRoutes.post('/invites/accept', async (c) => {
     );
   }
 
-  const [invite] = await db
-    .select()
-    .from(organizationInvites)
-    .where(eq(organizationInvites.token, body.token))
-    .limit(1);
+  const inviteRepo = new DrizzleInviteRepository(db);
+  const memberRepo = new DrizzleMemberRepository(db);
 
+  const invite = await inviteRepo.findByToken(body.token);
   if (!invite) {
     return c.json(
       { code: 'NOT_FOUND', message: 'Invite not found or expired' },
@@ -924,7 +902,7 @@ dispatchRoutes.post('/invites/accept', async (c) => {
     );
   }
 
-  if (invite.expiresAt && new Date() > invite.expiresAt) {
+  if (invite.isExpired()) {
     return c.json({ code: 'BAD_REQUEST', message: 'Invite has expired' }, 400);
   }
 
@@ -935,16 +913,10 @@ dispatchRoutes.post('/invites/accept', async (c) => {
     );
   }
 
-  const [existingMember] = await db
-    .select()
-    .from(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.organizationId, invite.organizationId),
-        eq(organizationMembers.userId, tenant.userId),
-      ),
-    )
-    .limit(1);
+  const existingMember = await memberRepo.findByOrgAndUser(
+    asOrganizationId(invite.organizationId),
+    asUserId(tenant.userId),
+  );
 
   if (existingMember) {
     return c.json(
@@ -953,17 +925,16 @@ dispatchRoutes.post('/invites/accept', async (c) => {
     );
   }
 
-  await db.insert(organizationMembers).values({
+  invite.accept();
+  await inviteRepo.save(invite);
+
+  const member = OrganizationMember.create({
     organizationId: invite.organizationId,
     userId: tenant.userId,
     role: invite.role,
     invitedBy: invite.invitedBy,
   });
-
-  await db
-    .update(organizationInvites)
-    .set({ acceptedAt: new Date(), status: 'accepted' })
-    .where(eq(organizationInvites.id, invite.id));
+  await memberRepo.save(member);
 
   return c.json({ success: true, organizationId: invite.organizationId });
 });

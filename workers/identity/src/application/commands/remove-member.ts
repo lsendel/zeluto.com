@@ -1,51 +1,28 @@
-import { organizationMembers } from '@mauntic/identity-domain';
-import { and, eq } from 'drizzle-orm';
-import type { DrizzleDb } from '../../infrastructure/database.js';
+import type { OrganizationId, UserId } from '@mauntic/domain-kernel';
+import type { MemberRepository } from '@mauntic/identity-domain';
 
 export async function removeMember(
-  db: DrizzleDb,
-  organizationId: string,
-  userId: string,
+  memberRepo: MemberRepository,
+  organizationId: OrganizationId,
+  userId: UserId,
   actorRole: string,
 ) {
-  // Only owner/admin can remove members
   if (actorRole !== 'owner' && actorRole !== 'admin') {
     throw new InsufficientPermissionsError(
       'Only owners and admins can remove members',
     );
   }
 
-  // Find the membership
-  const [membership] = await db
-    .select()
-    .from(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.organizationId, organizationId),
-        eq(organizationMembers.userId, userId),
-      ),
-    )
-    .limit(1);
-
-  if (!membership) {
+  const member = await memberRepo.findByOrgAndUser(organizationId, userId);
+  if (!member) {
     throw new MemberNotFoundError(userId, organizationId);
   }
 
-  // Cannot remove the owner
-  if (membership.role === 'owner') {
+  if (member.role === 'owner') {
     throw new CannotRemoveOwnerError();
   }
 
-  // Delete the membership
-  await db
-    .delete(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.organizationId, organizationId),
-        eq(organizationMembers.userId, userId),
-      ),
-    );
-
+  await memberRepo.delete(member.id);
   return { success: true };
 }
 

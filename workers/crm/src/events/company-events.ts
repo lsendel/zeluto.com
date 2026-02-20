@@ -4,6 +4,11 @@ import type {
   CompanyUpdatedEvent,
   DomainEventMetadata,
 } from '@mauntic/domain-kernel';
+import {
+  asCompanyId,
+  asOrganizationId,
+  asUserId,
+} from '@mauntic/domain-kernel';
 
 function meta(organizationId: string): DomainEventMetadata {
   return {
@@ -13,7 +18,7 @@ function meta(organizationId: string): DomainEventMetadata {
     timestamp: new Date().toISOString(),
     correlationId: crypto.randomUUID(),
     tenantContext: {
-      organizationId: organizationId as unknown as number,
+      organizationId: asOrganizationId(organizationId),
     },
   };
 }
@@ -26,8 +31,8 @@ export function companyCreated(company: {
   return {
     type: 'crm.CompanyCreated',
     data: {
-      organizationId: company.organizationId as unknown as number,
-      companyId: company.id as unknown as number,
+      organizationId: asOrganizationId(company.organizationId),
+      companyId: asCompanyId(company.id),
       name: company.name,
     },
     metadata: meta(company.organizationId),
@@ -42,8 +47,8 @@ export function companyUpdated(company: {
   return {
     type: 'crm.CompanyUpdated',
     data: {
-      organizationId: company.organizationId as unknown as number,
-      companyId: company.id as unknown as number,
+      organizationId: asOrganizationId(company.organizationId),
+      companyId: asCompanyId(company.id),
       fields: company.fields,
     },
     metadata: meta(company.organizationId),
@@ -58,9 +63,9 @@ export function companyDeleted(input: {
   return {
     type: 'crm.CompanyDeleted',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      companyId: input.companyId as unknown as number,
-      deletedBy: input.deletedBy as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      companyId: asCompanyId(input.companyId),
+      deletedBy: asUserId(input.deletedBy),
     },
     metadata: meta(input.organizationId),
   };
