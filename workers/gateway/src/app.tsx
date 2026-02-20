@@ -25,12 +25,18 @@ import { createPageRoutes } from './routes/pages.js';
 export function createApp() {
   const app = new Hono<Env>();
 
-  // --- Global Middleware ---
+  // --- Global Middleware (cheap, needed everywhere) ---
   app.use('*', corsMiddleware(['https://zeluto.com', 'http://localhost:8787']));
   app.use('*', loggingMiddleware('gateway'));
-  app.use('*', authMiddleware());
-  app.use('*', tenantMiddleware());
-  app.use('*', async (c, next) => csrfMiddleware(c.env.KV)(c, next));
+
+  // --- Scoped Middleware (skip /health and /assets/*) ---
+  app.use('/api/*', authMiddleware());
+  app.use('/app/*', authMiddleware());
+  app.use('/login', authMiddleware());
+  app.use('/', authMiddleware());
+  app.use('/api/v1/*', tenantMiddleware());
+  app.use('/app/*', tenantMiddleware());
+  app.use('/app/*', async (c, next) => csrfMiddleware(c.env.KV)(c, next));
   app.use('/api/*', rateLimitMiddleware());
   app.use('/api/v1/*', quotaMiddleware());
 
