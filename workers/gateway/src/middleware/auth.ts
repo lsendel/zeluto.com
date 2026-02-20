@@ -19,6 +19,17 @@ export interface SessionData {
   organization?: SessionOrganization;
 }
 
+export function extractSessionToken(headers: Headers): string | null {
+  const cookie = headers.get('Cookie');
+  if (!cookie) return null;
+  const match = cookie.match(/better-auth\.session_token=([^;]+)/);
+  return match?.[1] ?? null;
+}
+
+function sessionCacheKey(token: string): string {
+  return `session:${token.slice(0, 16)}`;
+}
+
 /**
  * Auth middleware - validates session via Identity Worker
  * Calls IDENTITY service binding to validate session cookie/token
@@ -55,6 +66,22 @@ export function authMiddleware(): MiddlewareHandler<Env> {
     }
 
     try {
+      // Check KV cache for validated session
+      const sessionToken = extractSessionToken(c.req.raw.headers);
+      if (sessionToken) {
+        const cacheKey = sessionCacheKey(sessionToken);
+        const cached = await c.env.KV.get(cacheKey, 'json') as SessionData | null;
+        if (cached) {
+          c.set('user', cached.user);
+          c.set('userId', cached.user.id);
+          if (cached.organization) {
+            c.set('organization', cached.organization);
+            c.set('organizationId', cached.organization.id);
+          }
+          return next();
+        }
+      }
+
       // Forward request to Identity Worker to validate session
       let identityResponse = await fetchIdentitySessionViaDispatch(c);
       if (!identityResponse) {
@@ -132,6 +159,12 @@ export function authMiddleware(): MiddlewareHandler<Env> {
         } else {
           return c.redirect('/app/onboarding/org');
         }
+      }
+
+      // Cache validated session in KV (60s TTL)
+      if (sessionToken) {
+        const cacheKey = sessionCacheKey(sessionToken);
+        await c.env.KV.put(cacheKey, JSON.stringify(sessionData), { expirationTtl: 60 }).catch(() => {});
       }
 
       await next();
