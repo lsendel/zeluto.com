@@ -2,7 +2,9 @@ import {
   boolean,
   integer,
   jsonb,
+  numeric,
   pgSchema,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -102,5 +104,34 @@ export const sending_domains = deliverySchema.table(
   },
   (table) => ({
     orgIdx: { columns: [table.organization_id] },
+  }),
+);
+
+// seed_tests: inbox placement seed testing
+export const seed_tests = deliverySchema.table(
+  'seed_tests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organization_id: uuid('organization_id').notNull(),
+    sending_domain_id: uuid('sending_domain_id').references(
+      () => sending_domains.id,
+    ),
+    subject_line: varchar('subject_line', { length: 500 }).notNull(),
+    html_body: text('html_body').notNull(),
+    from_address: varchar('from_address', { length: 255 }).notNull(),
+    status: varchar('status', { length: 20 })
+      .notNull()
+      .default('pending'), // pending/sending/waiting/completed/failed
+    results: jsonb('results').notNull(), // SeedResult[]
+    inbox_rate: numeric('inbox_rate', { precision: 5, scale: 2 }),
+    spam_rate: numeric('spam_rate', { precision: 5, scale: 2 }),
+    missing_rate: numeric('missing_rate', { precision: 5, scale: 2 }),
+    started_at: timestamp('started_at'),
+    completed_at: timestamp('completed_at'),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    orgIdx: { columns: [table.organization_id] },
+    statusIdx: { columns: [table.organization_id, table.status] },
   }),
 );

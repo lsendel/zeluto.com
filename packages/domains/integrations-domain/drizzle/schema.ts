@@ -41,6 +41,43 @@ export const syncJobs = integrationsSchema.table('sync_jobs', {
   error: text('error'),
 });
 
+// OAuth apps (marketplace integration registrations)
+export const oauthApps = integrationsSchema.table('oauth_apps', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id'), // null for platform-level apps
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  logoUrl: text('logo_url'),
+  clientId: varchar('client_id', { length: 64 }).notNull().unique(),
+  clientSecret: varchar('client_secret', { length: 128 }).notNull(),
+  redirectUris: jsonb('redirect_uris').notNull(), // string[]
+  scopes: jsonb('scopes').notNull(), // string[]
+  isPublished: boolean('is_published').default(false).notNull(),
+  isVerified: boolean('is_verified').default(false).notNull(),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// OAuth authorization grants
+export const oauthGrants = integrationsSchema.table('oauth_grants', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  appId: uuid('app_id')
+    .notNull()
+    .references(() => oauthApps.id, { onDelete: 'cascade' }),
+  organizationId: uuid('organization_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  code: varchar('code', { length: 128 }).unique(), // authorization code (short-lived)
+  accessToken: varchar('access_token', { length: 128 }).unique(),
+  refreshToken: varchar('refresh_token', { length: 128 }).unique(),
+  scopes: jsonb('scopes').notNull(), // approved scopes
+  codeExpiresAt: timestamp('code_expires_at'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at'),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at'),
+  revokedAt: timestamp('revoked_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Webhooks (outbound notifications)
 export const webhooks = integrationsSchema.table('webhooks', {
   id: uuid('id').primaryKey().defaultRandom(),

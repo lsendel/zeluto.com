@@ -12,6 +12,7 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { deliverabilityRoutes } from './interface/deliverability-routes.js';
 import { deliveryRoutes } from './interface/delivery-routes.js';
 import { deliveryDispatchRoutes } from './interface/dispatch-routes.js';
 import { domainRoutes } from './interface/domain-routes.js';
@@ -77,6 +78,10 @@ export function createApp() {
   app.use('/api/v1/delivery/sending-domains/*', tenantMiddleware());
   app.use('/api/v1/delivery/warmup', tenantMiddleware());
   app.use('/api/v1/delivery/warmup/*', tenantMiddleware());
+  app.use('/api/v1/delivery/seed-tests', tenantMiddleware());
+  app.use('/api/v1/delivery/seed-tests/*', tenantMiddleware());
+  app.use('/api/v1/delivery/diagnostics', tenantMiddleware());
+  app.use('/api/v1/delivery/diagnostics/*', tenantMiddleware());
 
   // Mount route handlers
   app.route('/', deliveryRoutes);
@@ -85,6 +90,7 @@ export function createApp() {
   app.route('/', domainRoutes);
   app.route('/', warmupRoutes);
   app.route('/', trackingRoutes);
+  app.route('/', deliverabilityRoutes);
   app.route('/__dispatch/delivery', deliveryDispatchRoutes);
 
   return app;

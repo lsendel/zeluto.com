@@ -9,6 +9,20 @@ export {
 } from './delivery-job.js';
 
 export {
+  type InboxPlacement,
+  InboxPlacementSchema,
+  SeedTest,
+  type SeedTestProps,
+  SeedTestPropsSchema,
+  type SeedTestStatus,
+  SeedTestStatusSchema,
+  type SeedProvider,
+  SeedProviderSchema,
+  type SeedResult,
+  SeedResultSchema,
+} from './seed-test.js';
+
+export {
   ProviderConfig,
   type ProviderConfigProps,
   ProviderConfigPropsSchema,

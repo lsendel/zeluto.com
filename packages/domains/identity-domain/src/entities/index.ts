@@ -14,6 +14,17 @@ export {
   OrganizationMemberPropsSchema,
 } from './organization-member.js';
 export {
+  SsoConnection,
+  type SsoConnectionProps,
+  SsoConnectionPropsSchema,
+  type SsoType,
+  SsoTypeSchema,
+  type SamlConfig,
+  SamlConfigSchema,
+  type OidcConfig,
+  OidcConfigSchema,
+} from './sso-connection.js';
+export {
   User,
   type UserProps,
   UserPropsSchema,

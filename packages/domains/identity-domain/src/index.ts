@@ -5,5 +5,7 @@ export * from '../drizzle/schema.js';
 export * from './entities/index.js';
 // Repository Interfaces
 export * from './repositories/index.js';
+// Services
+export * from './services/sso-service.js';
 // Value Objects
 export * from './value-objects/index.js';

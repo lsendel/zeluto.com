@@ -68,6 +68,34 @@ export const verifications = identitySchema.table('verification', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// SSO connections (per-org SAML/OIDC configuration)
+export const ssoConnections = identitySchema.table('sso_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  type: varchar('type', { length: 10 }).notNull(), // saml, oidc
+  displayName: varchar('display_name', { length: 255 }).notNull(),
+  emailDomain: varchar('email_domain', { length: 255 }).notNull(), // e.g. "acme.com"
+  isEnabled: boolean('is_enabled').default(false).notNull(),
+
+  // SAML fields
+  samlEntityId: text('saml_entity_id'),
+  samlSsoUrl: text('saml_sso_url'),
+  samlCertificate: text('saml_certificate'), // IdP X.509 cert (PEM)
+  samlAcsUrl: text('saml_acs_url'),
+
+  // OIDC fields
+  oidcIssuer: text('oidc_issuer'),
+  oidcClientId: text('oidc_client_id'),
+  oidcClientSecret: text('oidc_client_secret'), // encrypted at rest
+  oidcAuthorizationUrl: text('oidc_authorization_url'),
+  oidcTokenUrl: text('oidc_token_url'),
+  oidcUserInfoUrl: text('oidc_userinfo_url'),
+  oidcScopes: text('oidc_scopes'), // space-separated
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Organizations — the tenancy unit
 export const organizations = identitySchema.table('organizations', {
   id: uuid('id').primaryKey().defaultRandom(),

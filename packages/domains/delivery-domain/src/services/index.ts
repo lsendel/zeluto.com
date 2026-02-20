@@ -1,4 +1,12 @@
 export {
+  DeliverabilityDiagnostics,
+  type DeliverabilityIssue,
+  type DeliverabilityMetrics,
+  type DeliverabilityReport,
+  type DeliveryEventSummary,
+  type HealthGrade,
+} from './deliverability-diagnostics.js';
+export {
   DeliveryPipeline,
   type DeliveryPipelineDeps,
   type DeliveryPipelineInput,

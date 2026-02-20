@@ -11,6 +11,7 @@ import { DrizzleOrganizationRepository } from './infrastructure/repositories/dri
 import authRoutes from './interface/auth-routes.js';
 import identityDispatchRoutes from './interface/dispatch-routes.js';
 import orgRoutes from './interface/org-routes.js';
+import { ssoRoutes } from './interface/sso-routes.js';
 import userRoutes from './interface/user-routes.js';
 
 type AppEnv = {
@@ -123,5 +124,6 @@ app.use('/api/v1/identity/*', async (c, next) => {
 // Mount identity management routes
 app.route('/', userRoutes);
 app.route('/', orgRoutes);
+app.route('/', ssoRoutes);
 
 export default app;

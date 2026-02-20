@@ -1,3 +1,4 @@
+import { ScoreExplainer } from '@mauntic/scoring-domain';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import { DrizzleLeadScoreRepository } from '../infrastructure/drizzle-lead-score-repository.js';
@@ -27,6 +28,62 @@ scoreRoutes.get('/api/v1/scoring/contacts/:contactId/score', async (c) => {
 
   return c.json(score.toProps());
 });
+
+// GET /api/v1/scoring/contacts/:contactId/score/explain
+scoreRoutes.get(
+  '/api/v1/scoring/contacts/:contactId/score/explain',
+  async (c) => {
+    const { contactId } = c.req.param();
+    const db = c.get('db');
+    const tenant = c.get('tenant');
+    const scoreRepo = new DrizzleLeadScoreRepository(db);
+    const historyRepo = new DrizzleScoreHistoryRepository(db);
+
+    const score = await scoreRepo.findByContact(
+      tenant.organizationId,
+      contactId,
+    );
+    if (!score) {
+      return c.json({
+        grade: 'F',
+        totalScore: 0,
+        summary: 'No scoring data available for this contact yet.',
+        factorExplanations: [],
+        categoryBreakdown: {
+          fit: { score: 0, percentage: 0, label: 'No data' },
+          engagement: { score: 0, percentage: 0, label: 'No data' },
+          intent: { score: 0, percentage: 0, label: 'No data' },
+        },
+      });
+    }
+
+    // Get previous score for trend
+    const history = await historyRepo.findByContact(
+      tenant.organizationId,
+      contactId,
+      { limit: 2 },
+    );
+    const previousScore =
+      history.length >= 2 ? history[1].toProps().totalScore : null;
+
+    const explainer = new ScoreExplainer();
+    const props = score.toProps();
+    const explanation = explainer.explain({
+      totalScore: props.totalScore,
+      engagementScore: props.engagementScore,
+      fitScore: props.fitScore,
+      intentScore: props.intentScore,
+      components: (props.components ?? {}) as Record<string, number>,
+      topContributors: (props.topContributors ?? []) as Array<{
+        factor: string;
+        points: number;
+      }>,
+      previousScore,
+    });
+
+    return c.json(explanation);
+  },
+);
 
 // GET /api/v1/scoring/contacts/:contactId/score/history
 scoreRoutes.get(

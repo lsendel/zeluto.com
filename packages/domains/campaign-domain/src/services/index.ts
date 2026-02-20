@@ -1,3 +1,4 @@
+export * from './copy-generator.js';
 export {
   calculatePoints,
   mapDomainEventToPointEvent,
