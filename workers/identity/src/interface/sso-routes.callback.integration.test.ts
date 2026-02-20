@@ -2,6 +2,11 @@ import { exchangeOidcCode, parseSamlResponse } from '@mauntic/identity-domain';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  completeSsoSessionLink,
+  SsoAccountLinkConflictError,
+  SsoUserBlockedError,
+} from '../application/sso-session-link.js';
+import {
   issueSsoState,
   SSO_STATE_TTL_SECONDS,
 } from '../application/sso-state-store.js';
@@ -37,6 +42,16 @@ vi.mock('../infrastructure/repositories/drizzle-sso-repository.js', () => ({
   findSsoConnectionsByOrg: vi.fn(),
   updateSsoConnection: vi.fn(),
 }));
+
+vi.mock('../application/sso-session-link.js', async () => {
+  const actual = await vi.importActual<
+    typeof import('../application/sso-session-link.js')
+  >('../application/sso-session-link.js');
+  return {
+    ...actual,
+    completeSsoSessionLink: vi.fn(),
+  };
+});
 
 function createSsoApp() {
   const app = new Hono<{ Bindings: Env }>();
@@ -93,6 +108,18 @@ describe('sso callback routes', () => {
     vi.useRealTimers();
     vi.clearAllMocks();
     vi.mocked(createDatabase).mockReturnValue({} as never);
+    vi.mocked(completeSsoSessionLink).mockResolvedValue({
+      user: {
+        id: 'user-1',
+        email: 'user@acme.com',
+        name: 'Acme User',
+      },
+      session: {
+        id: 'session-1',
+        token: 'session-token-1',
+        expiresAt: new Date('2026-02-27T00:00:00.000Z'),
+      },
+    });
   });
 
   it('returns authenticated payload for OIDC callback using state-bound connection', async () => {
@@ -141,6 +168,17 @@ describe('sso callback routes', () => {
 
     expect(response.status).toBe(200);
     expect(findEnabledSsoById).toHaveBeenCalledWith({}, 'conn-oidc-1');
+    expect(completeSsoSessionLink).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        organizationId: 'org-1',
+        connectionId: 'conn-oidc-1',
+        profile: expect.objectContaining({
+          email: 'user@acme.com',
+          externalId: 'oidc-sub-1',
+        }),
+      }),
+    );
     expect(exchangeOidcCode).toHaveBeenCalledWith(
       expect.objectContaining({
         issuer: 'https://acme.okta.com',
@@ -215,6 +253,7 @@ describe('sso callback routes', () => {
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(401);
+    expect(completeSsoSessionLink).toHaveBeenCalledTimes(1);
     await expect(second.json()).resolves.toEqual({
       code: 'SSO_STATE_INVALID',
       message: 'SSO callback state is invalid. Please restart sign-in.',
@@ -353,6 +392,17 @@ describe('sso callback routes', () => {
     );
 
     expect(response.status).toBe(200);
+    expect(completeSsoSessionLink).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        organizationId: 'org-1',
+        connectionId: 'conn-saml-1',
+        profile: expect.objectContaining({
+          email: 'person@acme.com',
+          externalId: 'person@acme.com',
+        }),
+      }),
+    );
     expect(parseSamlResponse).toHaveBeenCalledWith(
       'base64-response',
       expect.objectContaining({
@@ -430,6 +480,122 @@ describe('sso callback routes', () => {
     });
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
+  });
+
+  it('returns forbidden when linked user is blocked during OIDC callback', async () => {
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-oidc-blocked:nonce-b',
+      type: 'oidc',
+      connectionId: 'conn-oidc-blocked',
+      nonce: 'nonce-b',
+    });
+
+    vi.mocked(findEnabledSsoById).mockResolvedValue({
+      id: 'conn-oidc-blocked',
+      organizationId: 'org-1',
+      type: 'oidc',
+      displayName: 'Okta',
+      emailDomain: 'acme.com',
+      isEnabled: true,
+      samlEntityId: null,
+      samlSsoUrl: null,
+      samlCertificate: null,
+      samlAcsUrl: null,
+      oidcIssuer: 'https://acme.okta.com',
+      oidcClientId: 'client-id',
+      oidcClientSecret: 'client-secret',
+      oidcAuthorizationUrl: 'https://acme.okta.com/oauth2/v1/authorize',
+      oidcTokenUrl: 'https://acme.okta.com/oauth2/v1/token',
+      oidcUserInfoUrl: null,
+      oidcScopes: 'openid email profile',
+      createdAt: new Date('2026-02-20T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-20T00:00:00.000Z'),
+    } as Awaited<ReturnType<typeof findEnabledSsoById>>);
+    vi.mocked(exchangeOidcCode).mockResolvedValue({
+      email: 'blocked@acme.com',
+      name: 'Blocked User',
+      externalId: 'oidc-sub-blocked',
+      provider: 'https://acme.okta.com',
+    });
+    vi.mocked(completeSsoSessionLink).mockRejectedValueOnce(
+      new SsoUserBlockedError('User account is blocked'),
+    );
+
+    const app = createSsoApp();
+    const response = await app.request(
+      'http://localhost/api/auth/sso/callback/oidc?code=auth-code-b&state=conn-oidc-blocked:nonce-b',
+      undefined,
+      baseEnv({ KV: kv }),
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      code: 'FORBIDDEN',
+      message: 'User account is blocked',
+    });
+  });
+
+  it('returns conflict when SSO account is linked to another user', async () => {
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-saml-conflict:req-c',
+      type: 'saml',
+      connectionId: 'conn-saml-conflict',
+      nonce: 'req-c',
+    });
+
+    vi.mocked(findEnabledSsoById).mockResolvedValue({
+      id: 'conn-saml-conflict',
+      organizationId: 'org-1',
+      type: 'saml',
+      displayName: 'Azure AD',
+      emailDomain: 'acme.com',
+      isEnabled: true,
+      samlEntityId: 'urn:acme:saml',
+      samlSsoUrl: 'https://login.microsoftonline.com/saml2',
+      samlCertificate: '-----BEGIN CERTIFICATE-----',
+      samlAcsUrl: null,
+      oidcIssuer: null,
+      oidcClientId: null,
+      oidcClientSecret: null,
+      oidcAuthorizationUrl: null,
+      oidcTokenUrl: null,
+      oidcUserInfoUrl: null,
+      oidcScopes: null,
+      createdAt: new Date('2026-02-20T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-20T00:00:00.000Z'),
+    } as Awaited<ReturnType<typeof findEnabledSsoById>>);
+    vi.mocked(parseSamlResponse).mockReturnValue({
+      email: 'person@acme.com',
+      name: 'Person Name',
+      externalId: 'person@acme.com',
+      provider: 'saml',
+    });
+    vi.mocked(completeSsoSessionLink).mockRejectedValueOnce(
+      new SsoAccountLinkConflictError('SSO account is linked to another user'),
+    );
+
+    const app = createSsoApp();
+    const body = new URLSearchParams({
+      SAMLResponse: 'base64-response',
+      RelayState: 'conn-saml-conflict:req-c',
+    });
+    const response = await app.request(
+      'http://localhost/api/auth/sso/callback/saml',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      },
+      baseEnv({ KV: kv }),
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      code: 'CONFLICT',
+      message: 'SSO account is linked to another user',
+    });
   });
 
   it('rejects SAML callback when RelayState is missing', async () => {

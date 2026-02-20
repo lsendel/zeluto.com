@@ -4,8 +4,16 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Env } from '../app.js';
-import { getOverviewStats } from '../infrastructure/repositories/dashboard-repository.js';
+import { runTypedReport } from '../application/report-runner.js';
+import {
+  getOverviewKpis,
+  getOverviewStats,
+} from '../infrastructure/repositories/dashboard-repository.js';
 import { queryEvents } from '../infrastructure/repositories/event-repository.js';
+import {
+  getAttributionModel,
+  getFunnelModel,
+} from '../infrastructure/repositories/funnel-attribution-repository.js';
 import {
   findReportById,
   updateReport,
@@ -38,9 +46,22 @@ vi.mock('../infrastructure/repositories/event-repository.js', () => ({
 }));
 
 vi.mock('../infrastructure/repositories/dashboard-repository.js', () => ({
+  getOverviewKpis: vi.fn(),
   getOverviewStats: vi.fn(),
   getCampaignStats: vi.fn(),
   getJourneyStats: vi.fn(),
+}));
+
+vi.mock(
+  '../infrastructure/repositories/funnel-attribution-repository.js',
+  () => ({
+    getFunnelModel: vi.fn(),
+    getAttributionModel: vi.fn(),
+  }),
+);
+
+vi.mock('../application/report-runner.js', () => ({
+  runTypedReport: vi.fn(),
 }));
 
 vi.mock('../infrastructure/repositories/report-repository.js', () => ({
@@ -217,6 +238,11 @@ describe('analytics dispatch routes parity', () => {
         },
       ],
     });
+    vi.mocked(getOverviewKpis).mockResolvedValue({
+      totalContacts: 45,
+      activeJourneys: 3,
+      campaignsSent: 7,
+    });
 
     const app = createDispatchApp(db);
     const env = createEnv();
@@ -241,15 +267,105 @@ describe('analytics dispatch routes parity', () => {
 
     expect(payload).toEqual(
       expect.objectContaining({
-        totalContacts: 0,
-        activeJourneys: 0,
-        campaignsSent: 0,
+        totalContacts: 45,
+        activeJourneys: 3,
+        campaignsSent: 7,
         emailsSentToday: 10,
         openRate: 60,
         clickRate: 20,
-        conversionRate: 0,
+        conversionRate: 10,
       }),
     );
+  });
+
+  it('returns funnel payload parity for /funnel', async () => {
+    vi.mocked(getFunnelModel).mockResolvedValue({
+      steps: [
+        {
+          step: 'email_sent',
+          totalEvents: 100,
+          uniqueContacts: 100,
+          conversionFromPrevious: 100,
+        },
+        {
+          step: 'email_opened',
+          totalEvents: 60,
+          uniqueContacts: 55,
+          conversionFromPrevious: 55,
+        },
+      ],
+    });
+
+    const app = createDispatchApp(db);
+    const response = await app.request(
+      'http://localhost/__dispatch/analytics/funnel',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steps: ['email_sent', 'email_opened'],
+          startDate: '2026-02-01T00:00:00.000Z',
+          endDate: '2026-02-20T23:59:59.000Z',
+        }),
+      },
+      createEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(getFunnelModel).toHaveBeenCalledWith(db, 'org-1', {
+      steps: ['email_sent', 'email_opened'],
+      startDate: '2026-02-01T00:00:00.000Z',
+      endDate: '2026-02-20T23:59:59.000Z',
+    });
+    await expect(response.json()).resolves.toEqual({
+      steps: [
+        {
+          step: 'email_sent',
+          totalEvents: 100,
+          uniqueContacts: 100,
+          conversionFromPrevious: 100,
+        },
+        {
+          step: 'email_opened',
+          totalEvents: 60,
+          uniqueContacts: 55,
+          conversionFromPrevious: 55,
+        },
+      ],
+    });
+  });
+
+  it('returns attribution payload parity for /attribution', async () => {
+    vi.mocked(getAttributionModel).mockResolvedValue({
+      totalConversions: 10,
+      firstTouch: [{ source: 'email', conversions: 6, share: 60 }],
+      lastTouch: [{ source: 'linkedin', conversions: 4, share: 40 }],
+    });
+
+    const app = createDispatchApp(db);
+    const response = await app.request(
+      'http://localhost/__dispatch/analytics/attribution',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversionEvents: ['conversion'],
+        }),
+      },
+      createEnv(),
+    );
+
+    expect(response.status).toBe(200);
+    expect(getAttributionModel).toHaveBeenCalledWith(db, 'org-1', {
+      conversionEvents: ['conversion'],
+      startDate: undefined,
+      endDate: undefined,
+    });
+    await expect(response.json()).resolves.toEqual({
+      totalConversions: 10,
+      firstTouch: [{ source: 'email', conversions: 6, share: 60 }],
+      lastTouch: [{ source: 'linkedin', conversions: 4, share: 40 }],
+    });
   });
 
   it('returns report-run payload parity for /reports/run', async () => {
@@ -265,6 +381,22 @@ describe('analytics dispatch routes parity', () => {
     vi.mocked(updateReport).mockResolvedValue({
       id: 'report-1',
     } as Awaited<ReturnType<typeof updateReport>>);
+    vi.mocked(runTypedReport).mockResolvedValue({
+      reportId: 'report-1',
+      generatedAt: '2026-02-20T23:59:59.000Z',
+      data: {
+        name: 'Lifecycle report',
+        type: 'contact_growth',
+        config: { type: 'contact_growth' },
+        dateRange: {
+          startDate: '2026-02-01T00:00:00.000Z',
+          endDate: '2026-02-20T23:59:59.000Z',
+        },
+        labels: ['2026-02-01'],
+        datasets: [{ label: 'New Contacts', data: [4] }],
+        summary: { totalNewContacts: 4 },
+      },
+    });
 
     const app = createDispatchApp(db);
     const response = await app.request(
@@ -283,6 +415,15 @@ describe('analytics dispatch routes parity', () => {
 
     expect(response.status).toBe(200);
     expect(updateReport).toHaveBeenCalledWith(db, 'org-1', 'report-1', {});
+    expect(runTypedReport).toHaveBeenCalledWith(
+      db,
+      'org-1',
+      expect.objectContaining({ id: 'report-1' }),
+      {
+        startDate: '2026-02-01T00:00:00.000Z',
+        endDate: '2026-02-20T23:59:59.000Z',
+      },
+    );
 
     const payload = await response.json<{
       reportId: string;
@@ -303,9 +444,9 @@ describe('analytics dispatch routes parity', () => {
           startDate: '2026-02-01T00:00:00.000Z',
           endDate: '2026-02-20T23:59:59.000Z',
         },
-        labels: [],
-        datasets: [],
-        summary: {},
+        labels: ['2026-02-01'],
+        datasets: [{ label: 'New Contacts', data: [4] }],
+        summary: { totalNewContacts: 4 },
       }),
     );
   });

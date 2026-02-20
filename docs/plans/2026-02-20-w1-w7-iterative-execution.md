@@ -47,17 +47,17 @@ Mode: Iterative (small vertical slices per turn)
 
 ### W5 - Analytics + Content Maturity
 
-- [ ] Funnel + attribution models
-- [ ] Dashboard/report completeness (remove placeholder payloads)
-- [ ] Reusable content blocks + experiments for forms/pages
-- [ ] Real-time contact timeline consolidation
+- [x] Funnel + attribution models
+- [x] Dashboard/report completeness (remove placeholder payloads)
+- [x] Reusable content blocks + experiments for forms/pages
+- [x] Real-time contact timeline consolidation
 
 ### W6 - Enterprise + Integrations
 
-- [ ] SSO (SAML/OIDC) + SCIM
-- [ ] Integration marketplace/OAuth app model
-- [ ] Environment promotion workflow (dev/stage/prod)
-- [ ] CRM sync conflict policies and admin UX
+- [x] SSO (SAML/OIDC) + SCIM
+- [x] Integration marketplace/OAuth app model
+- [x] Environment promotion workflow (dev/stage/prod)
+- [x] CRM sync conflict policies and admin UX
 
 ### W7 - AI + Deliverability + RevOps Hardening
 
@@ -154,3 +154,72 @@ Mode: Iterative (small vertical slices per turn)
 1. Wire SSO callback authenticated profile to Better Auth session creation/link flow (replace `nextAction` placeholder).
 2. Expand SCIM coverage to include `GET /scim/v2/Users/:id` and membership role mapping parity.
 3. Add SCIM token lifecycle endpoints (revoke/list metadata) and audit events for token issuance/use.
+
+## Iteration 4 Outcome (W5 Completion: Analytics + Content)
+
+- Completed funnel + attribution analytics APIs and dispatch parity:
+  - public routes:
+    - `workers/analytics/src/interface/event-routes.ts`
+  - dispatch routes:
+    - `workers/analytics/src/interface/dispatch-routes.ts`
+  - repository support:
+    - `workers/analytics/src/infrastructure/repositories/funnel-attribution-repository.ts`
+- Removed placeholder payloads from dashboard/report surfaces:
+  - typed report execution:
+    - `workers/analytics/src/application/report-data-source.ts`
+    - `workers/analytics/src/application/report-runner.ts`
+    - `workers/analytics/src/interface/report-routes.ts`
+    - `workers/analytics/src/interface/dispatch-routes.ts`
+  - overview KPI completeness:
+    - `workers/analytics/src/infrastructure/repositories/dashboard-repository.ts`
+    - `workers/analytics/src/interface/dashboard-routes.ts`
+- Reusable content blocks + experiment variants and timeline consolidation confirmed in current HEAD:
+  - `workers/content/src/interface/template-routes.ts`
+  - `workers/content/src/application/template-content-composition.ts`
+  - `workers/analytics/src/application/contact-timeline-read-model.ts`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/content test -- --runInBand`
+  - `pnpm --filter @mauntic/content typecheck`
+  - `pnpm --filter @mauntic/analytics test -- --runInBand`
+  - `pnpm --filter @mauntic/analytics typecheck`
+
+## Iteration 5 Outcome (W6 Completion: Enterprise + Integrations)
+
+- Completed SSO callback to real session-link flow (replaced placeholder next-actions):
+  - `workers/identity/src/application/sso-session-link.ts`
+  - `workers/identity/src/interface/sso-routes.ts`
+  - `workers/identity/src/infrastructure/better-auth.ts`
+  - deterministic callback guardrails expanded:
+    - `workers/identity/src/interface/sso-routes.callback.integration.test.ts`
+- Expanded SCIM to full lifecycle admin + retrieval coverage:
+  - admin lifecycle endpoints:
+    - `GET /api/v1/identity/scim/tokens`
+    - `DELETE /api/v1/identity/scim/tokens/:id`
+  - user retrieval endpoint:
+    - `GET /scim/v2/Users/:id`
+  - role projection in SCIM resources:
+    - `workers/identity/src/application/scim-provisioning-service.ts`
+    - `workers/identity/src/interface/scim-routes.ts`
+    - `workers/identity/src/interface/scim-routes.integration.test.ts`
+- Added environment promotion workflow + CRM conflict policy admin APIs in integrations worker:
+  - domain models:
+    - `packages/domains/integrations-domain/src/entities/environment-promotion.ts`
+    - `packages/domains/integrations-domain/src/entities/crm-conflict-policy.ts`
+  - worker application stores and routes:
+    - `workers/integrations/src/application/environment-promotion-store.ts`
+    - `workers/integrations/src/application/crm-conflict-policy-store.ts`
+    - `workers/integrations/src/interface/enterprise-routes.ts`
+    - `workers/integrations/src/interface/enterprise-routes.integration.test.ts`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/integrations-domain build`
+  - `pnpm --filter @mauntic/integrations-domain test -- --runInBand`
+  - `pnpm --filter @mauntic/integrations test -- --runInBand`
+  - `pnpm --filter @mauntic/integrations typecheck`
+  - `pnpm --filter @mauntic/identity test -- --runInBand`
+  - `pnpm --filter @mauntic/identity typecheck`
+
+## Next Iteration Candidate (W7)
+
+1. Ship AI assist primitives (copy helper + explainability trail + next-best-action endpoint) with deterministic prompt-policy tests.
+2. Implement deliverability diagnostics baseline (seed list orchestration + inbox placement aggregation + surfaced recommendations).
+3. Add RevOps forecast/risk calibration checks and release-readiness rollback drill automation.

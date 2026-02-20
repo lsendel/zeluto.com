@@ -3,9 +3,11 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import { buildContactTimelineReadModel } from '../application/contact-timeline-read-model.js';
+import { runTypedReport } from '../application/report-runner.js';
 import {
   getCampaignStats,
   getJourneyStats,
+  getOverviewKpis,
   getOverviewStats,
 } from '../infrastructure/repositories/dashboard-repository.js';
 import {
@@ -13,6 +15,10 @@ import {
   queryAggregates,
   queryEvents,
 } from '../infrastructure/repositories/event-repository.js';
+import {
+  getAttributionModel,
+  getFunnelModel,
+} from '../infrastructure/repositories/funnel-attribution-repository.js';
 import {
   createReport,
   deleteReport,
@@ -111,6 +117,45 @@ analyticsDispatchRoutes.post('/events/aggregates', async (c) => {
   return c.json({ data: aggregates });
 });
 
+analyticsDispatchRoutes.post('/funnel', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const body = (await c.req.json().catch(() => null)) as {
+    steps?: string[];
+    startDate?: string;
+    endDate?: string;
+  } | null;
+
+  const steps =
+    body?.steps && body.steps.length > 0
+      ? body.steps
+      : ['email_sent', 'email_opened', 'email_clicked', 'conversion'];
+
+  const result = await getFunnelModel(db, tenant.organizationId, {
+    steps,
+    startDate: body?.startDate,
+    endDate: body?.endDate,
+  });
+  return c.json(result);
+});
+
+analyticsDispatchRoutes.post('/attribution', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const body = (await c.req.json().catch(() => null)) as {
+    conversionEvents?: string[];
+    startDate?: string;
+    endDate?: string;
+  } | null;
+
+  const result = await getAttributionModel(db, tenant.organizationId, {
+    conversionEvents: body?.conversionEvents,
+    startDate: body?.startDate,
+    endDate: body?.endDate,
+  });
+  return c.json(result);
+});
+
 analyticsDispatchRoutes.post('/events/activity', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
@@ -186,30 +231,43 @@ analyticsDispatchRoutes.post('/events/timeline', async (c) => {
 analyticsDispatchRoutes.post('/overview', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const stats = await getOverviewStats(db, tenant.organizationId);
+  const [stats, kpis] = await Promise.all([
+    getOverviewStats(db, tenant.organizationId),
+    getOverviewKpis(db, tenant.organizationId),
+  ]);
 
   let emailsSentToday = 0;
   let totalOpened = 0;
   let totalClicked = 0;
+  let totalConverted = 0;
   for (const agg of stats.aggregates) {
     if (agg.eventType === 'email_sent') emailsSentToday += agg.count;
     if (agg.eventType === 'email_opened') totalOpened += agg.count;
     if (agg.eventType === 'email_clicked') totalClicked += agg.count;
+    if (
+      agg.eventType === 'conversion' ||
+      agg.eventType === 'deal_won' ||
+      agg.eventType === 'form_submitted'
+    ) {
+      totalConverted += agg.count;
+    }
   }
 
   const openRate =
     emailsSentToday > 0 ? (totalOpened / emailsSentToday) * 100 : 0;
   const clickRate =
     emailsSentToday > 0 ? (totalClicked / emailsSentToday) * 100 : 0;
+  const conversionRate =
+    emailsSentToday > 0 ? (totalConverted / emailsSentToday) * 100 : 0;
 
   return c.json({
-    totalContacts: 0,
-    activeJourneys: 0,
-    campaignsSent: 0,
+    totalContacts: kpis.totalContacts,
+    activeJourneys: kpis.activeJourneys,
+    campaignsSent: kpis.campaignsSent,
     emailsSentToday,
     openRate: Math.round(openRate * 100) / 100,
     clickRate: Math.round(clickRate * 100) / 100,
-    conversionRate: 0,
+    conversionRate: Math.round(conversionRate * 100) / 100,
     recentActivity: stats.recentActivity,
   });
 });
@@ -263,7 +321,7 @@ analyticsDispatchRoutes.post('/campaigns/performance', async (c) => {
 
   return c.json({
     campaignId: body.campaignId,
-    campaignName: '',
+    campaignName: body.campaignId,
     totalRecipients: sent,
     sent,
     delivered,
@@ -317,7 +375,7 @@ analyticsDispatchRoutes.post('/journeys/performance', async (c) => {
 
   return c.json({
     journeyId: body.journeyId,
-    journeyName: '',
+    journeyName: body.journeyId,
     totalStarted,
     totalCompleted,
     totalFailed,
@@ -460,17 +518,10 @@ analyticsDispatchRoutes.post('/reports/run', async (c) => {
   }
 
   await updateReport(db, tenant.organizationId, body.id, {});
-
-  return c.json({
-    reportId: report.id,
-    generatedAt: new Date().toISOString(),
-    data: {
-      name: report.name,
-      config: report.steps,
-      dateRange: { startDate: body.startDate, endDate: body.endDate },
-      labels: [],
-      datasets: [],
-      summary: {},
-    },
+  const result = await runTypedReport(db, tenant.organizationId, report, {
+    startDate: body.startDate,
+    endDate: body.endDate,
   });
+
+  return c.json(result);
 });

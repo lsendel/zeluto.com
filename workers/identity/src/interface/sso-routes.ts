@@ -4,11 +4,20 @@ import {
   exchangeOidcCode,
   parseSamlResponse,
 } from '@mauntic/identity-domain';
+import { getCookies } from 'better-auth/cookies';
+import type { Context } from 'hono';
 import { Hono } from 'hono';
+import { setSignedCookie } from 'hono/cookie';
+import {
+  completeSsoSessionLink,
+  SsoAccountLinkConflictError,
+  SsoUserBlockedError,
+} from '../application/sso-session-link.js';
 import {
   consumeSsoState,
   issueSsoState,
 } from '../application/sso-state-store.js';
+import { buildBetterAuthOptions } from '../infrastructure/better-auth.js';
 import type { DrizzleDb, Env } from '../infrastructure/database.js';
 import { createDatabase } from '../infrastructure/database.js';
 import {
@@ -448,6 +457,19 @@ ssoRoutes.get('/api/auth/sso/callback/oidc', async (c) => {
       );
     }
 
+    const sessionLink = await completeSsoSessionLink(db, {
+      organizationId: connection.organizationId,
+      connectionId: connection.id,
+      profile: {
+        email: profile.email,
+        name: profile.name ?? null,
+        externalId: profile.externalId,
+      },
+      ipAddress: c.req.header('x-forwarded-for') ?? null,
+      userAgent: c.req.header('user-agent') ?? null,
+    });
+    await setSessionTokenCookie(c, db, sessionLink.session.token);
+
     return c.json({
       status: 'authenticated',
       type: 'oidc',
@@ -459,9 +481,18 @@ ssoRoutes.get('/api/auth/sso/callback/oidc', async (c) => {
         externalId: profile.externalId,
         provider: profile.provider,
       },
-      nextAction: 'profile_resolved_create-or-link-session',
+      user: sessionLink.user,
+      session: {
+        expiresAt: sessionLink.session.expiresAt.toISOString(),
+      },
     });
   } catch (error) {
+    if (error instanceof SsoUserBlockedError) {
+      return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+    }
+    if (error instanceof SsoAccountLinkConflictError) {
+      return c.json({ code: 'CONFLICT', message: error.message }, 409);
+    }
     console.error('OIDC callback error:', error);
     return c.json(
       {
@@ -577,6 +608,19 @@ ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
       );
     }
 
+    const sessionLink = await completeSsoSessionLink(db, {
+      organizationId: connection.organizationId,
+      connectionId: connection.id,
+      profile: {
+        email: profile.email,
+        name: profile.name ?? null,
+        externalId: profile.externalId,
+      },
+      ipAddress: c.req.header('x-forwarded-for') ?? null,
+      userAgent: c.req.header('user-agent') ?? null,
+    });
+    await setSessionTokenCookie(c, db, sessionLink.session.token);
+
     return c.json({
       status: 'authenticated',
       type: 'saml',
@@ -588,10 +632,19 @@ ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
         externalId: profile.externalId,
         provider: profile.provider,
       },
+      user: sessionLink.user,
+      session: {
+        expiresAt: sessionLink.session.expiresAt.toISOString(),
+      },
       relayState,
-      nextAction: 'profile_resolved_create-or-link-session',
     });
   } catch (error) {
+    if (error instanceof SsoUserBlockedError) {
+      return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+    }
+    if (error instanceof SsoAccountLinkConflictError) {
+      return c.json({ code: 'CONFLICT', message: error.message }, 409);
+    }
     console.error('SAML callback error:', error);
     return c.json(
       {
@@ -607,4 +660,20 @@ function isEmailInDomain(email: string, domain: string): boolean {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedDomain = domain.trim().toLowerCase();
   return normalizedEmail.endsWith(`@${normalizedDomain}`);
+}
+
+async function setSessionTokenCookie(
+  c: Context<SsoEnv>,
+  db: DrizzleDb,
+  token: string,
+) {
+  const authOptions = buildBetterAuthOptions(c.env, db);
+  const cookies = getCookies(authOptions);
+  await setSignedCookie(
+    c,
+    cookies.sessionToken.name,
+    token,
+    c.env.BETTER_AUTH_SECRET,
+    cookies.sessionToken.attributes,
+  );
 }

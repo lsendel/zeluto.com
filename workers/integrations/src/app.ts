@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { connectionRoutes } from './interface/connection-routes.js';
+import { enterpriseRoutes } from './interface/enterprise-routes.js';
 import { oauthAppRoutes } from './interface/oauth-app-routes.js';
 import { oauthFlowRoutes } from './interface/oauth-flow-routes.js';
 import { syncRoutes } from './interface/sync-routes.js';
@@ -57,6 +58,7 @@ app.use('/api/v1/integrations/*', async (c, next) => {
 
 // Mount API routes
 app.route('/', connectionRoutes);
+app.route('/', enterpriseRoutes);
 app.route('/', oauthAppRoutes);
 app.route('/', oauthFlowRoutes);
 app.route('/', syncRoutes);

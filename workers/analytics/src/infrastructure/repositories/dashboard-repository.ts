@@ -4,7 +4,7 @@ import {
   eventAggregates,
   journeyDailyStats,
 } from '@mauntic/analytics-domain/drizzle';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gt, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export async function getOverviewStats(db: NeonHttpDatabase, orgId: string) {
@@ -32,6 +32,46 @@ export async function getOverviewStats(db: NeonHttpDatabase, orgId: string) {
     .limit(10);
 
   return { aggregates, recentActivity };
+}
+
+export async function getOverviewKpis(db: NeonHttpDatabase, orgId: string) {
+  const [totalContactsResult, activeJourneysResult, campaignsSentResult] =
+    await Promise.all([
+      db
+        .select({
+          count: sql<number>`count(distinct ${contactActivity.contactId})::int`,
+        })
+        .from(contactActivity)
+        .where(eq(contactActivity.organizationId, orgId)),
+      db
+        .select({
+          count: sql<number>`count(distinct ${journeyDailyStats.journeyId})::int`,
+        })
+        .from(journeyDailyStats)
+        .where(
+          and(
+            eq(journeyDailyStats.organizationId, orgId),
+            gt(journeyDailyStats.active, 0),
+          ),
+        ),
+      db
+        .select({
+          count: sql<number>`count(distinct ${campaignDailyStats.campaignId})::int`,
+        })
+        .from(campaignDailyStats)
+        .where(
+          and(
+            eq(campaignDailyStats.organizationId, orgId),
+            gt(campaignDailyStats.sent, 0),
+          ),
+        ),
+    ]);
+
+  return {
+    totalContacts: totalContactsResult[0]?.count ?? 0,
+    activeJourneys: activeJourneysResult[0]?.count ?? 0,
+    campaignsSent: campaignsSentResult[0]?.count ?? 0,
+  };
 }
 
 export async function getCampaignStats(

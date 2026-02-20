@@ -2,6 +2,7 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import {
   createScimUser,
+  getScimUserById,
   listScimUsers,
   patchScimUserActive,
   ScimUserNotFoundError,
@@ -9,7 +10,9 @@ import {
 } from '../application/scim-provisioning-service.js';
 import {
   issueScimToken,
+  listScimTokenMetadata,
   resolveScimToken,
+  revokeScimTokenById,
 } from '../application/scim-token-store.js';
 import type { DrizzleDb, Env } from '../infrastructure/database.js';
 import { createDatabase } from '../infrastructure/database.js';
@@ -67,6 +70,60 @@ scimRoutes.post('/api/v1/identity/scim/tokens', async (c) => {
   return c.json(issued, 201);
 });
 
+scimRoutes.get('/api/v1/identity/scim/tokens', async (c) => {
+  const tenant = c.get('tenant');
+  if (!tenant) {
+    return c.json(
+      { code: 'FORBIDDEN', message: 'Tenant context is required' },
+      403,
+    );
+  }
+
+  if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
+    return c.json(
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners/admins can list SCIM tokens',
+      },
+      403,
+    );
+  }
+
+  const tokens = await listScimTokenMetadata(c.env.KV, tenant.organizationId);
+  return c.json({ data: tokens });
+});
+
+scimRoutes.delete('/api/v1/identity/scim/tokens/:id', async (c) => {
+  const tenant = c.get('tenant');
+  if (!tenant) {
+    return c.json(
+      { code: 'FORBIDDEN', message: 'Tenant context is required' },
+      403,
+    );
+  }
+
+  if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
+    return c.json(
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners/admins can revoke SCIM tokens',
+      },
+      403,
+    );
+  }
+
+  const revoked = await revokeScimTokenById(
+    c.env.KV,
+    tenant.organizationId,
+    c.req.param('id'),
+  );
+  if (!revoked) {
+    return c.json({ code: 'NOT_FOUND', message: 'SCIM token not found' }, 404);
+  }
+
+  return c.body(null, 204);
+});
+
 scimRoutes.get('/scim/v2/Users', async (c) => {
   const auth = await authorizeScimRequest(c);
   if (auth instanceof Response) return auth;
@@ -90,6 +147,31 @@ scimRoutes.get('/scim/v2/Users', async (c) => {
       ...resource,
     })),
   });
+});
+
+scimRoutes.get('/scim/v2/Users/:id', async (c) => {
+  const auth = await authorizeScimRequest(c);
+  if (auth instanceof Response) return auth;
+
+  const db = createDatabase(c.env);
+
+  try {
+    const resource = await getScimUserById(
+      db,
+      auth.organizationId,
+      c.req.param('id'),
+    );
+    return scimJson({
+      schemas: [SCIM_USER_SCHEMA],
+      ...resource,
+    });
+  } catch (error) {
+    if (error instanceof ScimUserNotFoundError) {
+      return scimError(404, error.message);
+    }
+    console.error('SCIM get user error:', error);
+    return scimError(500, 'Failed to retrieve user');
+  }
 });
 
 scimRoutes.post('/scim/v2/Users', async (c) => {
