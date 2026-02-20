@@ -7,12 +7,22 @@ import {
 import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const MEMBER_COLUMNS = {
+  id: organizationMembers.id,
+  organizationId: organizationMembers.organizationId,
+  userId: organizationMembers.userId,
+  role: organizationMembers.role,
+  invitedBy: organizationMembers.invitedBy,
+  joinedAt: organizationMembers.joinedAt,
+  updatedAt: organizationMembers.updatedAt,
+};
+
 export class DrizzleMemberRepository implements MemberRepository {
   constructor(private readonly db: NeonHttpDatabase<any>) {}
 
   async findById(id: string): Promise<OrganizationMember | null> {
     const [row] = await this.db
-      .select()
+      .select(MEMBER_COLUMNS)
       .from(organizationMembers)
       .where(eq(organizationMembers.id, id))
       .limit(1);
@@ -23,7 +33,7 @@ export class DrizzleMemberRepository implements MemberRepository {
     organizationId: OrganizationId,
   ): Promise<OrganizationMember[]> {
     const rows = await this.db
-      .select()
+      .select(MEMBER_COLUMNS)
       .from(organizationMembers)
       .where(eq(organizationMembers.organizationId, organizationId));
     return rows.map((r) => this.mapToEntity(r));
@@ -31,7 +41,7 @@ export class DrizzleMemberRepository implements MemberRepository {
 
   async findByUser(userId: UserId): Promise<OrganizationMember[]> {
     const rows = await this.db
-      .select()
+      .select(MEMBER_COLUMNS)
       .from(organizationMembers)
       .where(eq(organizationMembers.userId, userId));
     return rows.map((r) => this.mapToEntity(r));
@@ -42,7 +52,7 @@ export class DrizzleMemberRepository implements MemberRepository {
     userId: UserId,
   ): Promise<OrganizationMember | null> {
     const [row] = await this.db
-      .select()
+      .select(MEMBER_COLUMNS)
       .from(organizationMembers)
       .where(
         and(

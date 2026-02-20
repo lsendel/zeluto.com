@@ -17,6 +17,18 @@ import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { buildFilterWhere } from '../../services/filter-engine.js';
 
+const SEGMENT_COLUMNS = {
+  id: segments.id,
+  organization_id: segments.organization_id,
+  name: segments.name,
+  description: segments.description,
+  type: segments.type,
+  filter_criteria: segments.filter_criteria,
+  contact_count: segments.contact_count,
+  created_at: segments.created_at,
+  updated_at: segments.updated_at,
+};
+
 export class DrizzleSegmentRepository implements SegmentRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
@@ -25,7 +37,7 @@ export class DrizzleSegmentRepository implements SegmentRepository {
     id: SegmentId,
   ): Promise<Segment | null> {
     const [row] = await this.db
-      .select()
+      .select(SEGMENT_COLUMNS)
       .from(segments)
       .where(and(eq(segments.id, id), eq(segments.organization_id, orgId)))
       .limit(1);
@@ -39,7 +51,7 @@ export class DrizzleSegmentRepository implements SegmentRepository {
     const offset = (pagination.page - 1) * pagination.limit;
     const [rows, totalResult] = await Promise.all([
       this.db
-        .select()
+        .select(SEGMENT_COLUMNS)
         .from(segments)
         .where(eq(segments.organization_id, orgId))
         .orderBy(desc(segments.created_at))

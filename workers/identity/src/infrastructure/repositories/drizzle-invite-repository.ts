@@ -7,12 +7,25 @@ import {
 import { and, eq, isNull } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const INVITE_COLUMNS = {
+  id: organizationInvites.id,
+  organizationId: organizationInvites.organizationId,
+  email: organizationInvites.email,
+  role: organizationInvites.role,
+  token: organizationInvites.token,
+  invitedBy: organizationInvites.invitedBy,
+  status: organizationInvites.status,
+  expiresAt: organizationInvites.expiresAt,
+  acceptedAt: organizationInvites.acceptedAt,
+  createdAt: organizationInvites.createdAt,
+};
+
 export class DrizzleInviteRepository implements InviteRepository {
   constructor(private readonly db: NeonHttpDatabase<any>) {}
 
   async findById(id: string): Promise<OrganizationInvite | null> {
     const [row] = await this.db
-      .select()
+      .select(INVITE_COLUMNS)
       .from(organizationInvites)
       .where(eq(organizationInvites.id, id))
       .limit(1);
@@ -21,7 +34,7 @@ export class DrizzleInviteRepository implements InviteRepository {
 
   async findByToken(token: string): Promise<OrganizationInvite | null> {
     const [row] = await this.db
-      .select()
+      .select(INVITE_COLUMNS)
       .from(organizationInvites)
       .where(eq(organizationInvites.token, token))
       .limit(1);
@@ -32,7 +45,7 @@ export class DrizzleInviteRepository implements InviteRepository {
     organizationId: OrganizationId,
   ): Promise<OrganizationInvite[]> {
     const rows = await this.db
-      .select()
+      .select(INVITE_COLUMNS)
       .from(organizationInvites)
       .where(eq(organizationInvites.organizationId, organizationId))
       .orderBy(organizationInvites.createdAt);
@@ -41,7 +54,7 @@ export class DrizzleInviteRepository implements InviteRepository {
 
   async findPendingByEmail(email: string): Promise<OrganizationInvite[]> {
     const rows = await this.db
-      .select()
+      .select(INVITE_COLUMNS)
       .from(organizationInvites)
       .where(
         and(

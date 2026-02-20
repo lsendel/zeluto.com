@@ -5,6 +5,14 @@ import { journey_triggers } from '@mauntic/journey-domain/drizzle';
 import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const TRIGGER_COLUMNS = {
+  id: journey_triggers.id,
+  journey_id: journey_triggers.journey_id,
+  organization_id: journey_triggers.organization_id,
+  type: journey_triggers.type,
+  config: journey_triggers.config,
+};
+
 export class DrizzleJourneyTriggerRepository
   implements JourneyTriggerRepository
 {
@@ -15,7 +23,7 @@ export class DrizzleJourneyTriggerRepository
     journeyId: JourneyId,
   ): Promise<JourneyTrigger[]> {
     const rows = await this.db
-      .select()
+      .select(TRIGGER_COLUMNS)
       .from(journey_triggers)
       .where(
         and(
@@ -31,7 +39,7 @@ export class DrizzleJourneyTriggerRepository
     eventType: string,
   ): Promise<JourneyTrigger[]> {
     const rows = await this.db
-      .select()
+      .select(TRIGGER_COLUMNS)
       .from(journey_triggers)
       .where(
         and(

@@ -8,12 +8,26 @@ import {
 import { eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const USER_COLUMNS = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  emailVerified: users.emailVerified,
+  image: users.image,
+  role: users.role,
+  isBlocked: users.isBlocked,
+  lastSignedIn: users.lastSignedIn,
+  loginMethod: users.loginMethod,
+  createdAt: users.createdAt,
+  updatedAt: users.updatedAt,
+};
+
 export class DrizzleUserRepository implements UserRepository {
   constructor(private readonly db: NeonHttpDatabase<any>) {}
 
   async findById(id: UserId): Promise<User | null> {
     const [row] = await this.db
-      .select()
+      .select(USER_COLUMNS)
       .from(users)
       .where(eq(users.id, id))
       .limit(1);
@@ -22,7 +36,7 @@ export class DrizzleUserRepository implements UserRepository {
 
   async findByEmail(email: string): Promise<User | null> {
     const [row] = await this.db
-      .select()
+      .select(USER_COLUMNS)
       .from(users)
       .where(eq(users.email, email))
       .limit(1);

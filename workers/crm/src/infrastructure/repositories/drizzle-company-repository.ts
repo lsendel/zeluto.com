@@ -4,6 +4,18 @@ import type { CompanyId, OrganizationId } from '@mauntic/domain-kernel';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const COMPANY_COLUMNS = {
+  id: companies.id,
+  organization_id: companies.organization_id,
+  name: companies.name,
+  domain: companies.domain,
+  industry: companies.industry,
+  size: companies.size,
+  custom_fields: companies.custom_fields,
+  created_at: companies.created_at,
+  updated_at: companies.updated_at,
+};
+
 export class DrizzleCompanyRepository implements CompanyRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
@@ -12,7 +24,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
     id: CompanyId,
   ): Promise<Company | null> {
     const [row] = await this.db
-      .select()
+      .select(COMPANY_COLUMNS)
       .from(companies)
       .where(and(eq(companies.id, id), eq(companies.organization_id, orgId)))
       .limit(1);
@@ -24,7 +36,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
     domain: string,
   ): Promise<Company | null> {
     const [row] = await this.db
-      .select()
+      .select(COMPANY_COLUMNS)
       .from(companies)
       .where(
         and(eq(companies.domain, domain), eq(companies.organization_id, orgId)),
@@ -51,7 +63,7 @@ export class DrizzleCompanyRepository implements CompanyRepository {
     const where = and(...conditions);
     const [rows, countResult] = await Promise.all([
       this.db
-        .select()
+        .select(COMPANY_COLUMNS)
         .from(companies)
         .where(where)
         .orderBy(desc(companies.created_at))
