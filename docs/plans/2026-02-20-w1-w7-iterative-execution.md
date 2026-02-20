@@ -114,3 +114,43 @@ Mode: Iterative (small vertical slices per turn)
 1. Persist callback state/nonce in KV and validate replay/expiry in OIDC/SAML callbacks.
 2. Add SCIM token model and `/scim/v2/Users` minimal CRUD (list/create/active patch) with org membership projection.
 3. Wire SSO callback authenticated profile to actual session creation/link flow in Better Auth.
+
+## Iteration 3 Outcome (W6 Slice 2: SSO Replay/Expiry + SCIM Baseline)
+
+- Hardened SSO callback security with KV-backed one-time state storage/consumption:
+  - init flow now persists OIDC/SAML callback state in KV with bounded TTL
+  - callback flow now consumes state exactly once and blocks replay attempts
+  - callback flow now distinguishes invalid/missing state vs expired state
+  - files:
+    - `workers/identity/src/application/sso-state-store.ts`
+    - `workers/identity/src/interface/sso-routes.ts`
+- Expanded deterministic callback integration coverage:
+  - OIDC replay guard (second callback with same state rejected)
+  - OIDC expired-state guard
+  - SAML relay-state required guard
+  - file:
+    - `workers/identity/src/interface/sso-routes.callback.integration.test.ts`
+- Added SCIM baseline in identity worker:
+  - SCIM token model persisted in KV with hashed token lookup
+  - tenant-admin token issuance endpoint: `POST /api/v1/identity/scim/tokens`
+  - minimal SCIM Users endpoints:
+    - `GET /scim/v2/Users`
+    - `POST /scim/v2/Users`
+    - `PATCH /scim/v2/Users/:id` (active replace semantics)
+  - org membership projection implemented for active/inactive handling
+  - files:
+    - `workers/identity/src/application/scim-token-store.ts`
+    - `workers/identity/src/application/scim-provisioning-service.ts`
+    - `workers/identity/src/interface/scim-routes.ts`
+    - `workers/identity/src/app.ts`
+    - `workers/identity/src/interface/scim-routes.integration.test.ts`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/identity test -- --runInBand`
+  - `pnpm --filter @mauntic/identity typecheck`
+  - `pnpm --filter @mauntic/identity exec biome check src/interface/scim-routes.ts src/interface/scim-routes.integration.test.ts src/application/scim-token-store.ts src/application/scim-provisioning-service.ts src/interface/sso-routes.ts src/interface/sso-routes.callback.integration.test.ts src/app.ts --write`
+
+## Next Iteration Candidate (W6)
+
+1. Wire SSO callback authenticated profile to Better Auth session creation/link flow (replace `nextAction` placeholder).
+2. Expand SCIM coverage to include `GET /scim/v2/Users/:id` and membership role mapping parity.
+3. Add SCIM token lifecycle endpoints (revoke/list metadata) and audit events for token issuance/use.

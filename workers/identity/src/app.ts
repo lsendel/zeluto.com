@@ -11,6 +11,7 @@ import { DrizzleOrganizationRepository } from './infrastructure/repositories/dri
 import authRoutes from './interface/auth-routes.js';
 import identityDispatchRoutes from './interface/dispatch-routes.js';
 import orgRoutes from './interface/org-routes.js';
+import { scimRoutes } from './interface/scim-routes.js';
 import { ssoRoutes } from './interface/sso-routes.js';
 import userRoutes from './interface/user-routes.js';
 
@@ -111,6 +112,7 @@ app.route('/__dispatch/identity', identityDispatchRoutes);
 
 // Mount auth routes (no tenant context needed - Better Auth handles its own auth)
 app.route('/', authRoutes);
+app.route('/', scimRoutes);
 
 // Tenant context middleware for identity management routes
 // These routes require X-Tenant-Context header from the gateway

@@ -1,6 +1,10 @@
 import { exchangeOidcCode, parseSamlResponse } from '@mauntic/identity-domain';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  issueSsoState,
+  SSO_STATE_TTL_SECONDS,
+} from '../application/sso-state-store.js';
 import type { Env } from '../infrastructure/database.js';
 import { createDatabase } from '../infrastructure/database.js';
 import {
@@ -40,11 +44,43 @@ function createSsoApp() {
   return app;
 }
 
+function createMockKv(now: () => number): KVNamespace {
+  const store = new Map<string, { value: string; expiresAt: number | null }>();
+
+  return {
+    async get(key: string) {
+      const entry = store.get(key);
+      if (!entry) return null;
+      if (entry.expiresAt !== null && entry.expiresAt <= now()) {
+        store.delete(key);
+        return null;
+      }
+      return entry.value;
+    },
+    async put(
+      key: string,
+      value: string | ArrayBuffer | ArrayBufferView,
+      options?: KVNamespacePutOptions,
+    ) {
+      const ttl = options?.expirationTtl;
+      const expiresAt =
+        typeof ttl === 'number' ? now() + ttl * 1000 : Number.POSITIVE_INFINITY;
+      store.set(key, {
+        value: typeof value === 'string' ? value : String(value),
+        expiresAt,
+      });
+    },
+    async delete(key: string) {
+      store.delete(key);
+    },
+  } as KVNamespace;
+}
+
 function baseEnv(overrides?: Partial<Env>): Env {
   return {
     DB: {} as Hyperdrive,
     DATABASE_URL: 'postgres://db',
-    KV: {} as KVNamespace,
+    KV: createMockKv(() => Date.now()),
     BETTER_AUTH_SECRET: 'secret',
     BETTER_AUTH_URL: 'https://app.zeluto.test',
     APP_DOMAIN: 'zeluto.test',
@@ -54,11 +90,20 @@ function baseEnv(overrides?: Partial<Env>): Env {
 
 describe('sso callback routes', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
     vi.mocked(createDatabase).mockReturnValue({} as never);
   });
 
   it('returns authenticated payload for OIDC callback using state-bound connection', async () => {
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-oidc-1:nonce-1',
+      type: 'oidc',
+      connectionId: 'conn-oidc-1',
+      nonce: 'nonce-1',
+    });
+
     vi.mocked(findEnabledSsoById).mockResolvedValue({
       id: 'conn-oidc-1',
       organizationId: 'org-1',
@@ -91,7 +136,7 @@ describe('sso callback routes', () => {
     const response = await app.request(
       'http://localhost/api/auth/sso/callback/oidc?code=auth-code-1&state=conn-oidc-1:nonce-1',
       undefined,
-      baseEnv(),
+      baseEnv({ KV: kv }),
     );
 
     expect(response.status).toBe(200);
@@ -120,7 +165,100 @@ describe('sso callback routes', () => {
     );
   });
 
+  it('rejects OIDC callback replay after first successful consumption', async () => {
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-oidc-replay:nonce-r',
+      type: 'oidc',
+      connectionId: 'conn-oidc-replay',
+      nonce: 'nonce-r',
+    });
+
+    vi.mocked(findEnabledSsoById).mockResolvedValue({
+      id: 'conn-oidc-replay',
+      organizationId: 'org-1',
+      type: 'oidc',
+      displayName: 'Okta',
+      emailDomain: 'acme.com',
+      isEnabled: true,
+      samlEntityId: null,
+      samlSsoUrl: null,
+      samlCertificate: null,
+      samlAcsUrl: null,
+      oidcIssuer: 'https://acme.okta.com',
+      oidcClientId: 'client-id',
+      oidcClientSecret: 'client-secret',
+      oidcAuthorizationUrl: 'https://acme.okta.com/oauth2/v1/authorize',
+      oidcTokenUrl: 'https://acme.okta.com/oauth2/v1/token',
+      oidcUserInfoUrl: null,
+      oidcScopes: 'openid email profile',
+      createdAt: new Date('2026-02-20T00:00:00.000Z'),
+      updatedAt: new Date('2026-02-20T00:00:00.000Z'),
+    } as Awaited<ReturnType<typeof findEnabledSsoById>>);
+    vi.mocked(exchangeOidcCode).mockResolvedValue({
+      email: 'user@acme.com',
+      externalId: 'oidc-sub-replay',
+      provider: 'https://acme.okta.com',
+    });
+
+    const app = createSsoApp();
+    const first = await app.request(
+      'http://localhost/api/auth/sso/callback/oidc?code=auth-code-r1&state=conn-oidc-replay:nonce-r',
+      undefined,
+      baseEnv({ KV: kv }),
+    );
+    const second = await app.request(
+      'http://localhost/api/auth/sso/callback/oidc?code=auth-code-r2&state=conn-oidc-replay:nonce-r',
+      undefined,
+      baseEnv({ KV: kv }),
+    );
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(401);
+    await expect(second.json()).resolves.toEqual({
+      code: 'SSO_STATE_INVALID',
+      message: 'SSO callback state is invalid. Please restart sign-in.',
+    });
+  });
+
+  it('returns expired-state error for OIDC callback after ttl window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-20T00:00:00.000Z'));
+
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-oidc-expired:nonce-e',
+      type: 'oidc',
+      connectionId: 'conn-oidc-expired',
+      nonce: 'nonce-e',
+    });
+
+    vi.setSystemTime(new Date(Date.now() + (SSO_STATE_TTL_SECONDS + 1) * 1000));
+
+    const app = createSsoApp();
+    const response = await app.request(
+      'http://localhost/api/auth/sso/callback/oidc?code=auth-code-expired&state=conn-oidc-expired:nonce-e',
+      undefined,
+      baseEnv({ KV: kv }),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      code: 'SSO_STATE_EXPIRED',
+      message: 'SSO callback state expired. Please restart sign-in.',
+    });
+    expect(findEnabledSsoById).not.toHaveBeenCalled();
+  });
+
   it('rejects OIDC callback when profile email domain does not match connection domain', async () => {
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-oidc-2:nonce-2',
+      type: 'oidc',
+      connectionId: 'conn-oidc-2',
+      nonce: 'nonce-2',
+    });
+
     vi.mocked(findEnabledSsoById).mockResolvedValue({
       id: 'conn-oidc-2',
       organizationId: 'org-1',
@@ -152,7 +290,7 @@ describe('sso callback routes', () => {
     const response = await app.request(
       'http://localhost/api/auth/sso/callback/oidc?code=auth-code-2&state=conn-oidc-2:nonce-2',
       undefined,
-      baseEnv(),
+      baseEnv({ KV: kv }),
     );
 
     expect(response.status).toBe(403);
@@ -163,6 +301,14 @@ describe('sso callback routes', () => {
   });
 
   it('returns authenticated payload for SAML callback using relayState-bound connection', async () => {
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-saml-1:req-1',
+      type: 'saml',
+      connectionId: 'conn-saml-1',
+      nonce: 'req-1',
+    });
+
     vi.mocked(findEnabledSsoById).mockResolvedValue({
       id: 'conn-saml-1',
       organizationId: 'org-1',
@@ -203,7 +349,7 @@ describe('sso callback routes', () => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
       },
-      baseEnv(),
+      baseEnv({ KV: kv }),
     );
 
     expect(response.status).toBe(200);
@@ -229,6 +375,14 @@ describe('sso callback routes', () => {
     const consoleError = vi
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
+    const kv = createMockKv(() => Date.now());
+    await issueSsoState(kv, {
+      state: 'conn-saml-2:req-2',
+      type: 'saml',
+      connectionId: 'conn-saml-2',
+      nonce: 'req-2',
+    });
+
     vi.mocked(findEnabledSsoById).mockResolvedValue({
       id: 'conn-saml-2',
       organizationId: 'org-1',
@@ -266,7 +420,7 @@ describe('sso callback routes', () => {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
       },
-      baseEnv(),
+      baseEnv({ KV: kv }),
     );
 
     expect(response.status).toBe(401);
@@ -278,7 +432,30 @@ describe('sso callback routes', () => {
     consoleError.mockRestore();
   });
 
+  it('rejects SAML callback when RelayState is missing', async () => {
+    const app = createSsoApp();
+    const body = new URLSearchParams({
+      SAMLResponse: 'base64-response',
+    });
+    const response = await app.request(
+      'http://localhost/api/auth/sso/callback/saml',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      },
+      baseEnv(),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      code: 'VALIDATION_ERROR',
+      message: 'Missing RelayState',
+    });
+  });
+
   it('binds init state to connection id for callback correlation', async () => {
+    const kv = createMockKv(() => Date.now());
     vi.mocked(findEnabledSsoByDomain).mockResolvedValue({
       id: 'conn-oidc-init',
       organizationId: 'org-1',
@@ -305,7 +482,7 @@ describe('sso callback routes', () => {
     const response = await app.request(
       'http://localhost/api/auth/sso/init?email=alice@acme.com',
       undefined,
-      baseEnv(),
+      baseEnv({ KV: kv }),
     );
 
     expect(response.status).toBe(200);

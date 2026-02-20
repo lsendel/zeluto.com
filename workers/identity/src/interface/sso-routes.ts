@@ -5,6 +5,10 @@ import {
   parseSamlResponse,
 } from '@mauntic/identity-domain';
 import { Hono } from 'hono';
+import {
+  consumeSsoState,
+  issueSsoState,
+} from '../application/sso-state-store.js';
 import type { DrizzleDb, Env } from '../infrastructure/database.js';
 import { createDatabase } from '../infrastructure/database.js';
 import {
@@ -269,6 +273,12 @@ ssoRoutes.get('/api/auth/sso/init', async (c) => {
     connection.oidcTokenUrl
   ) {
     const redirectUri = `${baseUrl}/api/auth/sso/callback/oidc`;
+    await issueSsoState(c.env.KV, {
+      state,
+      type: 'oidc',
+      connectionId: connection.id,
+      nonce,
+    });
     const authorizeUrl = buildOidcAuthorizeUrl(
       {
         issuer: connection.oidcIssuer,
@@ -300,8 +310,13 @@ ssoRoutes.get('/api/auth/sso/init', async (c) => {
     connection.samlCertificate
   ) {
     const callbackUrl = `${baseUrl}/api/auth/sso/callback/saml`;
-    const requestId = crypto.randomUUID();
-    const relayState = `${connection.id}:${requestId}`;
+    await issueSsoState(c.env.KV, {
+      state,
+      type: 'saml',
+      connectionId: connection.id,
+      nonce,
+    });
+    const relayState = state;
     const authorizeUrl = buildSamlAuthorizeUrl(
       {
         entityId: connection.samlEntityId,
@@ -341,17 +356,40 @@ ssoRoutes.get('/api/auth/sso/callback/oidc', async (c) => {
     );
   }
 
-  const parsedStateConnectionId = parseConnectionIdFromState(state);
-  const connectionId = explicitConnectionId ?? parsedStateConnectionId;
-  if (!connectionId) {
+  const consumedState = await consumeSsoState(c.env.KV, state, 'oidc');
+  if (consumedState.status === 'expired') {
+    return c.json(
+      {
+        code: 'SSO_STATE_EXPIRED',
+        message: 'SSO callback state expired. Please restart sign-in.',
+      },
+      401,
+    );
+  }
+
+  if (consumedState.status !== 'valid') {
+    return c.json(
+      {
+        code: 'SSO_STATE_INVALID',
+        message: 'SSO callback state is invalid. Please restart sign-in.',
+      },
+      401,
+    );
+  }
+
+  if (
+    explicitConnectionId &&
+    explicitConnectionId !== consumedState.connectionId
+  ) {
     return c.json(
       {
         code: 'VALIDATION_ERROR',
-        message: 'Missing SSO connection identifier',
+        message: 'SSO connection identifier does not match callback state',
       },
       400,
     );
   }
+  const connectionId = consumedState.connectionId;
 
   const db = createDatabase(c.env);
   const connection = await findEnabledSsoById(db, connectionId);
@@ -449,25 +487,47 @@ ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
     );
   }
 
-  const relayStateValue =
-    typeof relayState === 'string' ? relayState : undefined;
-  const parsedStateConnectionId = relayStateValue
-    ? parseConnectionIdFromState(relayStateValue)
-    : null;
-  const connectionId =
-    typeof explicitConnectionId === 'string'
-      ? explicitConnectionId
-      : parsedStateConnectionId;
+  if (!relayState || typeof relayState !== 'string') {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'Missing RelayState' },
+      400,
+    );
+  }
 
-  if (!connectionId) {
+  const consumedState = await consumeSsoState(c.env.KV, relayState, 'saml');
+  if (consumedState.status === 'expired') {
+    return c.json(
+      {
+        code: 'SSO_STATE_EXPIRED',
+        message: 'SSO callback state expired. Please restart sign-in.',
+      },
+      401,
+    );
+  }
+
+  if (consumedState.status !== 'valid') {
+    return c.json(
+      {
+        code: 'SSO_STATE_INVALID',
+        message: 'SSO callback state is invalid. Please restart sign-in.',
+      },
+      401,
+    );
+  }
+
+  if (
+    typeof explicitConnectionId === 'string' &&
+    explicitConnectionId !== consumedState.connectionId
+  ) {
     return c.json(
       {
         code: 'VALIDATION_ERROR',
-        message: 'Missing SSO connection identifier',
+        message: 'SSO connection identifier does not match callback state',
       },
       400,
     );
   }
+  const connectionId = consumedState.connectionId;
 
   const db = createDatabase(c.env);
   const connection = await findEnabledSsoById(db, connectionId);
@@ -528,7 +588,7 @@ ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
         externalId: profile.externalId,
         provider: profile.provider,
       },
-      relayState: relayStateValue ?? null,
+      relayState,
       nextAction: 'profile_resolved_create-or-link-session',
     });
   } catch (error) {
@@ -542,14 +602,6 @@ ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
     );
   }
 });
-
-function parseConnectionIdFromState(state: string): string | null {
-  const trimmed = state.trim();
-  if (trimmed.length === 0) return null;
-  const [connectionId] = trimmed.split(':');
-  if (!connectionId || connectionId.length === 0) return null;
-  return connectionId;
-}
 
 function isEmailInDomain(email: string, domain: string): boolean {
   const normalizedEmail = email.trim().toLowerCase();
