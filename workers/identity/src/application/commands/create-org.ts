@@ -1,7 +1,8 @@
+import type { OrganizationRepository } from '@mauntic/identity-domain';
 import { organizations } from '@mauntic/identity-domain';
-import { eq, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { z } from 'zod';
-import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const CreateOrgInput = z.object({
   name: z.string().min(1),
@@ -11,9 +12,6 @@ export const CreateOrgInput = z.object({
 
 export type CreateOrgInput = z.infer<typeof CreateOrgInput>;
 
-/**
- * Generate a URL-safe slug from a name.
- */
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -22,46 +20,45 @@ function generateSlug(name: string): string {
     .slice(0, 100);
 }
 
-/**
- * Ensure a slug is unique by appending a random suffix if needed.
- */
 async function ensureUniqueSlug(
-  db: DrizzleDb,
+  orgRepo: OrganizationRepository,
   baseSlug: string,
 ): Promise<string> {
   let slug = baseSlug;
   let attempt = 0;
 
   while (attempt < 10) {
-    const [existing] = await db
-      .select({ id: organizations.id })
-      .from(organizations)
-      .where(eq(organizations.slug, slug))
-      .limit(1);
-
+    const existing = await orgRepo.findBySlug(slug);
     if (!existing) {
       return slug;
     }
 
-    // Append random suffix
     const suffix = Math.random().toString(36).slice(2, 6);
     slug = `${baseSlug}-${suffix}`;
     attempt++;
   }
 
-  // Fallback: use UUID fragment
   const uuidFragment = crypto.randomUUID().slice(0, 8);
   return `${baseSlug}-${uuidFragment}`;
 }
 
-export async function createOrg(db: DrizzleDb, input: CreateOrgInput) {
+/**
+ * Creates an organization with the creator as owner.
+ * Uses a transaction with set_config for RLS context, so requires raw db access.
+ */
+export async function createOrg(
+  db: NeonHttpDatabase<any>,
+  orgRepo: OrganizationRepository,
+  input: CreateOrgInput,
+) {
   const parsed = CreateOrgInput.parse(input);
 
   const baseSlug = parsed.slug
     ? generateSlug(parsed.slug)
     : generateSlug(parsed.name);
-  const slug = await ensureUniqueSlug(db, baseSlug);
+  const slug = await ensureUniqueSlug(orgRepo, baseSlug);
 
+  // Transaction with raw SQL needed for set_config('app.organization_id', ...) RLS context
   return db.transaction(async (tx) => {
     const [org] = await tx
       .insert(organizations)
