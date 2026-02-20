@@ -15,6 +15,13 @@
       "when": 1771550400000,
       "tag": "0001_identity_dispatch_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771557215083,
+      "tag": "0002_adorable_tag",
+      "breakpoints": true
     }
   ]
 }

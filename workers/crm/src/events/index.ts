@@ -10,6 +10,10 @@ export {
   contactMerged,
   contactUpdated,
 } from './contact-events.js';
+export {
+  drainCrmOutbox,
+  OutboxDomainEventPublisher,
+} from './outbox-publisher.js';
 export { publishDomainEvent, publishDomainEvents } from './publisher.js';
 export {
   segmentCreated,

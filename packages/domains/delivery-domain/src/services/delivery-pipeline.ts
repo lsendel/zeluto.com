@@ -14,7 +14,9 @@ export interface DeliveryPipelineDeps {
   suppressionRepo: SuppressionRepository;
   providerResolver: ProviderResolver;
   /** Factory that creates the actual provider adapter from config. */
-  createProvider: (config: ProviderConfig) => DeliveryProvider<Channel>;
+  createProvider: (
+    config: ProviderConfig,
+  ) => DeliveryProvider<Channel> | Promise<DeliveryProvider<Channel>>;
 }
 
 export interface DeliveryPipelineInput {
@@ -54,35 +56,60 @@ export class DeliveryPipeline {
       }
     }
 
-    // Step 2: Resolve provider
-    const providerConfig = await this.deps.providerResolver.resolve(
+    // Step 2: Resolve providers by priority (for fallback)
+    const providerConfigs = await this.deps.providerResolver.resolveAll(
       input.organizationId,
       input.channel,
     );
 
-    if (!providerConfig) {
+    if (providerConfigs.length === 0) {
       return {
         success: false,
         error: `No active provider configured for channel "${input.channel}"`,
       };
     }
 
-    // Step 3: Build channel-specific payload and send
-    const provider = this.deps.createProvider(providerConfig);
-    let result: DeliveryResult;
+    // Step 3: Attempt send in priority order, falling back on failure
+    const errors: string[] = [];
+    for (const providerConfig of providerConfigs) {
+      let provider: DeliveryProvider<Channel>;
+      try {
+        provider = await this.deps.createProvider(providerConfig);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Unknown provider init error';
+        errors.push(
+          `${providerConfig.providerType}: provider init failed (${message})`,
+        );
+        continue;
+      }
 
-    try {
-      result = await this.sendViaProvider(provider, input);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown send error';
-      return { success: false, error: message };
+      let result: DeliveryResult;
+      try {
+        result = await this.sendViaProvider(provider, input);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : 'Unknown send error';
+        errors.push(`${provider.name}: request failed (${message})`);
+        continue;
+      }
+
+      if (result.success) {
+        // Step 4: Return successful result
+        return {
+          success: true,
+          messageId: result.externalId,
+        };
+      }
+
+      errors.push(
+        `${provider.name}: ${result.error ?? 'Provider returned failure'}`,
+      );
     }
 
-    // Step 4: Return result
     return {
-      success: result.success,
-      messageId: result.externalId,
-      error: result.error,
+      success: false,
+      error: `All providers failed for channel "${input.channel}": ${errors.join('; ')}`,
     };
   }
 

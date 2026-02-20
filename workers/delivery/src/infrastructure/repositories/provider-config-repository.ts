@@ -53,6 +53,24 @@ export async function findActiveProviderByChannel(
   return config ?? null;
 }
 
+export async function findActiveProvidersByChannel(
+  db: NeonHttpDatabase,
+  orgId: string,
+  channel: string,
+): Promise<ProviderConfigRow[]> {
+  return db
+    .select()
+    .from(provider_configs)
+    .where(
+      and(
+        eq(provider_configs.organization_id, orgId),
+        eq(provider_configs.channel, channel),
+        eq(provider_configs.is_active, true),
+      ),
+    )
+    .orderBy(desc(provider_configs.priority));
+}
+
 export async function createProviderConfig(
   db: NeonHttpDatabase,
   orgId: string,

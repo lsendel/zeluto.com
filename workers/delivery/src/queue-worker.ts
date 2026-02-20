@@ -2,13 +2,23 @@ import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type {
   Channel,
   DeliveryPipelineInput,
+  FcmProviderConfig,
   ProviderConfigRepository,
+  ProviderType,
+  SendGridProviderConfig,
+  SesProviderConfig,
   SuppressionRepository,
+  TwilioProviderConfig,
 } from '@mauntic/delivery-domain';
 import {
   DeliveryPipeline,
+  decryptConfig,
+  FcmProvider,
   ProviderConfig,
   ProviderResolver,
+  SendGridProvider,
+  SesProvider,
+  TwilioProvider,
 } from '@mauntic/delivery-domain';
 import type { DeliveryProvider } from '@mauntic/domain-kernel';
 import {
@@ -18,7 +28,7 @@ import {
 } from '@mauntic/worker-lib';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
-  findActiveProviderByChannel,
+  findActiveProvidersByChannel,
   isEmailSuppressed,
 } from './infrastructure/repositories/index.js';
 
@@ -99,9 +109,27 @@ class DrizzleProviderConfigAdapter implements ProviderConfigRepository {
     orgId: string,
     channel: Channel,
   ): Promise<ProviderConfig[]> {
-    const row = await findActiveProviderByChannel(this.db, orgId, channel);
-    if (!row) return [];
-    return [this.rowToEntity(row)];
+    const rows = await findActiveProvidersByChannel(this.db, orgId, channel);
+    if (rows.length === 0) return [];
+
+    const entities: ProviderConfig[] = [];
+    for (const row of rows) {
+      try {
+        entities.push(await this.rowToEntity(row));
+      } catch (error) {
+        console.error(
+          {
+            providerConfigId: row.id,
+            organizationId: orgId,
+            channel,
+            error,
+          },
+          'Skipping invalid provider config',
+        );
+      }
+    }
+
+    return entities;
   }
 
   /* The remaining methods are not needed for the queue pipeline. */
@@ -118,51 +146,177 @@ class DrizzleProviderConfigAdapter implements ProviderConfigRepository {
     /* no-op */
   }
 
-  private rowToEntity(
-    row: NonNullable<Awaited<ReturnType<typeof findActiveProviderByChannel>>>,
-  ): ProviderConfig {
+  private async rowToEntity(
+    row: Awaited<ReturnType<typeof findActiveProvidersByChannel>>[number],
+  ): Promise<ProviderConfig> {
     const r = row as Record<string, unknown>;
+    const config = await this.decodeConfig(r.config);
+
     return ProviderConfig.reconstitute({
       id: r.id as string,
       organizationId: r.organization_id as string,
       channel: r.channel as Channel,
-      providerType: r.provider_type as any,
-      config: (r.config ?? {}) as Record<string, unknown>,
+      providerType: r.provider_type as ProviderType,
+      config,
       isActive: r.is_active as boolean,
       priority: r.priority as number,
       createdAt: r.created_at as Date,
       updatedAt: r.updated_at as Date,
     });
   }
+
+  private async decodeConfig(raw: unknown): Promise<Record<string, unknown>> {
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      return raw as Record<string, unknown>;
+    }
+
+    if (typeof raw === 'string') {
+      if (looksEncryptedConfig(raw)) {
+        const decryptedString = await decryptConfig(raw, this._encryptionKey);
+        const parsed = JSON.parse(decryptedString) as unknown;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      } else {
+        const parsed = JSON.parse(raw) as unknown;
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return parsed as Record<string, unknown>;
+        }
+      }
+    }
+
+    throw new Error('Provider config must be a JSON object');
+  }
+}
+
+function looksEncryptedConfig(value: string): boolean {
+  const parts = value.split(':');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    return false;
+  }
+  return parts.every((part) => /^[A-Za-z0-9+/=_-]+$/.test(part));
 }
 
 // ---------------------------------------------------------------------------
-// Stub DeliveryProvider factory
+// DeliveryProvider factory
 // ---------------------------------------------------------------------------
 
 /**
  * Creates a DeliveryProvider adapter from a ProviderConfig entity.
  *
- * For now this decrypts the stored config and builds a lightweight stub that
- * calls the provider. Real provider adapters (SES, SendGrid, etc.) will be
- * wired in when we implement provider integrations end-to-end.
+ * Instantiates concrete providers from persisted provider configuration.
+ * Unsupported provider types intentionally throw, so fallback providers
+ * can be attempted by the delivery pipeline.
  */
 function createProviderFromConfig(
-  _config: ProviderConfig,
-  _encryptionKey: string,
+  config: ProviderConfig,
 ): DeliveryProvider<Channel> {
-  return {
-    channel: _config.channel,
-    name: _config.providerType,
-    async send(_payload) {
-      // TODO: wire real provider adapters (SES, SendGrid, Twilio, FCM, etc.)
-      // For now return a stub success so the pipeline can be tested end-to-end.
-      return {
-        success: true,
-        externalId: `stub-${crypto.randomUUID()}`,
+  switch (config.providerType) {
+    case 'sendgrid': {
+      if (config.channel !== 'email') {
+        throw new Error('SendGrid provider can only be used for email channel');
+      }
+      const providerConfig: SendGridProviderConfig = {
+        apiKey: readRequiredString(config.config, ['apiKey', 'api_key']),
       };
-    },
-  };
+      return new SendGridProvider(providerConfig);
+    }
+
+    case 'ses': {
+      if (config.channel !== 'email') {
+        throw new Error('SES provider can only be used for email channel');
+      }
+      const providerConfig: SesProviderConfig = {
+        region: readRequiredString(config.config, ['region']),
+        accessKeyId: readRequiredString(config.config, [
+          'accessKeyId',
+          'access_key_id',
+        ]),
+        secretAccessKey: readRequiredString(config.config, [
+          'secretAccessKey',
+          'secret_access_key',
+        ]),
+      };
+      return new SesProvider(providerConfig);
+    }
+
+    case 'twilio': {
+      if (config.channel !== 'sms') {
+        throw new Error('Twilio provider can only be used for sms channel');
+      }
+      const providerConfig: TwilioProviderConfig = {
+        accountSid: readRequiredString(config.config, [
+          'accountSid',
+          'account_sid',
+        ]),
+        authToken: readRequiredString(config.config, [
+          'authToken',
+          'auth_token',
+        ]),
+        fromNumber: readRequiredString(config.config, [
+          'fromNumber',
+          'from_number',
+        ]),
+      };
+      return new TwilioProvider(providerConfig);
+    }
+
+    case 'fcm': {
+      if (config.channel !== 'push') {
+        throw new Error('FCM provider can only be used for push channel');
+      }
+      const serviceAccountRaw = readRequiredValue(config.config, [
+        'serviceAccountKey',
+        'service_account_key',
+      ]);
+      const providerConfig: FcmProviderConfig = {
+        projectId: readRequiredString(config.config, [
+          'projectId',
+          'project_id',
+        ]),
+        serviceAccountKey:
+          typeof serviceAccountRaw === 'string'
+            ? serviceAccountRaw
+            : JSON.stringify(serviceAccountRaw),
+      };
+      return new FcmProvider(providerConfig);
+    }
+
+    case 'postmark':
+    case 'custom_smtp':
+      throw new Error(
+        `Provider type "${config.providerType}" is not supported in delivery queue worker`,
+      );
+
+    default:
+      throw new Error(`Unknown provider type: ${String(config.providerType)}`);
+  }
+}
+
+function readRequiredString(
+  config: Record<string, unknown>,
+  keys: string[],
+): string {
+  const value = readRequiredValue(config, keys);
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Provider config "${keys.join('/')}" must be a string`);
+  }
+  return value.trim();
+}
+
+function readRequiredValue(
+  config: Record<string, unknown>,
+  keys: string[],
+): unknown {
+  for (const key of keys) {
+    if (key in config) {
+      const value = config[key];
+      if (value !== undefined && value !== null) {
+        return value;
+      }
+    }
+  }
+  throw new Error(`Missing provider config key: ${keys.join('/')}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,7 +349,7 @@ export async function queue(
     suppressionRepo,
     providerResolver,
     createProvider: (config: ProviderConfig) =>
-      createProviderFromConfig(config, env.ENCRYPTION_KEY),
+      createProviderFromConfig(config),
   });
 
   for (const message of batch.messages) {
