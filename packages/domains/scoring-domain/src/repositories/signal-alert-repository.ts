@@ -20,4 +20,5 @@ export interface SignalAlertRepository {
   ): Promise<SignalAlert[]>;
   findOverdue(orgId: OrganizationId): Promise<SignalAlert[]>;
   save(alert: SignalAlert): Promise<void>;
+  expireOverdue(): Promise<number>;
 }

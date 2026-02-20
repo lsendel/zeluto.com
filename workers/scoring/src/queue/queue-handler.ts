@@ -1,6 +1,11 @@
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type { DomainEvent } from '@mauntic/domain-kernel';
 import { asContactId, asOrganizationId } from '@mauntic/domain-kernel';
+import type {
+  IntentSignalRepository,
+  LeadScoreRepository,
+  SignalAlertRepository,
+} from '@mauntic/scoring-domain';
 import {
   createDatabase,
   createLoggerFromEnv,
@@ -12,6 +17,10 @@ import {
   ScoringService,
 } from '../application/scoring-service.js';
 import { DrizzleLeadScoreRepository } from '../infrastructure/drizzle-lead-score-repository.js';
+import {
+  DrizzleIntentSignalRepository,
+  DrizzleSignalAlertRepository,
+} from '../infrastructure/drizzle-scoring-repositories.js';
 
 export interface ScoringQueueEnv {
   DATABASE_URL: string;
@@ -66,9 +75,11 @@ export async function handleScoringQueue(
   env: ScoringQueueEnv,
 ): Promise<void> {
   const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
-  const repo = new DrizzleLeadScoreRepository(db);
+  const leadScoreRepo = new DrizzleLeadScoreRepository(db);
+  const intentSignalRepo = new DrizzleIntentSignalRepository(db);
+  const signalAlertRepo = new DrizzleSignalAlertRepository(db);
   const publisher = new QueueDomainEventPublisher(env.EVENTS);
-  const service = new ScoringService(repo, publisher);
+  const service = new ScoringService(leadScoreRepo, publisher);
   const queueName = batch.queue ?? 'mauntic-scoring-events';
   const baseLogger = createLoggerFromEnv(
     'scoring-queue',
@@ -106,15 +117,15 @@ export async function handleScoringQueue(
           break;
         }
         case 'scoring.BatchRecompute': {
-          await runBatchRecompute(db, payload.scheduledFor);
+          await runBatchRecompute(leadScoreRepo, env, payload.scheduledFor);
           break;
         }
         case 'scoring.SignalDecay': {
-          await runSignalDecay(db, payload.scheduledFor);
+          await runSignalDecay(intentSignalRepo, payload.scheduledFor);
           break;
         }
         case 'scoring.AlertExpiry': {
-          await runAlertExpiry(db, payload.scheduledFor);
+          await runAlertExpiry(signalAlertRepo, payload.scheduledFor);
           break;
         }
         default:
@@ -188,36 +199,62 @@ function extractMetadata(
     : undefined;
 }
 
-async function runBatchRecompute(
-  db: NeonHttpDatabase,
+export async function runBatchRecompute(
+  leadScoreRepo: LeadScoreRepository,
+  env: ScoringQueueEnv,
   scheduledFor?: string,
 ): Promise<void> {
+  let offset = 0;
+  const batchSize = 100;
+  let totalEnqueued = 0;
+
+  while (true) {
+    const pairs = await leadScoreRepo.findAllContactPairs(batchSize, offset);
+    if (pairs.length === 0) break;
+
+    const messages = pairs.map((pair) => ({
+      body: {
+        type: 'scoring.CalculateScore' as const,
+        data: {
+          organizationId: pair.organizationId,
+          contactId: pair.contactId,
+        },
+      },
+    }));
+
+    for (let i = 0; i < messages.length; i += 100) {
+      await env.EVENTS.sendBatch(messages.slice(i, i + 100) as any);
+    }
+
+    totalEnqueued += pairs.length;
+    offset += batchSize;
+    if (pairs.length < batchSize) break;
+  }
+
   console.info(
-    { scheduledFor, worker: 'scoring-queue' },
-    'Batch scoring placeholder executed (implement aggregation logic)',
+    { scheduledFor, totalEnqueued, worker: 'scoring-queue' },
+    'Batch recompute: enqueued individual score calculations',
   );
-  // TODO: Wire up @mauntic/scoring-domain repositories for actual batch recompute.
-  void db;
 }
 
-async function runSignalDecay(
-  db: NeonHttpDatabase,
+export async function runSignalDecay(
+  intentSignalRepo: IntentSignalRepository,
   scheduledFor?: string,
 ): Promise<void> {
+  const deleted = await intentSignalRepo.deleteAllExpired();
   console.info(
-    { scheduledFor, worker: 'scoring-queue' },
-    'Signal decay placeholder executed (implement decay cleanup)',
+    { scheduledFor, deletedCount: deleted, worker: 'scoring-queue' },
+    'Signal decay: cleaned up expired intent signals',
   );
-  void db;
 }
 
-async function runAlertExpiry(
-  db: NeonHttpDatabase,
+export async function runAlertExpiry(
+  signalAlertRepo: SignalAlertRepository,
   scheduledFor?: string,
 ): Promise<void> {
+  const expiredCount = await signalAlertRepo.expireOverdue();
   console.info(
-    { scheduledFor, worker: 'scoring-queue' },
-    'Alert expiry placeholder executed (implement alert checks)',
+    { scheduledFor, expiredCount, worker: 'scoring-queue' },
+    'Alert expiry: marked overdue alerts as expired',
   );
-  void db;
 }

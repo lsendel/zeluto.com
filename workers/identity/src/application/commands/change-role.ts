@@ -1,7 +1,6 @@
-import { organizationMembers } from '@mauntic/identity-domain';
-import { and, eq } from 'drizzle-orm';
+import type { OrganizationId, UserId } from '@mauntic/domain-kernel';
+import type { MemberRepository, UserRole } from '@mauntic/identity-domain';
 import { z } from 'zod';
-import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const ChangeRoleInput = z.object({
   organizationId: z.string().uuid(),
@@ -12,54 +11,35 @@ export const ChangeRoleInput = z.object({
 export type ChangeRoleInput = z.infer<typeof ChangeRoleInput>;
 
 export async function changeRole(
-  db: DrizzleDb,
+  memberRepo: MemberRepository,
   input: ChangeRoleInput,
   actorUserId: string,
   actorRole: string,
 ) {
   const parsed = ChangeRoleInput.parse(input);
 
-  // Only owner can change roles
   if (actorRole !== 'owner') {
     throw new InsufficientPermissionsError(
       'Only the owner can change member roles',
     );
   }
 
-  // Cannot change own role
   if (parsed.userId === actorUserId) {
     throw new CannotChangeOwnRoleError();
   }
 
-  // Find the membership
-  const [membership] = await db
-    .select()
-    .from(organizationMembers)
-    .where(
-      and(
-        eq(organizationMembers.organizationId, parsed.organizationId),
-        eq(organizationMembers.userId, parsed.userId),
-      ),
-    )
-    .limit(1);
+  const member = await memberRepo.findByOrgAndUser(
+    parsed.organizationId as OrganizationId,
+    parsed.userId as UserId,
+  );
 
-  if (!membership) {
+  if (!member) {
     throw new MemberNotFoundError(parsed.userId, parsed.organizationId);
   }
 
-  // Update the role
-  const [updated] = await db
-    .update(organizationMembers)
-    .set({ role: parsed.role, updatedAt: new Date() })
-    .where(
-      and(
-        eq(organizationMembers.organizationId, parsed.organizationId),
-        eq(organizationMembers.userId, parsed.userId),
-      ),
-    )
-    .returning();
-
-  return updated;
+  member.changeRole(parsed.role as UserRole);
+  await memberRepo.save(member);
+  return member;
 }
 
 export class InsufficientPermissionsError extends Error {
