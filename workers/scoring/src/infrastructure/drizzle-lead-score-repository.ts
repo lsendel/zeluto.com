@@ -122,4 +122,22 @@ export class DrizzleLeadScoreRepository implements LeadScoreRepository {
         ),
       );
   }
+
+  async findAllContactPairs(
+    limit: number,
+    offset: number,
+  ): Promise<Array<{ organizationId: string; contactId: string }>> {
+    const rows = await this.db
+      .select({
+        organization_id: leadScores.organization_id,
+        contact_id: leadScores.contact_id,
+      })
+      .from(leadScores)
+      .limit(limit)
+      .offset(offset);
+    return rows.map((r) => ({
+      organizationId: r.organization_id,
+      contactId: r.contact_id,
+    }));
+  }
 }
