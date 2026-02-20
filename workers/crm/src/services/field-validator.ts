@@ -1,6 +1,6 @@
-import { eq, and } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { fields } from '@mauntic/crm-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,7 +57,10 @@ export async function validateCustomFields(
     const value = customFields[def.name];
 
     // Required check
-    if (def.is_required && (value === undefined || value === null || value === '')) {
+    if (
+      def.is_required &&
+      (value === undefined || value === null || value === '')
+    ) {
       errors.push(`Field "${def.label}" is required`);
       continue;
     }
@@ -77,7 +80,7 @@ export async function validateCustomFields(
       }
 
       case 'number': {
-        if (typeof value !== 'number' && isNaN(Number(value))) {
+        if (typeof value !== 'number' && Number.isNaN(Number(value))) {
           errors.push(`Field "${def.label}" must be a numeric value`);
         }
         break;
@@ -85,14 +88,16 @@ export async function validateCustomFields(
 
       case 'date': {
         const d = new Date(String(value));
-        if (isNaN(d.getTime())) {
+        if (Number.isNaN(d.getTime())) {
           errors.push(`Field "${def.label}" must be a valid date`);
         }
         break;
       }
 
       case 'select': {
-        const opts = Array.isArray(def.options) ? def.options as string[] : [];
+        const opts = Array.isArray(def.options)
+          ? (def.options as string[])
+          : [];
         if (typeof value !== 'string' || !opts.includes(value)) {
           errors.push(
             `Field "${def.label}" must be one of: ${opts.join(', ')}`,
@@ -102,7 +107,9 @@ export async function validateCustomFields(
       }
 
       case 'multiselect': {
-        const opts = Array.isArray(def.options) ? def.options as string[] : [];
+        const opts = Array.isArray(def.options)
+          ? (def.options as string[])
+          : [];
         if (!Array.isArray(value)) {
           errors.push(`Field "${def.label}" must be an array of values`);
         } else {

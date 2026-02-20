@@ -1,15 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import {
-  apiRequest,
-  uniqueEmail,
-  uniqueName,
-  uniqueSlug,
-} from './setup';
+import { describe, expect, it } from 'vitest';
 
 describe('Onboarding Flow', () => {
-  let token: string;
-  let userId: string;
-  let organizationId: string;
+  let _token: string;
+  let _userId: string;
+  let _organizationId: string;
 
   describe('Step 1: User signup', () => {
     it('should create a new user account', async () => {

@@ -52,19 +52,40 @@ export class IntentSignal {
     return new IntentSignal(IntentSignalPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get contactId() { return this.props.contactId; }
-  get signalType() { return this.props.signalType; }
-  get source() { return this.props.source; }
-  get weight() { return this.props.weight; }
-  get detectedAt() { return this.props.detectedAt; }
-  get expiresAt() { return this.props.expiresAt; }
-  get decayModel() { return this.props.decayModel; }
-  get metadata() { return this.props.metadata; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get signalType() {
+    return this.props.signalType;
+  }
+  get source() {
+    return this.props.source;
+  }
+  get weight() {
+    return this.props.weight;
+  }
+  get detectedAt() {
+    return this.props.detectedAt;
+  }
+  get expiresAt() {
+    return this.props.expiresAt;
+  }
+  get decayModel() {
+    return this.props.decayModel;
+  }
+  get metadata() {
+    return this.props.metadata;
+  }
 
   currentWeight(): number {
-    const elapsed = (Date.now() - this.props.detectedAt.getTime()) / (1000 * 60 * 60);
+    const elapsed =
+      (Date.now() - this.props.detectedAt.getTime()) / (1000 * 60 * 60);
     const decayHours = this.props.decayHours;
     if (elapsed >= decayHours) return 0;
 
@@ -72,7 +93,7 @@ export class IntentSignal {
       case 'linear':
         return this.props.weight * (1 - elapsed / decayHours);
       case 'exponential':
-        return this.props.weight * Math.exp(-3 * elapsed / decayHours);
+        return this.props.weight * Math.exp((-3 * elapsed) / decayHours);
       case 'step':
         if (elapsed < decayHours * 0.5) return this.props.weight;
         if (elapsed < decayHours * 0.75) return this.props.weight * 0.5;

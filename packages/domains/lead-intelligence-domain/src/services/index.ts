@@ -1,14 +1,14 @@
-export type {
-  EnrichmentProviderAdapter,
-  EnrichmentRequest,
-  EnrichmentFieldResult,
-  EnrichmentAdapterResult,
-} from './enrichment-provider-adapter.js';
+export {
+  type ContactForQuality,
+  DataQualityService,
+} from './data-quality-service.js';
 export {
   EnrichmentOrchestrator,
   type EnrichmentOrchestratorDeps,
 } from './enrichment-orchestrator.js';
-export {
-  DataQualityService,
-  type ContactForQuality,
-} from './data-quality-service.js';
+export type {
+  EnrichmentAdapterResult,
+  EnrichmentFieldResult,
+  EnrichmentProviderAdapter,
+  EnrichmentRequest,
+} from './enrichment-provider-adapter.js';

@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findWebhookById,
-  findAllWebhooks,
   createWebhook,
-  updateWebhook,
-  deleteWebhook,
-  findWebhookDeliveries,
   createWebhookDelivery,
+  deleteWebhook,
+  findAllWebhooks,
+  findWebhookById,
+  findWebhookDeliveries,
+  updateWebhook,
 } from '../infrastructure/repositories/webhook-repository.js';
 import {
   dispatchWebhook,
@@ -40,7 +40,10 @@ webhookRoutes.get('/api/v1/integrations/webhooks', async (c) => {
     });
   } catch (error) {
     console.error('List webhooks error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list webhooks' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list webhooks' },
+      500,
+    );
   }
 });
 
@@ -74,7 +77,10 @@ webhookRoutes.post('/api/v1/integrations/webhooks', async (c) => {
     return c.json(webhook, 201);
   } catch (error) {
     console.error('Create webhook error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create webhook' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create webhook' },
+      500,
+    );
   }
 });
 
@@ -92,7 +98,10 @@ webhookRoutes.get('/api/v1/integrations/webhooks/:id', async (c) => {
     return c.json(webhook);
   } catch (error) {
     console.error('Get webhook error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get webhook' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get webhook' },
+      500,
+    );
   }
 });
 
@@ -116,7 +125,12 @@ webhookRoutes.patch('/api/v1/integrations/webhooks/:id', async (c) => {
     if (body.secret !== undefined) updateData.secret = body.secret;
     if (body.isActive !== undefined) updateData.isActive = body.isActive;
 
-    const webhook = await updateWebhook(db, tenant.organizationId, id, updateData);
+    const webhook = await updateWebhook(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!webhook) {
       return c.json({ code: 'NOT_FOUND', message: 'Webhook not found' }, 404);
     }
@@ -124,7 +138,10 @@ webhookRoutes.patch('/api/v1/integrations/webhooks/:id', async (c) => {
     return c.json(webhook);
   } catch (error) {
     console.error('Update webhook error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update webhook' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update webhook' },
+      500,
+    );
   }
 });
 
@@ -142,7 +159,10 @@ webhookRoutes.delete('/api/v1/integrations/webhooks/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete webhook error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete webhook' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete webhook' },
+      500,
+    );
   }
 });
 
@@ -179,7 +199,12 @@ webhookRoutes.post('/api/v1/integrations/webhooks/:id/test', async (c) => {
     };
 
     const result = await dispatchWebhook(
-      { id: webhook.id, url: webhook.url, secret: webhook.secret, consecutiveFailures: 0 },
+      {
+        id: webhook.id,
+        url: webhook.url,
+        secret: webhook.secret,
+        consecutiveFailures: 0,
+      },
       payload,
     );
 
@@ -198,7 +223,10 @@ webhookRoutes.post('/api/v1/integrations/webhooks/:id/test', async (c) => {
     });
   } catch (error) {
     console.error('Test webhook error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to test webhook' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to test webhook' },
+      500,
+    );
   }
 });
 
@@ -219,10 +247,15 @@ webhookRoutes.get('/api/v1/integrations/webhooks/:id/deliveries', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Webhook not found' }, 404);
     }
 
-    const result = await findWebhookDeliveries(db, tenant.organizationId, webhookId, {
-      page: pageNum,
-      limit: limitNum,
-    });
+    const result = await findWebhookDeliveries(
+      db,
+      tenant.organizationId,
+      webhookId,
+      {
+        page: pageNum,
+        limit: limitNum,
+      },
+    );
 
     return c.json({
       data: result.data,
@@ -233,6 +266,9 @@ webhookRoutes.get('/api/v1/integrations/webhooks/:id/deliveries', async (c) => {
     });
   } catch (error) {
     console.error('List webhook deliveries error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list webhook deliveries' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list webhook deliveries' },
+      500,
+    );
   }
 });

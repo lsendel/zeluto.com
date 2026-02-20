@@ -1,27 +1,37 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
-import { createDatabase, createLoggerFromEnv, logQueueMetric } from '@mauntic/worker-lib';
+import type {
+  EnrichmentProviderAdapter,
+  EnrichmentRequest,
+} from '@mauntic/lead-intelligence-domain';
 import {
-  EnrichmentOrchestrator,
   EnrichmentJob,
+  EnrichmentOrchestrator,
   ProviderHealth,
 } from '@mauntic/lead-intelligence-domain';
-import type { EnrichmentRequest, EnrichmentProviderAdapter } from '@mauntic/lead-intelligence-domain';
 import {
-  ClearbitAdapter,
+  createDatabase,
+  createLoggerFromEnv,
+  logQueueMetric,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import {
   ApolloAdapter,
+  ClearbitAdapter,
   HunterAdapter,
-  ZoomInfoAdapter,
-  RocketReachAdapter,
   LushaAdapter,
+  RocketReachAdapter,
+  ZoomInfoAdapter,
 } from './adapters/index.js';
-import { findJobById, updateJob } from './infrastructure/repositories/enrichment-job-repository.js';
-import { deleteExpiredCache } from './infrastructure/repositories/enrichment-cache-repository.js';
 import {
   DrizzleEnrichmentCacheRepository,
   DrizzleProviderHealthRepository,
   DrizzleWaterfallConfigRepository,
 } from './application/domain-adapters.js';
+import { deleteExpiredCache } from './infrastructure/repositories/enrichment-cache-repository.js';
+import {
+  findJobById,
+  updateJob,
+} from './infrastructure/repositories/enrichment-job-repository.js';
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -90,15 +100,26 @@ function normalizeMessage(body: unknown): LeadIntelligenceEvent | null {
  * Build the adapter map from available API keys in the environment.
  * Only adapters whose API keys are present will be included.
  */
-function buildAdapterMap(env: LeadIntelligenceQueueEnv): Map<string, EnrichmentProviderAdapter> {
+function buildAdapterMap(
+  env: LeadIntelligenceQueueEnv,
+): Map<string, EnrichmentProviderAdapter> {
   const adapters = new Map<string, EnrichmentProviderAdapter>();
 
-  if (env.CLEARBIT_API_KEY) adapters.set('clearbit', new ClearbitAdapter(env.CLEARBIT_API_KEY));
-  if (env.APOLLO_API_KEY) adapters.set('apollo', new ApolloAdapter(env.APOLLO_API_KEY));
-  if (env.HUNTER_API_KEY) adapters.set('hunter', new HunterAdapter(env.HUNTER_API_KEY));
-  if (env.ZOOMINFO_API_KEY) adapters.set('zoominfo', new ZoomInfoAdapter(env.ZOOMINFO_API_KEY));
-  if (env.ROCKETREACH_API_KEY) adapters.set('rocketreach', new RocketReachAdapter(env.ROCKETREACH_API_KEY));
-  if (env.LUSHA_API_KEY) adapters.set('lusha', new LushaAdapter(env.LUSHA_API_KEY));
+  if (env.CLEARBIT_API_KEY)
+    adapters.set('clearbit', new ClearbitAdapter(env.CLEARBIT_API_KEY));
+  if (env.APOLLO_API_KEY)
+    adapters.set('apollo', new ApolloAdapter(env.APOLLO_API_KEY));
+  if (env.HUNTER_API_KEY)
+    adapters.set('hunter', new HunterAdapter(env.HUNTER_API_KEY));
+  if (env.ZOOMINFO_API_KEY)
+    adapters.set('zoominfo', new ZoomInfoAdapter(env.ZOOMINFO_API_KEY));
+  if (env.ROCKETREACH_API_KEY)
+    adapters.set(
+      'rocketreach',
+      new RocketReachAdapter(env.ROCKETREACH_API_KEY),
+    );
+  if (env.LUSHA_API_KEY)
+    adapters.set('lusha', new LushaAdapter(env.LUSHA_API_KEY));
 
   return adapters;
 }
@@ -132,7 +153,12 @@ function reconstituteJob(row: {
     id: row.id,
     organizationId: row.organization_id,
     contactId: row.contact_id,
-    status: row.status as 'pending' | 'running' | 'completed' | 'failed' | 'exhausted',
+    status: row.status as
+      | 'pending'
+      | 'running'
+      | 'completed'
+      | 'failed'
+      | 'exhausted',
     fieldRequests: row.field_requests,
     results: row.results ?? [],
     totalCost: row.total_cost ? Number(row.total_cost) : 0,
@@ -148,7 +174,10 @@ function reconstituteJob(row: {
 /**
  * Persist the mutated EnrichmentJob entity back to the database.
  */
-async function persistJob(db: NeonHttpDatabase, job: EnrichmentJob): Promise<void> {
+async function persistJob(
+  db: NeonHttpDatabase,
+  job: EnrichmentJob,
+): Promise<void> {
   const props = job.toProps();
   await updateJob(db, props.id, {
     status: props.status,
@@ -169,7 +198,12 @@ async function persistJob(db: NeonHttpDatabase, job: EnrichmentJob): Promise<voi
 async function handleJobCreated(
   db: NeonHttpDatabase,
   env: LeadIntelligenceQueueEnv,
-  data: { jobId: string; organizationId: string; contactId: string; contactData: EnrichmentRequest },
+  data: {
+    jobId: string;
+    organizationId: string;
+    contactId: string;
+    contactData: EnrichmentRequest;
+  },
 ): Promise<void> {
   const row = await findJobById(db, data.jobId);
   if (!row) {
@@ -182,7 +216,12 @@ async function handleJobCreated(
   const health = new DrizzleProviderHealthRepository(db);
   const waterfallConfig = new DrizzleWaterfallConfigRepository(db);
 
-  const orchestrator = new EnrichmentOrchestrator({ adapters, cache, health, waterfallConfig });
+  const orchestrator = new EnrichmentOrchestrator({
+    adapters,
+    cache,
+    health,
+    waterfallConfig,
+  });
   await orchestrator.execute(data.organizationId, job, data.contactData);
   await persistJob(db, job);
 }
@@ -299,7 +338,10 @@ async function queue(
         status: 'duplicate',
         eventType: event.type,
       });
-      messageLogger.info({ event: 'queue.message.duplicate' }, 'Duplicate message skipped');
+      messageLogger.info(
+        { event: 'queue.message.duplicate' },
+        'Duplicate message skipped',
+      );
       continue;
     }
 
@@ -327,19 +369,28 @@ async function queue(
 
         case 'enrichment.CacheCleanup': {
           const deleted = await handleCacheCleanup(db);
-          messageLogger.info({ deleted, event: 'queue.cache.cleanup' }, 'Cache cleanup completed');
+          messageLogger.info(
+            { deleted, event: 'queue.cache.cleanup' },
+            'Cache cleanup completed',
+          );
           break;
         }
 
         case 'enrichment.HealthCheck': {
           const data = event.data as { organizationId?: string };
           await handleHealthCheck(db, env, data);
-          messageLogger.info({ event: 'queue.health.check' }, 'Health check completed');
+          messageLogger.info(
+            { event: 'queue.health.check' },
+            'Health check completed',
+          );
           break;
         }
 
         default: {
-          messageLogger.warn({ event: 'queue.unknown_event' }, `Unknown event type: ${event.type}`);
+          messageLogger.warn(
+            { event: 'queue.unknown_event' },
+            `Unknown event type: ${event.type}`,
+          );
           break;
         }
       }
@@ -385,7 +436,10 @@ async function queue(
 // Scheduled handler (cron triggers)
 // ---------------------------------------------------------------------------
 
-async function scheduled(event: ScheduledEvent, env: LeadIntelligenceQueueEnv): Promise<void> {
+async function scheduled(
+  event: ScheduledEvent,
+  env: LeadIntelligenceQueueEnv,
+): Promise<void> {
   if (event.cron === '0 4 * * *') {
     await env.EVENTS.send({ type: 'enrichment.CacheCleanup', data: {} });
   }

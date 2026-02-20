@@ -1,4 +1,4 @@
-import type { WorkflowDefinition, WorkflowExecutionResult } from '../services/workflow-engine.js';
+import type { WorkflowDefinition } from '../services/workflow-engine.js';
 
 export interface WorkflowExecution {
   id: string;
@@ -19,5 +19,9 @@ export interface WorkflowRepository {
   save(orgId: string, workflow: WorkflowDefinition): Promise<void>;
   delete(orgId: string, id: string): Promise<void>;
   saveExecution(orgId: string, execution: WorkflowExecution): Promise<void>;
-  findExecutionsByWorkflow(orgId: string, workflowId: string, limit?: number): Promise<WorkflowExecution[]>;
+  findExecutionsByWorkflow(
+    orgId: string,
+    workflowId: string,
+    limit?: number,
+  ): Promise<WorkflowExecution[]>;
 }

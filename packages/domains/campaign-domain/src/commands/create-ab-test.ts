@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { AbTestVariantSchema, WinnerCriteriaSchema } from '../entities/ab-test.js';
+import {
+  AbTestVariantSchema,
+  WinnerCriteriaSchema,
+} from '../entities/ab-test.js';
 
 export const CreateAbTestCommandSchema = z.object({
   organizationId: z.string().uuid(),
@@ -12,6 +15,8 @@ export const CreateAbTestCommandSchema = z.object({
 
 export type CreateAbTestCommand = z.infer<typeof CreateAbTestCommandSchema>;
 
-export function createAbTestCommand(input: CreateAbTestCommand): CreateAbTestCommand {
+export function createAbTestCommand(
+  input: CreateAbTestCommand,
+): CreateAbTestCommand {
   return CreateAbTestCommandSchema.parse(input);
 }

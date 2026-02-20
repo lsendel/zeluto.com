@@ -1,17 +1,17 @@
 import {
-  startHealthServer,
-  createWorker,
   createQueue,
-  getRedis,
+  createWorker,
   getDb,
-  registerScheduledJobs,
+  getRedis,
   type JobHandler,
+  registerScheduledJobs,
   type ScheduledJob,
+  startHealthServer,
 } from '@mauntic/process-lib';
 import type { Job } from 'bullmq';
 import pino from 'pino';
-import { DrizzleJourneyRepository } from './infrastructure/repositories/drizzle-journey-repository.js';
 import { JourneyService } from './application/journey-service.js';
+import { DrizzleJourneyRepository } from './infrastructure/repositories/drizzle-journey-repository.js';
 
 const logger = pino({ name: 'journey-executor' });
 
@@ -30,7 +30,13 @@ async function main() {
 
   // Repos & Service
   const journeyRepo = new DrizzleJourneyRepository(db);
-  const journeyService = new JourneyService(journeyRepo, emailQueue, delayedStepQueue, stepQueue, redis);
+  const journeyService = new JourneyService(
+    journeyRepo,
+    emailQueue,
+    delayedStepQueue,
+    stepQueue,
+    redis,
+  );
 
   logger.info({ port }, 'Health server started');
 
@@ -41,7 +47,7 @@ async function main() {
     async process(job: Job) {
       await journeyService.executeStep(job.data);
       return { success: true };
-    }
+    },
   };
 
   const delayedStepHandler: JobHandler = {
@@ -50,17 +56,24 @@ async function main() {
     async process(job: Job) {
       await journeyService.processDelayedStep(job.data);
       return { success: true };
-    }
+    },
   };
 
   const scoreTriggerHandler: JobHandler = {
     name: 'journey:score-trigger-eval',
     concurrency: 5,
     async process(job: Job) {
-      const { organizationId, contactId, score, eventType, signalType } = job.data;
-      await journeyService.evaluateScoreTriggers(organizationId, contactId, score, eventType, signalType);
+      const { organizationId, contactId, score, eventType, signalType } =
+        job.data;
+      await journeyService.evaluateScoreTriggers(
+        organizationId,
+        contactId,
+        score,
+        eventType,
+        signalType,
+      );
       return { success: true };
-    }
+    },
   };
 
   const segmentTriggerHandler: JobHandler = {
@@ -69,7 +82,7 @@ async function main() {
     async process(_job: Job) {
       await journeyService.evaluateSegmentTriggers();
       return { success: true };
-    }
+    },
   };
 
   const cleanupHandler: JobHandler = {
@@ -78,15 +91,27 @@ async function main() {
     async process(_job: Job) {
       await journeyService.cleanupStaleExecutions();
       return { success: true };
-    }
+    },
   };
 
   // Workers
   const stepWorker = createWorker('journey:execute-step', journeyStepHandler);
-  const delayedWorker = createWorker('journey:delayed-steps', delayedStepHandler);
-  const scoreWorker = createWorker('journey:score-trigger-eval', scoreTriggerHandler);
-  const segmentWorker = createWorker('journey:segment-trigger-eval', segmentTriggerHandler);
-  const cleanupWorker = createWorker('journey:stale-execution-cleanup', cleanupHandler);
+  const delayedWorker = createWorker(
+    'journey:delayed-steps',
+    delayedStepHandler,
+  );
+  const scoreWorker = createWorker(
+    'journey:score-trigger-eval',
+    scoreTriggerHandler,
+  );
+  const segmentWorker = createWorker(
+    'journey:segment-trigger-eval',
+    segmentTriggerHandler,
+  );
+  const cleanupWorker = createWorker(
+    'journey:stale-execution-cleanup',
+    cleanupHandler,
+  );
 
   // Register scheduled jobs
   const scheduledJobs: ScheduledJob[] = [
@@ -102,17 +127,30 @@ async function main() {
     },
   ];
 
-  await registerScheduledJobs('journey:segment-trigger-eval', [scheduledJobs[0]]);
-  await registerScheduledJobs('journey:stale-execution-cleanup', [scheduledJobs[1]]);
+  await registerScheduledJobs('journey:segment-trigger-eval', [
+    scheduledJobs[0],
+  ]);
+  await registerScheduledJobs('journey:stale-execution-cleanup', [
+    scheduledJobs[1],
+  ]);
 
-  const workers = [stepWorker, delayedWorker, scoreWorker, segmentWorker, cleanupWorker];
+  const workers = [
+    stepWorker,
+    delayedWorker,
+    scoreWorker,
+    segmentWorker,
+    cleanupWorker,
+  ];
 
   for (const worker of workers) {
     worker.on('completed', (job) => {
       logger.info({ jobId: job.id, queue: worker.name }, 'Job completed');
     });
     worker.on('failed', (job, err) => {
-      logger.error({ jobId: job?.id, queue: worker.name, error: err }, 'Job failed');
+      logger.error(
+        { jobId: job?.id, queue: worker.name, error: err },
+        'Job failed',
+      );
     });
   }
 

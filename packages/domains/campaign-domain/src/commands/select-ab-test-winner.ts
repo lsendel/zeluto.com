@@ -6,7 +6,9 @@ export const SelectAbTestWinnerCommandSchema = z.object({
   winnerVariantId: z.string(),
 });
 
-export type SelectAbTestWinnerCommand = z.infer<typeof SelectAbTestWinnerCommandSchema>;
+export type SelectAbTestWinnerCommand = z.infer<
+  typeof SelectAbTestWinnerCommandSchema
+>;
 
 export function selectAbTestWinnerCommand(
   input: SelectAbTestWinnerCommand,

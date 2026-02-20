@@ -1,14 +1,27 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const FormFieldSchema = z.object({
   name: z.string().min(1),
   label: z.string().min(1),
-  type: z.enum(['text', 'email', 'tel', 'number', 'textarea', 'select', 'checkbox', 'radio', 'hidden', 'date']),
+  type: z.enum([
+    'text',
+    'email',
+    'tel',
+    'number',
+    'textarea',
+    'select',
+    'checkbox',
+    'radio',
+    'hidden',
+    'date',
+  ]),
   required: z.boolean().default(false),
   placeholder: z.string().optional(),
   defaultValue: z.string().optional(),
-  options: z.array(z.object({ label: z.string(), value: z.string() })).optional(),
+  options: z
+    .array(z.object({ label: z.string(), value: z.string() }))
+    .optional(),
   validation: z
     .object({
       pattern: z.string().optional(),
@@ -66,7 +79,8 @@ export class Form {
         fields: input.fields,
         successAction: input.successAction ?? 'message',
         successUrl: input.successUrl ?? null,
-        successMessage: input.successMessage ?? 'Thank you for your submission!',
+        successMessage:
+          input.successMessage ?? 'Thank you for your submission!',
         isActive: true,
         submissionCount: 0,
         createdAt: new Date(),
@@ -134,11 +148,15 @@ export class Form {
       }
       this.props.name = input.name;
     }
-    if (input.description !== undefined) this.props.description = input.description;
+    if (input.description !== undefined)
+      this.props.description = input.description;
     if (input.fields !== undefined) this.props.fields = input.fields;
-    if (input.successAction !== undefined) this.props.successAction = input.successAction;
-    if (input.successUrl !== undefined) this.props.successUrl = input.successUrl;
-    if (input.successMessage !== undefined) this.props.successMessage = input.successMessage;
+    if (input.successAction !== undefined)
+      this.props.successAction = input.successAction;
+    if (input.successUrl !== undefined)
+      this.props.successUrl = input.successUrl;
+    if (input.successMessage !== undefined)
+      this.props.successMessage = input.successMessage;
     this.props.updatedAt = new Date();
   }
 

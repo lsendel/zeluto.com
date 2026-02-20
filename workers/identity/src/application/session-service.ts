@@ -1,8 +1,12 @@
+import {
+  organizationMembers,
+  organizations,
+  sessions,
+} from '@mauntic/identity-domain';
+import { and, eq } from 'drizzle-orm';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { createAuth } from '../infrastructure/better-auth.js';
 import { createDatabase, type Env } from '../infrastructure/database.js';
-import { organizations, organizationMembers, sessions } from '@mauntic/identity-domain';
-import { eq, and } from 'drizzle-orm';
-import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
 export interface SessionValidationResult {
   status: ContentfulStatusCode;

@@ -2,38 +2,48 @@
  * Thin adapter classes that wrap the Drizzle infra repo functions
  * into the domain interfaces expected by EnrichmentOrchestrator.
  */
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+
 import type {
-  EnrichmentCacheRepository,
   EnrichmentCacheEntry,
-  ProviderHealthRepository,
-  WaterfallConfigRepository,
+  EnrichmentCacheRepository,
   ProviderHealthProps,
+  ProviderHealthRepository,
   WaterfallConfigProps,
+  WaterfallConfigRepository,
 } from '@mauntic/lead-intelligence-domain';
-import { ProviderHealth, WaterfallConfig } from '@mauntic/lead-intelligence-domain';
 import {
-  getCacheEntry,
-  setCacheEntry,
-  invalidateCache,
+  ProviderHealth,
+  WaterfallConfig,
+} from '@mauntic/lead-intelligence-domain';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import {
   deleteExpiredCache,
+  getCacheEntry,
+  invalidateCache,
+  setCacheEntry,
 } from '../infrastructure/repositories/enrichment-cache-repository.js';
 import {
-  findHealthByProvider,
   findHealthByOrganization,
+  findHealthByProvider,
   upsertHealth,
 } from '../infrastructure/repositories/provider-health-repository.js';
 import {
+  deleteWaterfall,
   findWaterfallByField,
   findWaterfallsByOrganization,
   upsertWaterfall,
-  deleteWaterfall,
 } from '../infrastructure/repositories/waterfall-config-repository.js';
 
-export class DrizzleEnrichmentCacheRepository implements EnrichmentCacheRepository {
+export class DrizzleEnrichmentCacheRepository
+  implements EnrichmentCacheRepository
+{
   constructor(private readonly db: NeonHttpDatabase) {}
 
-  async get(orgId: string, contactId: string, fieldName: string): Promise<EnrichmentCacheEntry | null> {
+  async get(
+    orgId: string,
+    contactId: string,
+    fieldName: string,
+  ): Promise<EnrichmentCacheEntry | null> {
     const row = await getCacheEntry(this.db, orgId, contactId, fieldName);
     if (!row) return null;
     return {
@@ -57,7 +67,11 @@ export class DrizzleEnrichmentCacheRepository implements EnrichmentCacheReposito
     });
   }
 
-  async invalidate(orgId: string, contactId: string, fieldName?: string): Promise<void> {
+  async invalidate(
+    orgId: string,
+    contactId: string,
+    fieldName?: string,
+  ): Promise<void> {
     await invalidateCache(this.db, orgId, contactId, fieldName);
   }
 
@@ -66,10 +80,15 @@ export class DrizzleEnrichmentCacheRepository implements EnrichmentCacheReposito
   }
 }
 
-export class DrizzleProviderHealthRepository implements ProviderHealthRepository {
+export class DrizzleProviderHealthRepository
+  implements ProviderHealthRepository
+{
   constructor(private readonly db: NeonHttpDatabase) {}
 
-  async findByProvider(orgId: string, providerId: string): Promise<ProviderHealth | null> {
+  async findByProvider(
+    orgId: string,
+    providerId: string,
+  ): Promise<ProviderHealth | null> {
     const row = await findHealthByProvider(this.db, orgId, providerId);
     if (!row) return null;
     return ProviderHealth.reconstitute({
@@ -114,10 +133,15 @@ export class DrizzleProviderHealthRepository implements ProviderHealthRepository
   }
 }
 
-export class DrizzleWaterfallConfigRepository implements WaterfallConfigRepository {
+export class DrizzleWaterfallConfigRepository
+  implements WaterfallConfigRepository
+{
   constructor(private readonly db: NeonHttpDatabase) {}
 
-  async findByField(orgId: string, fieldName: string): Promise<WaterfallConfig | null> {
+  async findByField(
+    orgId: string,
+    fieldName: string,
+  ): Promise<WaterfallConfig | null> {
     const row = await findWaterfallByField(this.db, orgId, fieldName);
     if (!row) return null;
     return WaterfallConfig.reconstitute({
@@ -129,7 +153,9 @@ export class DrizzleWaterfallConfigRepository implements WaterfallConfigReposito
       timeoutMs: row.timeout_ms,
       minConfidence: Number(row.min_confidence),
       cacheTtlDays: row.cache_ttl_days,
-      maxCostPerLead: row.max_cost_per_lead ? Number(row.max_cost_per_lead) : null,
+      maxCostPerLead: row.max_cost_per_lead
+        ? Number(row.max_cost_per_lead)
+        : null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     } as WaterfallConfigProps);
@@ -147,7 +173,9 @@ export class DrizzleWaterfallConfigRepository implements WaterfallConfigReposito
         timeoutMs: row.timeout_ms,
         minConfidence: Number(row.min_confidence),
         cacheTtlDays: row.cache_ttl_days,
-        maxCostPerLead: row.max_cost_per_lead ? Number(row.max_cost_per_lead) : null,
+        maxCostPerLead: row.max_cost_per_lead
+          ? Number(row.max_cost_per_lead)
+          : null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
       } as WaterfallConfigProps),
@@ -164,7 +192,8 @@ export class DrizzleWaterfallConfigRepository implements WaterfallConfigReposito
       timeout_ms: props.timeoutMs,
       min_confidence: String(props.minConfidence),
       cache_ttl_days: props.cacheTtlDays,
-      max_cost_per_lead: props.maxCostPerLead != null ? String(props.maxCostPerLead) : null,
+      max_cost_per_lead:
+        props.maxCostPerLead != null ? String(props.maxCostPerLead) : null,
     });
   }
 

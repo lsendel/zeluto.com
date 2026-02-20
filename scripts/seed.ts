@@ -70,12 +70,22 @@ async function seed() {
   // Signal configs
   const signalConfigs = [
     { signalType: 'PRICING_PAGE', weight: 20, decayHours: 168, tier: 'high' },
-    { signalType: 'DEMO_REQUEST', weight: 30, decayHours: 336, tier: 'critical' },
+    {
+      signalType: 'DEMO_REQUEST',
+      weight: 30,
+      decayHours: 336,
+      tier: 'critical',
+    },
     { signalType: 'FREE_TRIAL', weight: 25, decayHours: 336, tier: 'critical' },
     { signalType: 'FORM_SUBMIT', weight: 15, decayHours: 168, tier: 'medium' },
     { signalType: 'EMAIL_CLICK', weight: 5, decayHours: 72, tier: 'low' },
     { signalType: 'PAGE_VISIT', weight: 3, decayHours: 48, tier: 'low' },
-    { signalType: 'CONTENT_DOWNLOAD', weight: 10, decayHours: 168, tier: 'medium' },
+    {
+      signalType: 'CONTENT_DOWNLOAD',
+      weight: 10,
+      decayHours: 168,
+      tier: 'medium',
+    },
   ];
 
   for (const s of signalConfigs) {
@@ -105,12 +115,37 @@ async function seed() {
 
   // Sample deals across stages
   const deals = [
-    { name: 'Acme Corp Enterprise', stage: 'negotiation', value: 50000, probability: 70 },
+    {
+      name: 'Acme Corp Enterprise',
+      stage: 'negotiation',
+      value: 50000,
+      probability: 70,
+    },
     { name: 'TechStart Pro', stage: 'proposal', value: 15000, probability: 50 },
-    { name: 'GlobalFin Solutions', stage: 'discovery', value: 80000, probability: 30 },
-    { name: 'DataDrive Analytics', stage: 'qualification', value: 25000, probability: 20 },
-    { name: 'CloudFirst Inc', stage: 'closed_won', value: 35000, probability: 100 },
-    { name: 'RetailMax Pro', stage: 'prospecting', value: 12000, probability: 10 },
+    {
+      name: 'GlobalFin Solutions',
+      stage: 'discovery',
+      value: 80000,
+      probability: 30,
+    },
+    {
+      name: 'DataDrive Analytics',
+      stage: 'qualification',
+      value: 25000,
+      probability: 20,
+    },
+    {
+      name: 'CloudFirst Inc',
+      stage: 'closed_won',
+      value: 35000,
+      probability: 100,
+    },
+    {
+      name: 'RetailMax Pro',
+      stage: 'prospecting',
+      value: 12000,
+      probability: 10,
+    },
   ];
 
   for (const d of deals) {

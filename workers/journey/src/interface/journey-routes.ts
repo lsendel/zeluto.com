@@ -1,24 +1,22 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findJourneyById,
-  findAllJourneys,
   createJourney,
-  updateJourney,
   deleteJourney,
+  findAllJourneys,
+  findJourneyById,
+  updateJourney,
 } from '../infrastructure/repositories/journey-repository.js';
 import {
+  findConnectionsByStepIds,
+  findStepsByVersionId,
+} from '../infrastructure/repositories/step-repository.js';
+import { findTriggersByJourneyId } from '../infrastructure/repositories/trigger-repository.js';
+import {
+  createVersion,
   findLatestVersion,
   getNextVersionNumber,
-  createVersion,
 } from '../infrastructure/repositories/version-repository.js';
-import {
-  findStepsByVersionId,
-  findConnectionsByStepIds,
-} from '../infrastructure/repositories/step-repository.js';
-import {
-  findTriggersByJourneyId,
-} from '../infrastructure/repositories/trigger-repository.js';
 
 export const journeyRoutes = new Hono<Env>();
 
@@ -48,7 +46,10 @@ journeyRoutes.get('/api/v1/journey/journeys', async (c) => {
     });
   } catch (error) {
     console.error('List journeys error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list journeys' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list journeys' },
+      500,
+    );
   }
 });
 
@@ -64,7 +65,10 @@ journeyRoutes.post('/api/v1/journey/journeys', async (c) => {
     }>();
 
     if (!body.name) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'name is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'name is required' },
+        400,
+      );
     }
 
     const journey = await createJourney(db, tenant.organizationId, {
@@ -77,7 +81,10 @@ journeyRoutes.post('/api/v1/journey/journeys', async (c) => {
     return c.json(journey, 201);
   } catch (error) {
     console.error('Create journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create journey' },
+      500,
+    );
   }
 });
 
@@ -93,13 +100,25 @@ journeyRoutes.get('/api/v1/journey/journeys/:id', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
     }
 
-    const latestVersion = await findLatestVersion(db, tenant.organizationId, id);
-    const triggers = await findTriggersByJourneyId(db, tenant.organizationId, id);
+    const latestVersion = await findLatestVersion(
+      db,
+      tenant.organizationId,
+      id,
+    );
+    const triggers = await findTriggersByJourneyId(
+      db,
+      tenant.organizationId,
+      id,
+    );
 
     let steps: unknown[] = [];
     let connections: unknown[] = [];
     if (latestVersion) {
-      steps = await findStepsByVersionId(db, tenant.organizationId, latestVersion.id);
+      steps = await findStepsByVersionId(
+        db,
+        tenant.organizationId,
+        latestVersion.id,
+      );
       const stepIds = steps.map((s: any) => s.id);
       connections = await findConnectionsByStepIds(db, stepIds);
     }
@@ -113,7 +132,10 @@ journeyRoutes.get('/api/v1/journey/journeys/:id', async (c) => {
     });
   } catch (error) {
     console.error('Get journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get journey' },
+      500,
+    );
   }
 });
 
@@ -131,9 +153,15 @@ journeyRoutes.patch('/api/v1/journey/journeys/:id', async (c) => {
 
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
-    if (body.description !== undefined) updateData.description = body.description;
+    if (body.description !== undefined)
+      updateData.description = body.description;
 
-    const journey = await updateJourney(db, tenant.organizationId, id, updateData);
+    const journey = await updateJourney(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!journey) {
       return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
     }
@@ -141,7 +169,10 @@ journeyRoutes.patch('/api/v1/journey/journeys/:id', async (c) => {
     return c.json(journey);
   } catch (error) {
     console.error('Update journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update journey' },
+      500,
+    );
   }
 });
 
@@ -159,7 +190,10 @@ journeyRoutes.delete('/api/v1/journey/journeys/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete journey' },
+      500,
+    );
   }
 });
 
@@ -177,19 +211,34 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/publish', async (c) => {
 
     if (journey.status !== 'draft' && journey.status !== 'paused') {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Only draft or paused journeys can be published' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Only draft or paused journeys can be published',
+        },
         400,
       );
     }
 
     // Create a new version snapshot
-    const latestVersion = await findLatestVersion(db, tenant.organizationId, id);
-    const nextVersionNum = await getNextVersionNumber(db, tenant.organizationId, id);
+    const latestVersion = await findLatestVersion(
+      db,
+      tenant.organizationId,
+      id,
+    );
+    const nextVersionNum = await getNextVersionNumber(
+      db,
+      tenant.organizationId,
+      id,
+    );
 
     // Build the definition from existing steps or use the latest version's definition
     let definition: Record<string, unknown> = {};
     if (latestVersion) {
-      const steps = await findStepsByVersionId(db, tenant.organizationId, latestVersion.id);
+      const steps = await findStepsByVersionId(
+        db,
+        tenant.organizationId,
+        latestVersion.id,
+      );
       const stepIds = steps.map((s) => s.id);
       const connections = await findConnectionsByStepIds(db, stepIds);
       definition = { steps, connections };
@@ -213,7 +262,10 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/publish', async (c) => {
     });
   } catch (error) {
     console.error('Publish journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to publish journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to publish journey' },
+      500,
+    );
   }
 });
 
@@ -231,7 +283,10 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/pause', async (c) => {
 
     if (journey.status !== 'active') {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Only active journeys can be paused' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Only active journeys can be paused',
+        },
         400,
       );
     }
@@ -243,7 +298,10 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/pause', async (c) => {
     return c.json(updated);
   } catch (error) {
     console.error('Pause journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to pause journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to pause journey' },
+      500,
+    );
   }
 });
 
@@ -261,7 +319,10 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/resume', async (c) => {
 
     if (journey.status !== 'paused') {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Only paused journeys can be resumed' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Only paused journeys can be resumed',
+        },
         400,
       );
     }
@@ -273,6 +334,9 @@ journeyRoutes.post('/api/v1/journey/journeys/:id/resume', async (c) => {
     return c.json(updated);
   } catch (error) {
     console.error('Resume journey error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to resume journey' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to resume journey' },
+      500,
+    );
   }
 });

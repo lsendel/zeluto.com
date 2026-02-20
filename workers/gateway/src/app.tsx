@@ -1,26 +1,33 @@
+import {
+  cacheTenantState,
+  corsMiddleware,
+  csrfMiddleware,
+  fetchTenantState,
+  loggingMiddleware,
+} from '@mauntic/worker-lib';
 import { Hono } from 'hono';
-import { corsMiddleware, loggingMiddleware, csrfMiddleware } from '@mauntic/worker-lib';
 import type { Env } from './index.js';
-import { authMiddleware } from './middleware/auth.js';
-import { tenantMiddleware } from './middleware/tenant.js';
-import { rateLimitMiddleware } from './middleware/rate-limit.js';
-import { quotaMiddleware } from './middleware/quota.js';
 import { forwardToService } from './lib/forward.js';
-import { getAssetContentType } from './utils/static-assets.js';
-import { createOnboardingRoutes } from './routes/onboarding.js';
-import { createIdentityRoutes } from './routes/identity.js';
-import { createDeliveryRoutes } from './routes/delivery.js';
+import { authMiddleware } from './middleware/auth.js';
+import { quotaMiddleware } from './middleware/quota.js';
+import { rateLimitMiddleware } from './middleware/rate-limit.js';
+import { tenantMiddleware } from './middleware/tenant.js';
 import { createAnalyticsRoutes } from './routes/analytics.js';
 import { createBillingRoutes } from './routes/billing.js';
-import { createCrmRoutes } from './routes/crm.js';
 import { createCampaignRoutes } from './routes/campaign.js';
-import { createJourneyRoutes } from './routes/journey.js';
 import { createContentRoutes } from './routes/content.js';
+import { createCrmRoutes } from './routes/crm.js';
+import { createDeliveryRoutes } from './routes/delivery.js';
+import { createIdentityRoutes } from './routes/identity.js';
 import { createIntegrationsRoutes } from './routes/integrations.js';
+import { createJourneyRoutes } from './routes/journey.js';
 import { createLeadIntelligenceRoutes } from './routes/lead-intelligence.js';
-import { createScoringRoutes } from './routes/scoring.js';
-import { createRevopsRoutes } from './routes/revops.js';
+import { createOnboardingRoutes } from './routes/onboarding.js';
 import { createPageRoutes } from './routes/pages.js';
+import { createRevopsRoutes } from './routes/revops.js';
+import { createScoringRoutes } from './routes/scoring.js';
+import { createSeoRoutes } from './routes/seo.js';
+import { getAssetContentType } from './utils/static-assets.js';
 
 export function createApp() {
   const app = new Hono<Env>();
@@ -93,7 +100,12 @@ export function createApp() {
     const result: Record<string, unknown> = {
       user: { id: user.id, email: user.email, name: user.name },
       organization: organization
-        ? { id: organization.id, name: organization.name, role: organization.role, plan: organization.plan }
+        ? {
+            id: organization.id,
+            name: organization.name,
+            role: organization.role,
+            plan: organization.plan,
+          }
         : null,
       subscription: null,
     };
@@ -117,7 +129,9 @@ export function createApp() {
 
   // --- Auth (public, pre-identity) ---
   app.get('/api/auth/callback/:provider', async (c) => {
-    const response = await forwardToService(c, c.env.IDENTITY, { skipTenant: true });
+    const response = await forwardToService(c, c.env.IDENTITY, {
+      skipTenant: true,
+    });
     const contentType = response.headers.get('Content-Type') || '';
 
     // Better Auth returns JSON for API-flow callbacks; convert to browser redirect.
@@ -134,9 +148,11 @@ export function createApp() {
     return response;
   });
 
-  app.all('/api/auth/*', (c) => forwardToService(c, c.env.IDENTITY, { skipTenant: true }));
+  app.all('/api/auth/*', (c) =>
+    forwardToService(c, c.env.IDENTITY, { skipTenant: true }),
+  );
 
-  // --- Service Route Modules ---
+  // Service Routers
   app.route('/api/v1/identity', createIdentityRoutes());
   app.route('/api/v1/billing', createBillingRoutes());
   app.route('/api/v1/crm', createCrmRoutes());
@@ -150,6 +166,9 @@ export function createApp() {
   app.route('/api/v1/scoring', createScoringRoutes());
   app.route('/api/v1/revops', createRevopsRoutes());
 
+  // Public SEO Handlers (e.g. /robots.txt)
+  app.route('/', createSeoRoutes());
+
   // --- Onboarding ---
   const onboardingRoutes = createOnboardingRoutes();
   app.route('/app', onboardingRoutes);
@@ -161,12 +180,31 @@ export function createApp() {
   return app;
 }
 
-async function fetchBillingSubscription(c: any, organizationId: string): Promise<unknown | null> {
+async function fetchBillingSubscription(
+  c: any,
+  organizationId: string,
+): Promise<unknown | null> {
+  const tenantCacheKey = `billing:sub:${organizationId}`;
+  const tenantCache = c.env.TENANT_CACHE;
+
+  if (tenantCache) {
+    const cached = await fetchTenantState(
+      tenantCache,
+      tenantCacheKey,
+      'sub',
+    ).catch(() => null);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const requestId = c.get('requestId');
   const dispatch = c.env.BILLING_DISPATCH;
   if (dispatch) {
     try {
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
       if (requestId) {
         headers['X-Request-Id'] = requestId;
       }
@@ -179,7 +217,17 @@ async function fetchBillingSubscription(c: any, organizationId: string): Promise
         },
       );
       if (response.ok) {
-        return await response.json();
+        const result = await response.json();
+        if (tenantCache) {
+          await cacheTenantState(
+            tenantCache,
+            tenantCacheKey,
+            'sub',
+            result,
+            3600,
+          ).catch(() => {});
+        }
+        return result;
       }
       if (response.status !== 404) {
         const text = await response.text().catch(() => '');
@@ -196,7 +244,9 @@ async function fetchBillingSubscription(c: any, organizationId: string): Promise
     }
   }
 
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
   const tenantContext = c.get('tenantContext');
   if (tenantContext) {
     headers['X-Tenant-Context'] = btoa(JSON.stringify(tenantContext));
@@ -210,7 +260,17 @@ async function fetchBillingSubscription(c: any, organizationId: string): Promise
       new Request('https://internal/api/v1/billing/subscription', { headers }),
     );
     if (response.ok) {
-      return await response.json();
+      const result = await response.json();
+      if (tenantCache) {
+        await cacheTenantState(
+          tenantCache,
+          tenantCacheKey,
+          'sub',
+          result,
+          3600,
+        ).catch(() => {});
+      }
+      return result;
     }
   } catch (error) {
     c.get('logger')?.warn(

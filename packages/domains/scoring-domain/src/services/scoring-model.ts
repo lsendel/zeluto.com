@@ -1,5 +1,5 @@
-import type { ScoringConfigEntry } from '../repositories/scoring-config-repository.js';
 import { calculateGrade, type Grade } from '../entities/lead-score.js';
+import type { ScoringConfigEntry } from '../repositories/scoring-config-repository.js';
 
 export interface ContactFeatures {
   // Demographic
@@ -31,10 +31,16 @@ export interface ScoringResult {
 }
 
 export interface ScoringModel {
-  score(features: ContactFeatures, configs?: ScoringConfigEntry[]): ScoringResult;
+  score(
+    features: ContactFeatures,
+    configs?: ScoringConfigEntry[],
+  ): ScoringResult;
 }
 
-const DEFAULT_WEIGHTS: Record<string, { points: number; category: 'fit' | 'engagement' | 'intent' }> = {
+const DEFAULT_WEIGHTS: Record<
+  string,
+  { points: number; category: 'fit' | 'engagement' | 'intent' }
+> = {
   has_email: { points: 10, category: 'fit' },
   has_phone: { points: 15, category: 'fit' },
   has_direct_phone: { points: 10, category: 'fit' },
@@ -54,7 +60,10 @@ const DEFAULT_WEIGHTS: Record<string, { points: number; category: 'fit' | 'engag
 };
 
 export class RuleBasedScorer implements ScoringModel {
-  score(features: ContactFeatures, configs?: ScoringConfigEntry[]): ScoringResult {
+  score(
+    features: ContactFeatures,
+    configs?: ScoringConfigEntry[],
+  ): ScoringResult {
     const weights = this.buildWeights(configs);
     const components: Record<string, number> = {};
     const contributors: Array<{ factor: string; points: number }> = [];
@@ -68,9 +77,15 @@ export class RuleBasedScorer implements ScoringModel {
       components[factor] = w.points;
       contributors.push({ factor, points: w.points });
       switch (w.category) {
-        case 'fit': fitScore += w.points; break;
-        case 'engagement': engagementScore += w.points; break;
-        case 'intent': intentScore += w.points; break;
+        case 'fit':
+          fitScore += w.points;
+          break;
+        case 'engagement':
+          engagementScore += w.points;
+          break;
+        case 'intent':
+          intentScore += w.points;
+          break;
       }
     };
 
@@ -78,13 +93,18 @@ export class RuleBasedScorer implements ScoringModel {
     applyFactor('has_email', !!features.hasEmail);
     applyFactor('has_phone', !!features.hasPhone);
     applyFactor('has_direct_phone', !!features.hasDirectPhone);
-    if (features.companySize) applyFactor(`company_size_${features.companySize}`, true);
-    if (features.seniority) applyFactor(`seniority_${features.seniority}`, true);
+    if (features.companySize)
+      applyFactor(`company_size_${features.companySize}`, true);
+    if (features.seniority)
+      applyFactor(`seniority_${features.seniority}`, true);
 
     // Engagement
-    if (features.engagementLevel === 'high') applyFactor('high_engagement', true);
-    else if (features.engagementLevel === 'medium') applyFactor('medium_engagement', true);
-    if (features.contentDownloads && features.contentDownloads > 0) applyFactor('content_download', true);
+    if (features.engagementLevel === 'high')
+      applyFactor('high_engagement', true);
+    else if (features.engagementLevel === 'medium')
+      applyFactor('medium_engagement', true);
+    if (features.contentDownloads && features.contentDownloads > 0)
+      applyFactor('content_download', true);
 
     // Intent
     applyFactor('pricing_page', !!features.pricingPageVisit);
@@ -113,7 +133,12 @@ export class RuleBasedScorer implements ScoringModel {
     };
   }
 
-  private buildWeights(configs?: ScoringConfigEntry[]): Record<string, { points: number; category: 'fit' | 'engagement' | 'intent' }> {
+  private buildWeights(
+    configs?: ScoringConfigEntry[],
+  ): Record<
+    string,
+    { points: number; category: 'fit' | 'engagement' | 'intent' }
+  > {
     if (!configs || configs.length === 0) return { ...DEFAULT_WEIGHTS };
 
     const weights = { ...DEFAULT_WEIGHTS };

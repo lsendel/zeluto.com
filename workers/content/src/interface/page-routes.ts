@@ -1,15 +1,15 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
+  createLandingPage,
+  deleteLandingPage,
+  findAllLandingPages,
   findLandingPageById,
   findLandingPageBySlug,
-  findAllLandingPages,
-  createLandingPage,
-  updateLandingPage,
-  deleteLandingPage,
   incrementVisitCount,
+  updateLandingPage,
 } from '../infrastructure/repositories/landing-page-repository.js';
-import { sanitizeHtml, wrapInHtmlPage } from '../services/page-renderer.js';
+import { sanitizeHtml } from '../services/page-renderer.js';
 
 export const pageRoutes = new Hono<Env>();
 
@@ -38,7 +38,10 @@ pageRoutes.get('/api/v1/content/landing-pages', async (c) => {
     });
   } catch (error) {
     console.error('List landing pages error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list landing pages' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list landing pages' },
+      500,
+    );
   }
 });
 
@@ -57,11 +60,16 @@ pageRoutes.post('/api/v1/content/landing-pages', async (c) => {
     }>();
 
     if (!body.name || !body.slug) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'name and slug are required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'name and slug are required' },
+        400,
+      );
     }
 
     // Sanitize HTML content if provided
-    const htmlContent = body.htmlContent ? sanitizeHtml(body.htmlContent) : null;
+    const _htmlContent = body.htmlContent
+      ? sanitizeHtml(body.htmlContent)
+      : null;
 
     const landingPage = await createLandingPage(db, tenant.organizationId, {
       name: body.name,
@@ -74,7 +82,10 @@ pageRoutes.post('/api/v1/content/landing-pages', async (c) => {
     return c.json(landingPage, 201);
   } catch (error) {
     console.error('Create landing page error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create landing page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create landing page' },
+      500,
+    );
   }
 });
 
@@ -85,14 +96,24 @@ pageRoutes.get('/api/v1/content/landing-pages/:id', async (c) => {
   const id = c.req.param('id');
 
   try {
-    const landingPage = await findLandingPageById(db, tenant.organizationId, id);
+    const landingPage = await findLandingPageById(
+      db,
+      tenant.organizationId,
+      id,
+    );
     if (!landingPage) {
-      return c.json({ code: 'NOT_FOUND', message: 'Landing page not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Landing page not found' },
+        404,
+      );
     }
     return c.json(landingPage);
   } catch (error) {
     console.error('Get landing page error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get landing page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get landing page' },
+      500,
+    );
   }
 });
 
@@ -116,15 +137,26 @@ pageRoutes.patch('/api/v1/content/landing-pages/:id', async (c) => {
     if (body.slug !== undefined) updateData.slug = body.slug;
     if (body.templateId !== undefined) updateData.templateId = body.templateId;
 
-    const landingPage = await updateLandingPage(db, tenant.organizationId, id, updateData);
+    const landingPage = await updateLandingPage(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!landingPage) {
-      return c.json({ code: 'NOT_FOUND', message: 'Landing page not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Landing page not found' },
+        404,
+      );
     }
 
     return c.json(landingPage);
   } catch (error) {
     console.error('Update landing page error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update landing page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update landing page' },
+      500,
+    );
   }
 });
 
@@ -137,12 +169,18 @@ pageRoutes.delete('/api/v1/content/landing-pages/:id', async (c) => {
   try {
     const deleted = await deleteLandingPage(db, tenant.organizationId, id);
     if (!deleted) {
-      return c.json({ code: 'NOT_FOUND', message: 'Landing page not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Landing page not found' },
+        404,
+      );
     }
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete landing page error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete landing page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete landing page' },
+      500,
+    );
   }
 });
 
@@ -155,7 +193,10 @@ pageRoutes.post('/api/v1/content/landing-pages/:id/publish', async (c) => {
   try {
     const existing = await findLandingPageById(db, tenant.organizationId, id);
     if (!existing) {
-      return c.json({ code: 'NOT_FOUND', message: 'Landing page not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Landing page not found' },
+        404,
+      );
     }
 
     const landingPage = await updateLandingPage(db, tenant.organizationId, id, {
@@ -166,7 +207,10 @@ pageRoutes.post('/api/v1/content/landing-pages/:id/publish', async (c) => {
     return c.json(landingPage);
   } catch (error) {
     console.error('Publish landing page error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to publish landing page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to publish landing page' },
+      500,
+    );
   }
 });
 
@@ -179,7 +223,10 @@ pageRoutes.post('/api/v1/content/landing-pages/:id/unpublish', async (c) => {
   try {
     const existing = await findLandingPageById(db, tenant.organizationId, id);
     if (!existing) {
-      return c.json({ code: 'NOT_FOUND', message: 'Landing page not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Landing page not found' },
+        404,
+      );
     }
 
     const landingPage = await updateLandingPage(db, tenant.organizationId, id, {
@@ -189,7 +236,10 @@ pageRoutes.post('/api/v1/content/landing-pages/:id/unpublish', async (c) => {
     return c.json(landingPage);
   } catch (error) {
     console.error('Unpublish landing page error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to unpublish landing page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to unpublish landing page' },
+      500,
+    );
   }
 });
 
@@ -218,6 +268,9 @@ pageRoutes.get('/p/:slug', async (c) => {
     });
   } catch (error) {
     console.error('Get landing page by slug error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to load page' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to load page' },
+      500,
+    );
   }
 });

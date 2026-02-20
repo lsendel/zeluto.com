@@ -1,10 +1,14 @@
-import type { ScoringModel, ContactFeatures, ScoringResult } from './scoring-model.js';
-import type { LeadScoreRepository } from '../repositories/lead-score-repository.js';
-import type { IntentSignalRepository } from '../repositories/intent-signal-repository.js';
-import type { ScoringConfigRepository } from '../repositories/scoring-config-repository.js';
-import type { ScoreHistoryRepository } from '../repositories/score-history-repository.js';
 import { LeadScore } from '../entities/lead-score.js';
 import { ScoreHistory } from '../entities/score-history.js';
+import type { IntentSignalRepository } from '../repositories/intent-signal-repository.js';
+import type { LeadScoreRepository } from '../repositories/lead-score-repository.js';
+import type { ScoreHistoryRepository } from '../repositories/score-history-repository.js';
+import type { ScoringConfigRepository } from '../repositories/scoring-config-repository.js';
+import type {
+  ContactFeatures,
+  ScoringModel,
+  ScoringResult,
+} from './scoring-model.js';
 
 export interface ScoringEngineOptions {
   scoringModel: ScoringModel;
@@ -17,15 +21,23 @@ export interface ScoringEngineOptions {
 export class ScoringEngine {
   constructor(private readonly options: ScoringEngineOptions) {}
 
-  async scoreContact(orgId: string, contactId: string, features: ContactFeatures): Promise<{
+  async scoreContact(
+    orgId: string,
+    contactId: string,
+    features: ContactFeatures,
+  ): Promise<{
     result: ScoringResult;
     previousScore: number | null;
     thresholdsCrossed: Array<{ threshold: number; direction: 'up' | 'down' }>;
   }> {
-    const configs = await this.options.scoringConfigRepo.findByOrganization(orgId);
+    const configs =
+      await this.options.scoringConfigRepo.findByOrganization(orgId);
 
     // Add intent signal weight to features
-    const signals = await this.options.intentSignalRepo.findActiveByContact(orgId, contactId);
+    const signals = await this.options.intentSignalRepo.findActiveByContact(
+      orgId,
+      contactId,
+    );
     const intentWeight = signals.reduce((sum, s) => sum + s.currentWeight(), 0);
     const adjustedFeatures: ContactFeatures = {
       ...features,
@@ -38,7 +50,10 @@ export class ScoringEngine {
     const result = this.options.scoringModel.score(adjustedFeatures, configs);
 
     // Get previous score
-    const existing = await this.options.leadScoreRepo.findByContact(orgId, contactId);
+    const existing = await this.options.leadScoreRepo.findByContact(
+      orgId,
+      contactId,
+    );
     const previousScore = existing?.totalScore ?? null;
 
     // Save or update lead score
@@ -69,7 +84,10 @@ export class ScoringEngine {
 
     // Check threshold crossings
     const thresholds = [20, 40, 60, 80];
-    const thresholdsCrossed: Array<{ threshold: number; direction: 'up' | 'down' }> = [];
+    const thresholdsCrossed: Array<{
+      threshold: number;
+      direction: 'up' | 'down';
+    }> = [];
     if (previousScore !== null) {
       for (const t of thresholds) {
         if (previousScore < t && result.totalScore >= t) {
@@ -84,7 +102,10 @@ export class ScoringEngine {
   }
 
   async recordHistorySnapshot(orgId: string, contactId: string): Promise<void> {
-    const score = await this.options.leadScoreRepo.findByContact(orgId, contactId);
+    const score = await this.options.leadScoreRepo.findByContact(
+      orgId,
+      contactId,
+    );
     if (!score) return;
 
     const today = new Date().toISOString().split('T')[0];

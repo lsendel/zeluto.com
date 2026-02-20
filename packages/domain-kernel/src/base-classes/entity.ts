@@ -9,7 +9,7 @@ export abstract class Entity<TProps> {
   }
 
   public equals(object?: Entity<TProps>): boolean {
-    if (object == null || object == undefined) {
+    if (object == null || object === undefined) {
       return false;
     }
 

@@ -1,8 +1,8 @@
 import type {
-  SegmentCreatedEvent,
-  SegmentUpdatedEvent,
-  SegmentRebuiltEvent,
   DomainEventMetadata,
+  SegmentCreatedEvent,
+  SegmentRebuiltEvent,
+  SegmentUpdatedEvent,
 } from '@mauntic/domain-kernel';
 
 function meta(organizationId: string): DomainEventMetadata {

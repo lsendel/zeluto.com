@@ -1,20 +1,20 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { Fetcher } from '@cloudflare/workers-types';
 import {
-  createDatabase,
-  logQueueMetric,
-  fetchTenantState,
   cacheTenantState,
+  createDatabase,
+  fetchTenantState,
+  logQueueMetric,
 } from '@mauntic/worker-lib';
-import { handleCampaignSend } from './campaign-sender.js';
-import { handleFanOutBatch } from './fanout-batch.js';
-import { calculateAndAwardPoints } from '../services/point-calculator.js';
-import { publishPointsAwarded } from './publisher.js';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
   HttpSegmentContactSource,
   StubSegmentContactSource,
 } from '../application/segment-contact-source.js';
 import { applyDeliveryFeedback } from '../services/campaign-metrics.js';
+import { calculateAndAwardPoints } from '../services/point-calculator.js';
+import { handleCampaignSend } from './campaign-sender.js';
+import { handleFanOutBatch } from './fanout-batch.js';
+import { publishPointsAwarded } from './publisher.js';
 
 interface QueueEnv {
   DATABASE_URL: string;
@@ -37,14 +37,14 @@ export async function handleCampaignQueue(
   env: QueueEnv,
 ): Promise<void> {
   const db = createDatabase(env.DATABASE_URL) as NeonHttpDatabase;
-  const contactSource =
-    env.CRM
-      ? new HttpSegmentContactSource(env.CRM, env.CRM_DISPATCH, {
-          systemUserId: env.SERVICE_TENANT_USER_ID ?? '00000000-0000-0000-0000-000000000000',
-          systemUserRole: env.SERVICE_TENANT_USER_ROLE ?? 'system',
-          plan: env.SERVICE_TENANT_PLAN ?? 'enterprise',
-        })
-      : new StubSegmentContactSource();
+  const contactSource = env.CRM
+    ? new HttpSegmentContactSource(env.CRM, env.CRM_DISPATCH, {
+        systemUserId:
+          env.SERVICE_TENANT_USER_ID ?? '00000000-0000-0000-0000-000000000000',
+        systemUserRole: env.SERVICE_TENANT_USER_ROLE ?? 'system',
+        plan: env.SERVICE_TENANT_PLAN ?? 'enterprise',
+      })
+    : new StubSegmentContactSource();
   const queueName = batch.queue ?? 'mauntic-campaign-events';
 
   for (const msg of batch.messages) {
@@ -82,7 +82,10 @@ export async function handleCampaignQueue(
       switch (eventType) {
         // Campaign send flow
         case 'campaign.CampaignSent': {
-          const data = event.data as { organizationId: string; campaignId: string };
+          const data = event.data as {
+            organizationId: string;
+            campaignId: string;
+          };
           await handleCampaignSend(db, env.EVENTS, {
             organizationId: String(data.organizationId),
             campaignId: String(data.campaignId),
@@ -206,7 +209,13 @@ export async function handleCampaignQueue(
       }
 
       if (orgTenantKey && env.TENANT_CACHE) {
-        await cacheTenantState(env.TENANT_CACHE, orgTenantKey, doKey, '1', 86400);
+        await cacheTenantState(
+          env.TENANT_CACHE,
+          orgTenantKey,
+          doKey,
+          '1',
+          86400,
+        );
       } else {
         await env.KV.put(doKey, '1', { expirationTtl: 86400 });
       }

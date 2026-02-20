@@ -1,18 +1,19 @@
-import { Hono } from 'hono';
-import { eq, and, sql, count, inArray, desc } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { TenantContext } from '@mauntic/domain-kernel';
 import {
-  segments,
-  segment_contacts,
   contacts,
+  segment_contacts,
+  segments,
 } from '@mauntic/crm-domain/drizzle';
-import { buildFilterWhere, type FilterCriteria } from '../services/filter-engine.js';
+import type { TenantContext } from '@mauntic/domain-kernel';
+import { and, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { Hono } from 'hono';
 import {
-  SegmentNotFoundError,
+  buildFilterWhere,
+  type FilterCriteria,
+} from '../services/filter-engine.js';
+import {
   querySegmentContacts,
-  encodeCursor,
-  decodeCursor,
+  SegmentNotFoundError,
 } from '../services/segment-query.js';
 
 // ---------------------------------------------------------------------------
@@ -500,7 +501,9 @@ segmentRoutes.post('/api/v1/crm/segments/:id/query', async (c) => {
   const segmentId = c.req.param('id');
 
   try {
-    const body = await c.req.json<{ cursor?: string; limit?: number }>().catch(() => ({}));
+    const body = await c.req
+      .json<{ cursor?: string; limit?: number }>()
+      .catch(() => ({}) as { cursor?: string; limit?: number });
     const result = await querySegmentContacts(db, {
       organizationId: tenant.organizationId,
       segmentId,
@@ -514,7 +517,10 @@ segmentRoutes.post('/api/v1/crm/segments/:id/query', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Segment not found' }, 404);
     }
     console.error('Error querying segment contacts:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to query segment contacts' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to query segment contacts' },
+      500,
+    );
   }
 });
 

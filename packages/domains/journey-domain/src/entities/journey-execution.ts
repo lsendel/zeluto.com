@@ -1,11 +1,5 @@
-import { z } from 'zod';
 import { AggregateRoot, Result } from '@mauntic/domain-kernel';
-import {
-  JourneyExecutionCompletedEvent,
-  JourneyExecutionFailedEvent,
-  JourneyExecutionCanceledEvent,
-  JourneyExecutionStepChangedEvent
-} from '../events/journey-events.js';
+import { z } from 'zod';
 
 export const ExecutionStatusSchema = z.enum([
   'active',
@@ -59,7 +53,9 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
   }
 
   static reconstitute(props: JourneyExecutionProps): Result<JourneyExecution> {
-    return Result.ok(new JourneyExecution(JourneyExecutionPropsSchema.parse(props)));
+    return Result.ok(
+      new JourneyExecution(JourneyExecutionPropsSchema.parse(props)),
+    );
   }
 
   // ---- Accessors ----
@@ -124,7 +120,9 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();
@@ -154,7 +152,9 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();
@@ -185,7 +185,9 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();
@@ -215,7 +217,9 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();

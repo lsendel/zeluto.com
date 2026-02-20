@@ -1,5 +1,5 @@
-import type { MiddlewareHandler } from 'hono';
 import type { QuotaResource } from '@mauntic/domain-kernel';
+import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../index.js';
 
 /**

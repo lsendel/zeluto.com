@@ -9,6 +9,8 @@ export const CreateWebhookCommandSchema = z.object({
 
 export type CreateWebhookCommand = z.infer<typeof CreateWebhookCommandSchema>;
 
-export function createWebhookCommand(input: CreateWebhookCommand): CreateWebhookCommand {
+export function createWebhookCommand(
+  input: CreateWebhookCommand,
+): CreateWebhookCommand {
   return CreateWebhookCommandSchema.parse(input);
 }

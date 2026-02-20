@@ -11,7 +11,13 @@ export const EnrichmentResultSchema = z.object({
 
 export type EnrichmentResult = z.infer<typeof EnrichmentResultSchema>;
 
-export const EnrichmentJobStatusSchema = z.enum(['pending', 'running', 'completed', 'failed', 'exhausted']);
+export const EnrichmentJobStatusSchema = z.enum([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'exhausted',
+]);
 export type EnrichmentJobStatus = z.infer<typeof EnrichmentJobStatusSchema>;
 
 export const EnrichmentJobPropsSchema = z.object({
@@ -59,16 +65,36 @@ export class EnrichmentJob {
     return new EnrichmentJob(EnrichmentJobPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get contactId() { return this.props.contactId; }
-  get status() { return this.props.status; }
-  get fieldRequests() { return this.props.fieldRequests; }
-  get results() { return this.props.results; }
-  get totalCost() { return this.props.totalCost; }
-  get totalLatencyMs() { return this.props.totalLatencyMs; }
-  get providersTried() { return this.props.providersTried; }
-  get error() { return this.props.error; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get status() {
+    return this.props.status;
+  }
+  get fieldRequests() {
+    return this.props.fieldRequests;
+  }
+  get results() {
+    return this.props.results;
+  }
+  get totalCost() {
+    return this.props.totalCost;
+  }
+  get totalLatencyMs() {
+    return this.props.totalLatencyMs;
+  }
+  get providersTried() {
+    return this.props.providersTried;
+  }
+  get error() {
+    return this.props.error;
+  }
 
   start(): void {
     this.props.status = 'running';

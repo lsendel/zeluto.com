@@ -8,8 +8,16 @@ export interface EnrichmentCacheEntry {
 }
 
 export interface EnrichmentCacheRepository {
-  get(orgId: string, contactId: string, fieldName: string): Promise<EnrichmentCacheEntry | null>;
+  get(
+    orgId: string,
+    contactId: string,
+    fieldName: string,
+  ): Promise<EnrichmentCacheEntry | null>;
   set(orgId: string, entry: EnrichmentCacheEntry): Promise<void>;
-  invalidate(orgId: string, contactId: string, fieldName?: string): Promise<void>;
+  invalidate(
+    orgId: string,
+    contactId: string,
+    fieldName?: string,
+  ): Promise<void>;
   deleteExpired(): Promise<number>;
 }

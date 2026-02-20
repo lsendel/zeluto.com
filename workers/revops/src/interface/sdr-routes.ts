@@ -1,9 +1,16 @@
-import { Hono } from 'hono';
-import type { Env } from '../app.js';
-import { ClaudeLLMProvider } from '../adapters/claude-llm-provider.js';
 import { SDRAgent } from '@mauntic/revops-domain';
-import { findProspectsByOrganization, upsertProspect } from '../infrastructure/repositories/prospect-repository.js';
-import { findSequencesByOrganization, createSequence, enrollContact } from '../infrastructure/repositories/sequence-repository.js';
+import { Hono } from 'hono';
+import { ClaudeLLMProvider } from '../adapters/claude-llm-provider.js';
+import type { Env } from '../app.js';
+import {
+  findProspectsByOrganization,
+  upsertProspect,
+} from '../infrastructure/repositories/prospect-repository.js';
+import {
+  createSequence,
+  enrollContact,
+  findSequencesByOrganization,
+} from '../infrastructure/repositories/sequence-repository.js';
 
 export const sdrRoutes = new Hono<Env>();
 
@@ -12,11 +19,17 @@ sdrRoutes.get('/api/v1/revops/prospects', async (c) => {
   const db = c.get('db');
 
   try {
-    const prospects = await findProspectsByOrganization(db, tenant.organizationId);
+    const prospects = await findProspectsByOrganization(
+      db,
+      tenant.organizationId,
+    );
     return c.json(prospects);
   } catch (error) {
     console.error('List prospects error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list prospects' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list prospects' },
+      500,
+    );
   }
 });
 
@@ -56,7 +69,10 @@ sdrRoutes.post('/api/v1/revops/prospects/:contactId/qualify', async (c) => {
     return c.json({ ...prospect, qualification });
   } catch (error) {
     console.error('Qualify prospect error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to qualify prospect' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to qualify prospect' },
+      500,
+    );
   }
 });
 
@@ -69,7 +85,10 @@ sdrRoutes.get('/api/v1/revops/sequences', async (c) => {
     return c.json(seqs);
   } catch (error) {
     console.error('List sequences error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list sequences' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list sequences' },
+      500,
+    );
   }
 });
 
@@ -83,7 +102,10 @@ sdrRoutes.post('/api/v1/revops/sequences', async (c) => {
     return c.json(seq, 201);
   } catch (error) {
     console.error('Create sequence error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create sequence' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create sequence' },
+      500,
+    );
   }
 });
 
@@ -102,6 +124,9 @@ sdrRoutes.post('/api/v1/revops/sequences/:sequenceId/enroll', async (c) => {
     return c.json(enrollment, 201);
   } catch (error) {
     console.error('Enroll in sequence error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to enroll in sequence' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to enroll in sequence' },
+      500,
+    );
   }
 });

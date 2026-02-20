@@ -1,16 +1,15 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type {
+  MessageBouncedEvent,
+  MessageClickedEvent,
   MessageDeliveredEvent,
   MessageOpenedEvent,
-  MessageClickedEvent,
-  MessageBouncedEvent,
 } from '@mauntic/domain-kernel/events';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
+  createExecutionLog,
   findExecutionById,
-  updateExecution,
   findStepExecutionsByExecutionId,
   updateStepExecution,
-  createExecutionLog,
 } from '../infrastructure/repositories/execution-repository.js';
 
 type DeliveryEvent =
@@ -59,7 +58,11 @@ export async function handleDeliveryEvent(
   // Check if the current step is a gate waiting for this event type
   if (!execution.current_step_id) return;
 
-  const stepExecutions = await findStepExecutionsByExecutionId(db, orgId, execution.id);
+  const stepExecutions = await findStepExecutionsByExecutionId(
+    db,
+    orgId,
+    execution.id,
+  );
   const currentStepExec = stepExecutions.find(
     (se) => se.step_id === execution.current_step_id && se.status === 'pending',
   );

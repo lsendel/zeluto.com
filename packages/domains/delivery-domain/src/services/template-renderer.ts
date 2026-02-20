@@ -70,7 +70,10 @@ function processEach(template: string, data: Record<string, unknown>): string {
  * Process {{#if condition}}...{{else}}...{{/if}} blocks.
  * Supports optional {{else}} clause.
  */
-function processConditionals(template: string, data: Record<string, unknown>): string {
+function processConditionals(
+  template: string,
+  data: Record<string, unknown>,
+): string {
   const ifRegex = /\{\{#if\s+(\S+?)\}\}([\s\S]*?)\{\{\/if\}\}/g;
   return template.replace(ifRegex, (_match, key: string, body: string) => {
     const value = resolve(key, data);
@@ -93,10 +96,13 @@ function processConditionals(template: string, data: Record<string, unknown>): s
  */
 function interpolate(template: string, data: Record<string, unknown>): string {
   // Triple-brace: raw output (no HTML escaping)
-  let result = template.replace(/\{\{\{(\S+?)\}\}\}/g, (_match, key: string) => {
-    const value = resolve(key, data);
-    return value == null ? '' : String(value);
-  });
+  let result = template.replace(
+    /\{\{\{(\S+?)\}\}\}/g,
+    (_match, key: string) => {
+      const value = resolve(key, data);
+      return value == null ? '' : String(value);
+    },
+  );
 
   // Double-brace: escaped output
   result = result.replace(/\{\{(\S+?)\}\}/g, (_match, key: string) => {
@@ -121,7 +127,10 @@ function interpolate(template: string, data: Record<string, unknown>): string {
  * @param data - Data context for variable resolution
  * @returns Rendered HTML string
  */
-export function renderTemplate(template: string, data: Record<string, unknown>): string {
+export function renderTemplate(
+  template: string,
+  data: Record<string, unknown>,
+): string {
   let result = template;
   result = processEach(result, data);
   result = processConditionals(result, data);

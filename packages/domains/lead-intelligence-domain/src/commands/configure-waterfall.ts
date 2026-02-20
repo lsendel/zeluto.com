@@ -11,8 +11,12 @@ export const ConfigureWaterfallCommandSchema = z.object({
   maxCostPerLead: z.number().min(0).nullable().optional(),
 });
 
-export type ConfigureWaterfallCommand = z.infer<typeof ConfigureWaterfallCommandSchema>;
+export type ConfigureWaterfallCommand = z.infer<
+  typeof ConfigureWaterfallCommandSchema
+>;
 
-export function configureWaterfallCommand(input: ConfigureWaterfallCommand): ConfigureWaterfallCommand {
+export function configureWaterfallCommand(
+  input: ConfigureWaterfallCommand,
+): ConfigureWaterfallCommand {
   return ConfigureWaterfallCommandSchema.parse(input);
 }

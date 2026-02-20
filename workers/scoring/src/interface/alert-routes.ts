@@ -10,9 +10,12 @@ alertRoutes.get('/api/v1/scoring/signals/alerts', async (c) => {
 });
 
 // POST /api/v1/scoring/signals/alerts/:alertId/acknowledge
-alertRoutes.post('/api/v1/scoring/signals/alerts/:alertId/acknowledge', async (c) => {
-  const { alertId } = c.req.param();
+alertRoutes.post(
+  '/api/v1/scoring/signals/alerts/:alertId/acknowledge',
+  async (c) => {
+    const { alertId } = c.req.param();
 
-  // TODO: Wire up SignalAlertRepository + acknowledge
-  return c.json({ message: 'Alert acknowledged' });
-});
+    // TODO: Wire up SignalAlertRepository + acknowledge
+    return c.json({ message: 'Alert acknowledged' });
+  },
+);

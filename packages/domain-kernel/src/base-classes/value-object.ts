@@ -12,6 +12,9 @@ export abstract class ValueObject<TProps> {
     if ((vo as ValueObject<TProps>).props === undefined) {
       return false;
     }
-    return JSON.stringify(this.props) === JSON.stringify((vo as ValueObject<TProps>).props);
+    return (
+      JSON.stringify(this.props) ===
+      JSON.stringify((vo as ValueObject<TProps>).props)
+    );
   }
 }

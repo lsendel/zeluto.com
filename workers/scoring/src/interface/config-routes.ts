@@ -11,7 +11,7 @@ configRoutes.get('/api/v1/scoring/scoring/config', async (c) => {
 
 // PUT /api/v1/scoring/scoring/config
 configRoutes.put('/api/v1/scoring/scoring/config', async (c) => {
-  const body = await c.req.json();
+  const _body = await c.req.json();
 
   // TODO: Wire up ScoringConfigRepository
   return c.json({ message: 'Configuration updated' });

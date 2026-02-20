@@ -8,6 +8,14 @@ export interface SegmentRepository {
   ): Promise<{ data: Segment[]; total: number }>;
   save(segment: Segment): Promise<void>;
   delete(orgId: string, id: string): Promise<void>;
-  addContacts(orgId: string, segmentId: string, contactIds: string[]): Promise<void>;
-  removeContacts(orgId: string, segmentId: string, contactIds: string[]): Promise<void>;
+  addContacts(
+    orgId: string,
+    segmentId: string,
+    contactIds: string[],
+  ): Promise<void>;
+  removeContacts(
+    orgId: string,
+    segmentId: string,
+    contactIds: string[],
+  ): Promise<void>;
 }

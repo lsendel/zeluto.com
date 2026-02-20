@@ -1,2 +1,2 @@
-export { EmailSchema, createEmail, type Email } from './email.js';
-export { SlugSchema, createSlug, type Slug } from './slug.js';
+export { createEmail, type Email, EmailSchema } from './email.js';
+export { createSlug, type Slug, SlugSchema } from './slug.js';

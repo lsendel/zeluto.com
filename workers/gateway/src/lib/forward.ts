@@ -14,13 +14,20 @@ export async function forwardToService(
   const headers = new Headers(c.req.raw.headers);
 
   if (!options?.skipTenant) {
-    const tenant = c.get('tenantContext');
-    if (tenant) {
-      headers.set('X-Tenant-Context', btoa(JSON.stringify(tenant)));
-      const cacheKey = c.get('tenantContextCacheKey');
-      if (cacheKey) {
-        headers.set('X-Tenant-Context-Key', cacheKey);
+    const encoded = c.get('tenantContextHeader');
+    if (encoded) {
+      headers.set('X-Tenant-Context', encoded);
+    } else {
+      const tenant = c.get('tenantContext');
+      if (tenant) {
+        headers.set('X-Tenant-Context', btoa(JSON.stringify(tenant)));
       }
+    }
+
+    // Always check for cacheKey even if tenant was falsy in original logic
+    const cacheKey = c.get('tenantContextCacheKey');
+    if (cacheKey) {
+      headers.set('X-Tenant-Context-Key', cacheKey);
     }
   }
 
@@ -35,7 +42,7 @@ export async function forwardToService(
       headers,
       body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
       redirect: 'manual',
-      // @ts-ignore - duplex is needed for streaming request bodies
+      // @ts-expect-error - duplex is needed for streaming request bodies
       duplex: 'half',
     });
 

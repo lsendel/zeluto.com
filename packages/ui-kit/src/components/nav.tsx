@@ -1,4 +1,4 @@
-import type { Child, FC } from "../types.js";
+import type { Child, FC } from '../types.js';
 
 export interface NavItem {
   label: string;
@@ -18,17 +18,11 @@ export interface NavGroup {
 export interface SidebarNavProps {
   groups: NavGroup[];
   class?: string;
-  /** HTMX target for navigation links */
-  "hx-target"?: string;
-  /** HTMX swap strategy */
-  "hx-swap"?: string;
 }
 
 export const SidebarNav: FC<SidebarNavProps> = ({
   groups,
-  class: className = "",
-  "hx-target": hxTarget = "#main-content",
-  "hx-swap": hxSwap = "innerHTML show:window:top",
+  class: className = '',
 }) => {
   return (
     <nav class={`flex flex-col gap-6 ${className}`} aria-label="Sidebar">
@@ -39,28 +33,24 @@ export const SidebarNav: FC<SidebarNavProps> = ({
               {group.title}
             </h3>
           )}
-          <ul class="flex flex-col gap-0.5" role="list">
+          <ul class="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.href}>
                 <a
                   href={item.href}
-                  hx-get={item.href}
-                  hx-target={hxTarget}
-                  hx-swap={hxSwap}
-                  hx-push-url="true"
                   class={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                     item.active
-                      ? "bg-brand-50 text-brand-700"
-                      : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                   }`}
-                  aria-current={item.active ? "page" : undefined}
+                  aria-current={item.active ? 'page' : undefined}
                 >
                   {item.icon && (
                     <span
                       class={`flex-shrink-0 ${
                         item.active
-                          ? "text-brand-600"
-                          : "text-gray-400 group-hover:text-gray-600"
+                          ? 'text-brand-600'
+                          : 'text-gray-400 group-hover:text-gray-600'
                       }`}
                     >
                       {item.icon}
@@ -71,8 +61,8 @@ export const SidebarNav: FC<SidebarNavProps> = ({
                     <span
                       class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                         item.active
-                          ? "bg-brand-100 text-brand-700"
-                          : "bg-gray-100 text-gray-600"
+                          ? 'bg-brand-100 text-brand-700'
+                          : 'bg-gray-100 text-gray-600'
                       }`}
                     >
                       {item.badge}
@@ -94,7 +84,7 @@ export interface TopNavProps {
   class?: string;
 }
 
-export const TopNav: FC<TopNavProps> = ({ items, class: className = "" }) => {
+export const TopNav: FC<TopNavProps> = ({ items, class: className = '' }) => {
   return (
     <nav class={`flex items-center gap-1 ${className}`}>
       {items.map((item) => (
@@ -103,8 +93,8 @@ export const TopNav: FC<TopNavProps> = ({ items, class: className = "" }) => {
           href={item.href}
           class={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
             item.active
-              ? "bg-gray-100 text-gray-900"
-              : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              ? 'bg-gray-100 text-gray-900'
+              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
         >
           {item.label}

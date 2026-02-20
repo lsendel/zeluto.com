@@ -8,6 +8,8 @@ export const EnrollSequenceCommandSchema = z.object({
 
 export type EnrollSequenceCommand = z.infer<typeof EnrollSequenceCommandSchema>;
 
-export function enrollSequenceCommand(input: EnrollSequenceCommand): EnrollSequenceCommand {
+export function enrollSequenceCommand(
+  input: EnrollSequenceCommand,
+): EnrollSequenceCommand {
   return EnrollSequenceCommandSchema.parse(input);
 }

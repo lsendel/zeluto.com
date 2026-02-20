@@ -1,6 +1,10 @@
 import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
-import { ErrorSchema, PaginationQuerySchema, PaginatedResponseSchema } from './common';
+import {
+  ErrorSchema,
+  PaginatedResponseSchema,
+  PaginationQuerySchema,
+} from './common';
 
 const c = initContract();
 
@@ -34,7 +38,15 @@ export const SubscriptionSchema = z.object({
   id: z.string().uuid(),
   organizationId: z.string().uuid(),
   planId: z.string().uuid(),
-  status: z.enum(['active', 'canceled', 'past_due', 'trialing', 'incomplete', 'incomplete_expired', 'unpaid']),
+  status: z.enum([
+    'active',
+    'canceled',
+    'past_due',
+    'trialing',
+    'incomplete',
+    'incomplete_expired',
+    'unpaid',
+  ]),
   currentPeriodStart: z.string(),
   currentPeriodEnd: z.string(),
   cancelAtPeriodEnd: z.boolean(),
@@ -167,9 +179,11 @@ export const billingContract = c.router({
     createPortalSession: {
       method: 'POST',
       path: '/api/v1/billing/subscription/portal',
-      body: z.object({
-        returnUrl: z.string().url().optional(),
-      }).optional(),
+      body: z
+        .object({
+          returnUrl: z.string().url().optional(),
+        })
+        .optional(),
       responses: {
         200: z.object({ url: z.string() }),
         401: ErrorSchema,

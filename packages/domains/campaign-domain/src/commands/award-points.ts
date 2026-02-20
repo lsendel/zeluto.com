@@ -10,6 +10,8 @@ export const AwardPointsCommandSchema = z.object({
 
 export type AwardPointsCommand = z.infer<typeof AwardPointsCommandSchema>;
 
-export function awardPointsCommand(input: AwardPointsCommand): AwardPointsCommand {
+export function awardPointsCommand(
+  input: AwardPointsCommand,
+): AwardPointsCommand {
   return AwardPointsCommandSchema.parse(input);
 }

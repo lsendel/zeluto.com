@@ -1,4 +1,7 @@
-import { calculateDataQuality, type DataQualityScore } from '../entities/data-quality-score.js';
+import {
+  calculateDataQuality,
+  type DataQualityScore,
+} from '../entities/data-quality-score.js';
 
 export interface ContactForQuality {
   email?: string | null;

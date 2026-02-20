@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
 import { routingRules } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type RoutingRuleRow = typeof routingRules.$inferSelect;
@@ -23,7 +23,12 @@ export async function findEnabledRules(
   return db
     .select()
     .from(routingRules)
-    .where(and(eq(routingRules.organization_id, orgId), eq(routingRules.enabled, true)))
+    .where(
+      and(
+        eq(routingRules.organization_id, orgId),
+        eq(routingRules.enabled, true),
+      ),
+    )
     .orderBy(desc(routingRules.priority));
 }
 
@@ -43,12 +48,16 @@ export async function updateRule(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Omit<RoutingRuleInsert, 'id' | 'organization_id' | 'created_at'>>,
+  data: Partial<
+    Omit<RoutingRuleInsert, 'id' | 'organization_id' | 'created_at'>
+  >,
 ): Promise<RoutingRuleRow | null> {
   const [row] = await db
     .update(routingRules)
     .set({ ...data, updated_at: new Date() })
-    .where(and(eq(routingRules.id, id), eq(routingRules.organization_id, orgId)))
+    .where(
+      and(eq(routingRules.id, id), eq(routingRules.organization_id, orgId)),
+    )
     .returning();
   return row ?? null;
 }
@@ -60,7 +69,9 @@ export async function deleteRule(
 ): Promise<boolean> {
   const result = await db
     .delete(routingRules)
-    .where(and(eq(routingRules.id, id), eq(routingRules.organization_id, orgId)))
+    .where(
+      and(eq(routingRules.id, id), eq(routingRules.organization_id, orgId)),
+    )
     .returning({ id: routingRules.id });
   return result.length > 0;
 }

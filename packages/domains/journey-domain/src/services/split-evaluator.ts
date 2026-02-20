@@ -54,31 +54,63 @@ export function evaluateConditionSplit(
 
     case 'gt':
     case 'greater_than':
-      return typeof fieldValue === 'number' && typeof value === 'number' && fieldValue > value;
+      return (
+        typeof fieldValue === 'number' &&
+        typeof value === 'number' &&
+        fieldValue > value
+      );
 
     case 'gte':
     case 'greater_than_or_equals':
-      return typeof fieldValue === 'number' && typeof value === 'number' && fieldValue >= value;
+      return (
+        typeof fieldValue === 'number' &&
+        typeof value === 'number' &&
+        fieldValue >= value
+      );
 
     case 'lt':
     case 'less_than':
-      return typeof fieldValue === 'number' && typeof value === 'number' && fieldValue < value;
+      return (
+        typeof fieldValue === 'number' &&
+        typeof value === 'number' &&
+        fieldValue < value
+      );
 
     case 'lte':
     case 'less_than_or_equals':
-      return typeof fieldValue === 'number' && typeof value === 'number' && fieldValue <= value;
+      return (
+        typeof fieldValue === 'number' &&
+        typeof value === 'number' &&
+        fieldValue <= value
+      );
 
     case 'contains':
-      return typeof fieldValue === 'string' && typeof value === 'string' && fieldValue.includes(value);
+      return (
+        typeof fieldValue === 'string' &&
+        typeof value === 'string' &&
+        fieldValue.includes(value)
+      );
 
     case 'not_contains':
-      return typeof fieldValue === 'string' && typeof value === 'string' && !fieldValue.includes(value);
+      return (
+        typeof fieldValue === 'string' &&
+        typeof value === 'string' &&
+        !fieldValue.includes(value)
+      );
 
     case 'starts_with':
-      return typeof fieldValue === 'string' && typeof value === 'string' && fieldValue.startsWith(value);
+      return (
+        typeof fieldValue === 'string' &&
+        typeof value === 'string' &&
+        fieldValue.startsWith(value)
+      );
 
     case 'ends_with':
-      return typeof fieldValue === 'string' && typeof value === 'string' && fieldValue.endsWith(value);
+      return (
+        typeof fieldValue === 'string' &&
+        typeof value === 'string' &&
+        fieldValue.endsWith(value)
+      );
 
     case 'is_set':
       return fieldValue !== null && fieldValue !== undefined;
@@ -106,7 +138,11 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
   let current: unknown = obj;
 
   for (const part of parts) {
-    if (current === null || current === undefined || typeof current !== 'object') {
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== 'object'
+    ) {
       return undefined;
     }
     current = (current as Record<string, unknown>)[part];

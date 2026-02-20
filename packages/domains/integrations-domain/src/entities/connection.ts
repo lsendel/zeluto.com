@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { InvariantViolation } from '@mauntic/domain-kernel';
 
 export const ConnectionProviderSchema = z.enum([
   'salesforce',

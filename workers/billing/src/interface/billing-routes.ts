@@ -1,18 +1,12 @@
-import { Hono } from 'hono';
-import { eq, and, desc } from 'drizzle-orm';
-import type { Env } from '../app.js';
 import {
-  SubscriptionManager,
-  QuotaChecker,
   PlanService,
+  QuotaChecker,
+  SubscriptionManager,
 } from '@mauntic/billing-domain';
-import {
-  plans,
-  planLimits,
-  subscriptions,
-  usageRecords,
-  invoices,
-} from '@mauntic/billing-domain/drizzle';
+import { invoices, plans, usageRecords } from '@mauntic/billing-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
+import { Hono } from 'hono';
+import type { Env } from '../app.js';
 
 export const billingRoutes = new Hono<Env>();
 
@@ -33,7 +27,10 @@ billingRoutes.get('/api/v1/billing/plans', async (c) => {
     return c.json(allPlans);
   } catch (error) {
     console.error('List plans error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list plans' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list plans' },
+      500,
+    );
   }
 });
 
@@ -49,10 +46,16 @@ billingRoutes.get('/api/v1/billing/plans/:id', async (c) => {
     return c.json({ ...plan, limits });
   } catch (error: any) {
     if (error?.code === 'NOT_FOUND') {
-      return c.json({ code: 'NOT_FOUND', message: `Plan ${planId} not found` }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: `Plan ${planId} not found` },
+        404,
+      );
     }
     console.error('Get plan error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get plan' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get plan' },
+      500,
+    );
   }
 });
 
@@ -70,12 +73,18 @@ billingRoutes.get('/api/v1/billing/subscription', async (c) => {
   try {
     const subscription = await manager.getSubscription(tenant.organizationId);
     if (!subscription) {
-      return c.json({ code: 'NOT_FOUND', message: 'No subscription found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'No subscription found' },
+        404,
+      );
     }
     return c.json(subscription);
   } catch (error) {
     console.error('Get subscription error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get subscription' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get subscription' },
+      500,
+    );
   }
 });
 
@@ -93,12 +102,20 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
   }>();
 
   if (!body.planId || !body.billingPeriod) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'planId and billingPeriod are required' }, 400);
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'planId and billingPeriod are required',
+      },
+      400,
+    );
   }
 
   const interval = body.billingPeriod === 'yearly' ? 'year' : 'month';
-  const successUrl = body.successUrl || `https://${c.env.APP_DOMAIN}/billing/success`;
-  const cancelUrl = body.cancelUrl || `https://${c.env.APP_DOMAIN}/billing/cancel`;
+  const successUrl =
+    body.successUrl || `https://${c.env.APP_DOMAIN}/billing/success`;
+  const cancelUrl =
+    body.cancelUrl || `https://${c.env.APP_DOMAIN}/billing/cancel`;
 
   const manager = new SubscriptionManager(db, stripe);
 
@@ -117,7 +134,10 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
       return c.json({ code: 'CONFLICT', message: error.message }, 400);
     }
     console.error('Checkout error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create checkout session' }, 400);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create checkout session' },
+      400,
+    );
   }
 });
 
@@ -136,10 +156,16 @@ billingRoutes.post('/api/v1/billing/subscription/cancel', async (c) => {
     return c.json(subscription);
   } catch (error: any) {
     if (error?.message?.includes('No active subscription')) {
-      return c.json({ code: 'NOT_FOUND', message: 'No active subscription found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'No active subscription found' },
+        404,
+      );
     }
     console.error('Cancel error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to cancel subscription' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to cancel subscription' },
+      500,
+    );
   }
 });
 
@@ -155,7 +181,10 @@ billingRoutes.post('/api/v1/billing/subscription/change-plan', async (c) => {
   }>();
 
   if (!body.planId) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'planId is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'planId is required' },
+      400,
+    );
   }
 
   const manager = new SubscriptionManager(db, stripe);
@@ -171,10 +200,16 @@ billingRoutes.post('/api/v1/billing/subscription/change-plan', async (c) => {
       return c.json({ code: 'VALIDATION_ERROR', message: error.message }, 400);
     }
     if (error?.message?.includes('No active subscription')) {
-      return c.json({ code: 'NOT_FOUND', message: 'No active subscription found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'No active subscription found' },
+        404,
+      );
     }
     console.error('Change plan error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to change plan' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to change plan' },
+      500,
+    );
   }
 });
 
@@ -196,14 +231,20 @@ billingRoutes.post('/api/v1/billing/subscription/portal', async (c) => {
   const url = returnUrl || `https://${c.env.APP_DOMAIN}/billing`;
 
   try {
-    const session = await manager.createPortalSession(tenant.organizationId, url);
+    const session = await manager.createPortalSession(
+      tenant.organizationId,
+      url,
+    );
     return c.json({ url: session.url });
   } catch (error: any) {
     if (error?.message?.includes('No customer')) {
       return c.json({ code: 'NOT_FOUND', message: 'No customer found' }, 404);
     }
     console.error('Portal error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create portal session' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create portal session' },
+      500,
+    );
   }
 });
 
@@ -235,7 +276,10 @@ billingRoutes.get('/api/v1/billing/usage', async (c) => {
     return c.json(usage);
   } catch (error) {
     console.error('Get usage error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get usage' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get usage' },
+      500,
+    );
   }
 });
 
@@ -250,7 +294,7 @@ billingRoutes.get('/api/v1/billing/usage/history', async (c) => {
   const offset = (page - 1) * limit;
 
   try {
-    let query = db
+    const query = db
       .select()
       .from(usageRecords)
       .where(eq(usageRecords.organizationId, tenant.organizationId))
@@ -258,7 +302,7 @@ billingRoutes.get('/api/v1/billing/usage/history', async (c) => {
       .limit(limit)
       .offset(offset);
 
-    let records;
+    let records: Awaited<typeof query>;
     if (resource) {
       records = await db
         .select()
@@ -304,7 +348,10 @@ billingRoutes.get('/api/v1/billing/usage/history', async (c) => {
     });
   } catch (error) {
     console.error('Get usage history error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get usage history' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get usage history' },
+      500,
+    );
   }
 });
 
@@ -330,7 +377,10 @@ billingRoutes.get('/api/v1/billing/usage/:resource', async (c) => {
     });
   } catch (error) {
     console.error('Get resource usage error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get usage' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get usage' },
+      500,
+    );
   }
 });
 
@@ -373,7 +423,10 @@ billingRoutes.get('/api/v1/billing/invoices', async (c) => {
     });
   } catch (error) {
     console.error('List invoices error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list invoices' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list invoices' },
+      500,
+    );
   }
 });
 
@@ -402,6 +455,9 @@ billingRoutes.get('/api/v1/billing/invoices/:id', async (c) => {
     return c.json(invoice);
   } catch (error) {
     console.error('Get invoice error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get invoice' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get invoice' },
+      500,
+    );
   }
 });

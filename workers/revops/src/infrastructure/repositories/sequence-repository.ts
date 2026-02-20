@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
-import { sequences, sequenceEnrollments } from '@mauntic/revops-domain/drizzle';
+import { sequenceEnrollments, sequences } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type SequenceRow = typeof sequences.$inferSelect;
@@ -76,7 +76,12 @@ export async function findEnrollmentById(
   const [row] = await db
     .select()
     .from(sequenceEnrollments)
-    .where(and(eq(sequenceEnrollments.id, id), eq(sequenceEnrollments.organization_id, orgId)));
+    .where(
+      and(
+        eq(sequenceEnrollments.id, id),
+        eq(sequenceEnrollments.organization_id, orgId),
+      ),
+    );
   return row ?? null;
 }
 
@@ -88,10 +93,12 @@ export async function findEnrollmentsBySequence(
   return db
     .select()
     .from(sequenceEnrollments)
-    .where(and(
-      eq(sequenceEnrollments.organization_id, orgId),
-      eq(sequenceEnrollments.sequence_id, sequenceId),
-    ))
+    .where(
+      and(
+        eq(sequenceEnrollments.organization_id, orgId),
+        eq(sequenceEnrollments.sequence_id, sequenceId),
+      ),
+    )
     .orderBy(desc(sequenceEnrollments.enrolled_at));
 }
 
@@ -103,22 +110,31 @@ export async function findEnrollmentsByContact(
   return db
     .select()
     .from(sequenceEnrollments)
-    .where(and(
-      eq(sequenceEnrollments.organization_id, orgId),
-      eq(sequenceEnrollments.contact_id, contactId),
-    ));
+    .where(
+      and(
+        eq(sequenceEnrollments.organization_id, orgId),
+        eq(sequenceEnrollments.contact_id, contactId),
+      ),
+    );
 }
 
 export async function updateEnrollment(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Omit<EnrollmentInsert, 'id' | 'organization_id' | 'enrolled_at'>>,
+  data: Partial<
+    Omit<EnrollmentInsert, 'id' | 'organization_id' | 'enrolled_at'>
+  >,
 ): Promise<EnrollmentRow | null> {
   const [row] = await db
     .update(sequenceEnrollments)
     .set(data)
-    .where(and(eq(sequenceEnrollments.id, id), eq(sequenceEnrollments.organization_id, orgId)))
+    .where(
+      and(
+        eq(sequenceEnrollments.id, id),
+        eq(sequenceEnrollments.organization_id, orgId),
+      ),
+    )
     .returning();
   return row ?? null;
 }

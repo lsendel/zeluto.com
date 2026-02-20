@@ -1,19 +1,15 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
+  createExecution,
+  findActiveExecutionForContact,
   findExecutionById,
   findExecutionsByJourneyId,
-  findActiveExecutionForContact,
-  createExecution,
-  updateExecution,
   findStepExecutionsByExecutionId,
+  updateExecution,
 } from '../infrastructure/repositories/execution-repository.js';
-import {
-  findJourneyById,
-} from '../infrastructure/repositories/journey-repository.js';
-import {
-  findLatestVersion,
-} from '../infrastructure/repositories/version-repository.js';
+import { findJourneyById } from '../infrastructure/repositories/journey-repository.js';
+import { findLatestVersion } from '../infrastructure/repositories/version-repository.js';
 
 export const executionRoutes = new Hono<Env>();
 
@@ -33,12 +29,17 @@ executionRoutes.get('/api/v1/journey/journeys/:id/executions', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Journey not found' }, 404);
     }
 
-    const result = await findExecutionsByJourneyId(db, tenant.organizationId, journeyId, {
-      page: pageNum,
-      limit: limitNum,
-      status: status || undefined,
-      contactId: contactId || undefined,
-    });
+    const result = await findExecutionsByJourneyId(
+      db,
+      tenant.organizationId,
+      journeyId,
+      {
+        page: pageNum,
+        limit: limitNum,
+        status: status || undefined,
+        contactId: contactId || undefined,
+      },
+    );
 
     return c.json({
       data: result.data,
@@ -49,7 +50,10 @@ executionRoutes.get('/api/v1/journey/journeys/:id/executions', async (c) => {
     });
   } catch (error) {
     console.error('List executions error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list executions' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list executions' },
+      500,
+    );
   }
 });
 
@@ -60,7 +64,11 @@ executionRoutes.get('/api/v1/journey/executions/:executionId', async (c) => {
   const executionId = c.req.param('executionId');
 
   try {
-    const execution = await findExecutionById(db, tenant.organizationId, executionId);
+    const execution = await findExecutionById(
+      db,
+      tenant.organizationId,
+      executionId,
+    );
     if (!execution) {
       return c.json({ code: 'NOT_FOUND', message: 'Execution not found' }, 404);
     }
@@ -77,7 +85,10 @@ executionRoutes.get('/api/v1/journey/executions/:executionId', async (c) => {
     });
   } catch (error) {
     console.error('Get execution error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get execution' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get execution' },
+      500,
+    );
   }
 });
 
@@ -95,14 +106,20 @@ executionRoutes.post('/api/v1/journey/journeys/:id/executions', async (c) => {
 
     if (journey.status !== 'active') {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Executions can only be started on active journeys' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Executions can only be started on active journeys',
+        },
         400,
       );
     }
 
     const body = await c.req.json<{ contactId: string }>();
     if (!body.contactId) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'contactId is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'contactId is required' },
+        400,
+      );
     }
 
     // Check if contact already has an active execution in this journey
@@ -114,15 +131,25 @@ executionRoutes.post('/api/v1/journey/journeys/:id/executions', async (c) => {
     );
     if (existingExecution) {
       return c.json(
-        { code: 'CONFLICT', message: 'Contact already has an active execution in this journey' },
+        {
+          code: 'CONFLICT',
+          message: 'Contact already has an active execution in this journey',
+        },
         400,
       );
     }
 
-    const latestVersion = await findLatestVersion(db, tenant.organizationId, journeyId);
+    const latestVersion = await findLatestVersion(
+      db,
+      tenant.organizationId,
+      journeyId,
+    );
     if (!latestVersion) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Journey has no published version' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'Journey has no published version',
+        },
         400,
       );
     }
@@ -159,37 +186,61 @@ executionRoutes.post('/api/v1/journey/journeys/:id/executions', async (c) => {
     return c.json(execution, 201);
   } catch (error) {
     console.error('Start execution error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to start execution' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to start execution' },
+      500,
+    );
   }
 });
 
 // POST /api/v1/journey/executions/:executionId/cancel - Cancel execution
-executionRoutes.post('/api/v1/journey/executions/:executionId/cancel', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const executionId = c.req.param('executionId');
+executionRoutes.post(
+  '/api/v1/journey/executions/:executionId/cancel',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const executionId = c.req.param('executionId');
 
-  try {
-    const execution = await findExecutionById(db, tenant.organizationId, executionId);
-    if (!execution) {
-      return c.json({ code: 'NOT_FOUND', message: 'Execution not found' }, 404);
-    }
+    try {
+      const execution = await findExecutionById(
+        db,
+        tenant.organizationId,
+        executionId,
+      );
+      if (!execution) {
+        return c.json(
+          { code: 'NOT_FOUND', message: 'Execution not found' },
+          404,
+        );
+      }
 
-    if (execution.status !== 'active') {
+      if (execution.status !== 'active') {
+        return c.json(
+          {
+            code: 'VALIDATION_ERROR',
+            message: 'Only active executions can be canceled',
+          },
+          400,
+        );
+      }
+
+      const updated = await updateExecution(
+        db,
+        tenant.organizationId,
+        executionId,
+        {
+          status: 'canceled',
+          completed_at: new Date(),
+        },
+      );
+
+      return c.json(updated);
+    } catch (error) {
+      console.error('Cancel execution error:', error);
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'Only active executions can be canceled' },
-        400,
+        { code: 'INTERNAL_ERROR', message: 'Failed to cancel execution' },
+        500,
       );
     }
-
-    const updated = await updateExecution(db, tenant.organizationId, executionId, {
-      status: 'canceled',
-      completed_at: new Date(),
-    });
-
-    return c.json(updated);
-  } catch (error) {
-    console.error('Cancel execution error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to cancel execution' }, 500);
-  }
-});
+  },
+);

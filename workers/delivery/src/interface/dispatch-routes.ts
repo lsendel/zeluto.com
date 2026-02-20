@@ -1,40 +1,41 @@
-import { Hono } from 'hono';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { tenantMiddleware, createDatabase } from '@mauntic/worker-lib';
-import type { Env } from '../app.js';
 import {
-  findAllSendingDomains,
-  findSendingDomainById,
-  findSendingDomainByName,
-  createSendingDomain,
-  updateSendingDomain,
-  deleteSendingDomain,
-} from '../infrastructure/repositories/sending-domain-repository.js';
-import {
-  findAllJobs,
-  findJobById,
-} from '../infrastructure/repositories/delivery-job-repository.js';
-import { findEventsByJobId } from '../infrastructure/repositories/delivery-event-repository.js';
-import {
-  findAllProviderConfigs,
-  findProviderConfigById,
-  createProviderConfig,
-  updateProviderConfig,
-  deleteProviderConfig,
-} from '../infrastructure/repositories/provider-config-repository.js';
-import { encryptConfig, decryptConfig } from '@mauntic/delivery-domain';
-import {
-  findAllSuppressions,
-  isEmailSuppressed,
-  createSuppression,
-  deleteSuppression,
-} from '../infrastructure/repositories/suppression-repository.js';
-import {
+  decryptConfig,
+  encryptConfig,
   getDaysSinceStart,
   getWarmupLimit,
   getWarmupProgress,
   isWarmupComplete,
 } from '@mauntic/delivery-domain';
+import { createDatabase, tenantMiddleware } from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { Hono } from 'hono';
+import type { Env } from '../app.js';
+import { findEventsByJobId } from '../infrastructure/repositories/delivery-event-repository.js';
+import {
+  findAllJobs,
+  findJobById,
+} from '../infrastructure/repositories/delivery-job-repository.js';
+import {
+  createProviderConfig,
+  deleteProviderConfig,
+  findAllProviderConfigs,
+  findProviderConfigById,
+  updateProviderConfig,
+} from '../infrastructure/repositories/provider-config-repository.js';
+import {
+  createSendingDomain,
+  deleteSendingDomain,
+  findAllSendingDomains,
+  findSendingDomainById,
+  findSendingDomainByName,
+  updateSendingDomain,
+} from '../infrastructure/repositories/sending-domain-repository.js';
+import {
+  createSuppression,
+  deleteSuppression,
+  findAllSuppressions,
+  isEmailSuppressed,
+} from '../infrastructure/repositories/suppression-repository.js';
 
 export const deliveryDispatchRoutes = new Hono<Env>();
 
@@ -77,10 +78,15 @@ deliveryDispatchRoutes.post('/suppressions/list', async (c) => {
 deliveryDispatchRoutes.post('/suppressions/check', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as { email?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    email?: string;
+  } | null;
 
   if (!body?.email) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'email is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'email is required' },
+      400,
+    );
   }
 
   const result = await isEmailSuppressed(db, tenant.organizationId, body.email);
@@ -97,21 +103,34 @@ deliveryDispatchRoutes.post('/suppressions/create', async (c) => {
   } | null;
 
   if (!body?.email) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'email is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'email is required' },
+      400,
+    );
   }
 
   const validReasons = ['bounce', 'complaint', 'unsubscribe', 'manual'];
   if (!body.reason || !validReasons.includes(body.reason)) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: `reason must be one of: ${validReasons.join(', ')}` },
+      {
+        code: 'VALIDATION_ERROR',
+        message: `reason must be one of: ${validReasons.join(', ')}`,
+      },
       400,
     );
   }
 
-  const existing = await isEmailSuppressed(db, tenant.organizationId, body.email);
+  const existing = await isEmailSuppressed(
+    db,
+    tenant.organizationId,
+    body.email,
+  );
   if (existing.suppressed) {
     return c.json(
-      { code: 'CONFLICT', message: `Email ${body.email} is already suppressed` },
+      {
+        code: 'CONFLICT',
+        message: `Email ${body.email} is already suppressed`,
+      },
       400,
     );
   }
@@ -148,7 +167,9 @@ deliveryDispatchRoutes.post('/warmup/list', async (c) => {
 
   const domains = await findAllSendingDomains(db, tenant.organizationId);
   const warmupStatuses = domains
-    .filter((domain) => domain.status === 'verified' || domain.status === 'pending')
+    .filter(
+      (domain) => domain.status === 'verified' || domain.status === 'pending',
+    )
     .map((domain) => {
       const createdAt = new Date(domain.created_at);
       const daysSinceStart = getDaysSinceStart(createdAt);
@@ -177,9 +198,16 @@ deliveryDispatchRoutes.post('/warmup/progress', async (c) => {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
   }
 
-  const domain = await findSendingDomainById(db, tenant.organizationId, body.id);
+  const domain = await findSendingDomainById(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!domain) {
-    return c.json({ code: 'NOT_FOUND', message: 'Sending domain not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Sending domain not found' },
+      404,
+    );
   }
 
   const createdAt = new Date(domain.created_at);
@@ -190,7 +218,9 @@ deliveryDispatchRoutes.post('/warmup/progress', async (c) => {
 
   const sentToday = 0;
   const remainingToday =
-    currentDayLimit === Infinity ? Infinity : Math.max(0, currentDayLimit - sentToday);
+    currentDayLimit === Infinity
+      ? Infinity
+      : Math.max(0, currentDayLimit - sentToday);
 
   return c.json({
     schedule: {
@@ -217,13 +247,22 @@ deliveryDispatchRoutes.post('/sending-domains/list', async (c) => {
 deliveryDispatchRoutes.post('/sending-domains/create', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as { domain?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    domain?: string;
+  } | null;
   if (!body?.domain || !body.domain.trim()) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'domain is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'domain is required' },
+      400,
+    );
   }
 
   const domainName = body.domain.trim().toLowerCase();
-  const existing = await findSendingDomainByName(db, tenant.organizationId, domainName);
+  const existing = await findSendingDomainByName(
+    db,
+    tenant.organizationId,
+    domainName,
+  );
   if (existing) {
     return c.json(
       { code: 'CONFLICT', message: `Domain ${domainName} already exists` },
@@ -270,31 +309,47 @@ deliveryDispatchRoutes.post('/sending-domains/verify', async (c) => {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
   }
 
-  const domain = await findSendingDomainById(db, tenant.organizationId, body.id);
+  const domain = await findSendingDomainById(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!domain) {
-    return c.json({ code: 'NOT_FOUND', message: 'Sending domain not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Sending domain not found' },
+      404,
+    );
   }
 
   if (domain.status === 'verified') {
     return c.json(domain);
   }
 
-  const dnsRecords = (domain.dns_records as Array<{
-    type: string;
-    name: string;
-    value: string;
-    verified: boolean;
-  }>) ?? [];
+  const dnsRecords =
+    (domain.dns_records as Array<{
+      type: string;
+      name: string;
+      value: string;
+      verified: boolean;
+    }>) ?? [];
   const verifiedRecords = dnsRecords.map((r) => ({ ...r, verified: true }));
 
-  const updated = await updateSendingDomain(db, tenant.organizationId, body.id, {
-    status: 'verified',
-    dns_records: verifiedRecords,
-    verified_at: new Date(),
-  });
+  const updated = await updateSendingDomain(
+    db,
+    tenant.organizationId,
+    body.id,
+    {
+      status: 'verified',
+      dns_records: verifiedRecords,
+      verified_at: new Date(),
+    },
+  );
 
   if (!updated) {
-    return c.json({ code: 'NOT_FOUND', message: 'Sending domain not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Sending domain not found' },
+      404,
+    );
   }
 
   return c.json(updated);
@@ -308,18 +363,26 @@ deliveryDispatchRoutes.post('/sending-domains/dns-records', async (c) => {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
   }
 
-  const domain = await findSendingDomainById(db, tenant.organizationId, body.id);
+  const domain = await findSendingDomainById(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!domain) {
-    return c.json({ code: 'NOT_FOUND', message: 'Sending domain not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Sending domain not found' },
+      404,
+    );
   }
 
   return c.json({
-    records: (domain.dns_records as Array<{
-      type: string;
-      name: string;
-      value: string;
-      verified: boolean;
-    }>) ?? [],
+    records:
+      (domain.dns_records as Array<{
+        type: string;
+        name: string;
+        value: string;
+        verified: boolean;
+      }>) ?? [],
   });
 });
 
@@ -333,7 +396,10 @@ deliveryDispatchRoutes.post('/sending-domains/delete', async (c) => {
 
   const deleted = await deleteSendingDomain(db, tenant.organizationId, body.id);
   if (!deleted) {
-    return c.json({ code: 'NOT_FOUND', message: 'Sending domain not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Sending domain not found' },
+      404,
+    );
   }
 
   return c.json({ success: true });
@@ -378,7 +444,10 @@ deliveryDispatchRoutes.post('/jobs/get', async (c) => {
 
   const job = await findJobById(db, tenant.organizationId, body.id);
   if (!job) {
-    return c.json({ code: 'NOT_FOUND', message: 'Delivery job not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Delivery job not found' },
+      404,
+    );
   }
   return c.json(job);
 });
@@ -398,7 +467,10 @@ deliveryDispatchRoutes.post('/jobs/events', async (c) => {
 
   const job = await findJobById(db, tenant.organizationId, body.id);
   if (!job) {
-    return c.json({ code: 'NOT_FOUND', message: 'Delivery job not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Delivery job not found' },
+      404,
+    );
   }
 
   const page = typeof body.page === 'number' ? body.page : 1;
@@ -436,9 +508,16 @@ deliveryDispatchRoutes.post('/providers/get', async (c) => {
   if (!body?.id) {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
   }
-  const config = await findProviderConfigById(db, tenant.organizationId, body.id);
+  const config = await findProviderConfigById(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!config) {
-    return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Provider config not found' },
+      404,
+    );
   }
   let decryptedConfig: Record<string, unknown> = {};
   try {
@@ -468,7 +547,10 @@ deliveryDispatchRoutes.post('/providers/create', async (c) => {
 
   if (!body?.channel || !body.providerType || !body.config) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'channel, providerType, and config are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'channel, providerType, and config are required',
+      },
       400,
     );
   }
@@ -476,12 +558,18 @@ deliveryDispatchRoutes.post('/providers/create', async (c) => {
   const validChannels = ['email', 'sms', 'push', 'webhook'];
   if (!validChannels.includes(body.channel)) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: `channel must be one of: ${validChannels.join(', ')}` },
+      {
+        code: 'VALIDATION_ERROR',
+        message: `channel must be one of: ${validChannels.join(', ')}`,
+      },
       400,
     );
   }
 
-  const encryptedConfig = await encryptConfig(JSON.stringify(body.config), c.env.ENCRYPTION_KEY);
+  const encryptedConfig = await encryptConfig(
+    JSON.stringify(body.config),
+    c.env.ENCRYPTION_KEY,
+  );
   const config = await createProviderConfig(db, tenant.organizationId, {
     channel: body.channel,
     provider_type: body.providerType,
@@ -506,9 +594,16 @@ deliveryDispatchRoutes.post('/providers/update', async (c) => {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
   }
 
-  const existing = await findProviderConfigById(db, tenant.organizationId, body.id);
+  const existing = await findProviderConfigById(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!existing) {
-    return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Provider config not found' },
+      404,
+    );
   }
 
   const updateData: Record<string, unknown> = {};
@@ -516,7 +611,10 @@ deliveryDispatchRoutes.post('/providers/update', async (c) => {
   if (body.priority !== undefined) updateData.priority = body.priority;
 
   if (body.config) {
-    const encryptedConfig = await encryptConfig(JSON.stringify(body.config), c.env.ENCRYPTION_KEY);
+    const encryptedConfig = await encryptConfig(
+      JSON.stringify(body.config),
+      c.env.ENCRYPTION_KEY,
+    );
     updateData.config = encryptedConfig;
   }
 
@@ -528,7 +626,10 @@ deliveryDispatchRoutes.post('/providers/update', async (c) => {
   );
 
   if (!updated) {
-    return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Provider config not found' },
+      404,
+    );
   }
 
   return c.json({ ...updated, config: { redacted: true } });
@@ -541,9 +642,16 @@ deliveryDispatchRoutes.post('/providers/delete', async (c) => {
   if (!body?.id) {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
   }
-  const deleted = await deleteProviderConfig(db, tenant.organizationId, body.id);
+  const deleted = await deleteProviderConfig(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!deleted) {
-    return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Provider config not found' },
+      404,
+    );
   }
   return c.json({ success: true });
 });
@@ -565,13 +673,21 @@ deliveryDispatchRoutes.post('/providers/test', async (c) => {
     );
   }
 
-  const config = await findProviderConfigById(db, tenant.organizationId, body.id);
+  const config = await findProviderConfigById(
+    db,
+    tenant.organizationId,
+    body.id,
+  );
   if (!config) {
-    return c.json({ code: 'NOT_FOUND', message: 'Provider config not found' }, 404);
+    return c.json(
+      { code: 'NOT_FOUND', message: 'Provider config not found' },
+      404,
+    );
   }
 
   return c.json({
     success: true,
-    message: 'Provider configuration is valid. Test message queued for delivery.',
+    message:
+      'Provider configuration is valid. Test message queued for delivery.',
   });
 });

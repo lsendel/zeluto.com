@@ -42,14 +42,30 @@ export class ScoreHistory {
     return new ScoreHistory(ScoreHistoryPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get contactId() { return this.props.contactId; }
-  get date() { return this.props.date; }
-  get totalScore() { return this.props.totalScore; }
-  get engagementScore() { return this.props.engagementScore; }
-  get fitScore() { return this.props.fitScore; }
-  get intentScore() { return this.props.intentScore; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get date() {
+    return this.props.date;
+  }
+  get totalScore() {
+    return this.props.totalScore;
+  }
+  get engagementScore() {
+    return this.props.engagementScore;
+  }
+  get fitScore() {
+    return this.props.fitScore;
+  }
+  get intentScore() {
+    return this.props.intentScore;
+  }
 
   toProps(): Readonly<ScoreHistoryProps> {
     return Object.freeze({ ...this.props });

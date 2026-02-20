@@ -3,7 +3,12 @@ import { z } from 'zod';
 export const SyncDirectionSchema = z.enum(['inbound', 'outbound']);
 export type SyncDirection = z.infer<typeof SyncDirectionSchema>;
 
-export const SyncStatusSchema = z.enum(['pending', 'running', 'completed', 'failed']);
+export const SyncStatusSchema = z.enum([
+  'pending',
+  'running',
+  'completed',
+  'failed',
+]);
 export type SyncStatus = z.infer<typeof SyncStatusSchema>;
 
 export const SyncJobPropsSchema = z.object({

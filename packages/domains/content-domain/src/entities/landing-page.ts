@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const LandingPagePropsSchema = z.object({
   id: z.string().uuid(),
@@ -118,15 +118,20 @@ export class LandingPage {
       }
       this.props.slug = input.slug;
     }
-    if (input.htmlContent !== undefined) this.props.htmlContent = input.htmlContent;
-    if (input.metaDescription !== undefined) this.props.metaDescription = input.metaDescription;
-    if (input.templateId !== undefined) this.props.templateId = input.templateId;
+    if (input.htmlContent !== undefined)
+      this.props.htmlContent = input.htmlContent;
+    if (input.metaDescription !== undefined)
+      this.props.metaDescription = input.metaDescription;
+    if (input.templateId !== undefined)
+      this.props.templateId = input.templateId;
     this.props.updatedAt = new Date();
   }
 
   publish(): void {
     if (!this.props.htmlContent && !this.props.templateId) {
-      throw new InvariantViolation('Cannot publish a landing page without content or a template');
+      throw new InvariantViolation(
+        'Cannot publish a landing page without content or a template',
+      );
     }
     this.props.isPublished = true;
     this.props.publishedAt = new Date();

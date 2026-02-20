@@ -1,6 +1,19 @@
 import { neon } from '@neondatabase/serverless';
 
-const schemas = ['identity', 'billing', 'crm', 'journey', 'campaign', 'delivery', 'content', 'analytics', 'integrations', 'lead_intelligence', 'scoring', 'revops'];
+const schemas = [
+  'identity',
+  'billing',
+  'crm',
+  'journey',
+  'campaign',
+  'delivery',
+  'content',
+  'analytics',
+  'integrations',
+  'lead_intelligence',
+  'scoring',
+  'revops',
+];
 
 async function initSchemas() {
   const sql = neon(process.env.DATABASE_URL!);

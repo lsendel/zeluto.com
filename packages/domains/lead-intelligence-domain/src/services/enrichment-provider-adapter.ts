@@ -26,6 +26,8 @@ export interface EnrichmentProviderAdapter {
   readonly providerId: string;
   readonly supportedFields: readonly string[];
   enrich(request: EnrichmentRequest): Promise<EnrichmentAdapterResult>;
-  enrichBatch?(requests: EnrichmentRequest[]): Promise<EnrichmentAdapterResult[]>;
+  enrichBatch?(
+    requests: EnrichmentRequest[],
+  ): Promise<EnrichmentAdapterResult[]>;
   healthCheck(): Promise<boolean>;
 }

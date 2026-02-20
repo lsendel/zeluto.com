@@ -1,8 +1,11 @@
 import type { FC } from 'hono/jsx';
 import type { JourneyRow } from '../../infrastructure/repositories/journey-repository.js';
-import type { VersionRow } from '../../infrastructure/repositories/version-repository.js';
-import type { StepRow, ConnectionRow } from '../../infrastructure/repositories/step-repository.js';
+import type {
+  ConnectionRow,
+  StepRow,
+} from '../../infrastructure/repositories/step-repository.js';
 import type { TriggerRow } from '../../infrastructure/repositories/trigger-repository.js';
+import type { VersionRow } from '../../infrastructure/repositories/version-repository.js';
 
 export interface JourneyDetailProps {
   journey: JourneyRow;
@@ -13,12 +16,13 @@ export interface JourneyDetailProps {
   activeTab?: 'overview' | 'builder' | 'executions';
 }
 
-const statusBadge: Record<string, { bg: string; text: string; label: string }> = {
-  draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
-  active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
-  paused: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Paused' },
-  archived: { bg: 'bg-red-100', text: 'text-red-700', label: 'Archived' },
-};
+const statusBadge: Record<string, { bg: string; text: string; label: string }> =
+  {
+    draft: { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Draft' },
+    active: { bg: 'bg-green-100', text: 'text-green-700', label: 'Active' },
+    paused: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Paused' },
+    archived: { bg: 'bg-red-100', text: 'text-red-700', label: 'Archived' },
+  };
 
 const stepTypeIcons: Record<string, string> = {
   trigger: 'T',
@@ -58,7 +62,9 @@ const OverviewTab: FC<{
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Journey info */}
       <div class="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">Journey Information</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">
+          Journey Information
+        </h3>
         <dl class="space-y-3">
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Name</dt>
@@ -70,16 +76,22 @@ const OverviewTab: FC<{
           </div>
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Created</dt>
-            <dd class="text-sm text-gray-900">{formatDate(journey.created_at)}</dd>
+            <dd class="text-sm text-gray-900">
+              {formatDate(journey.created_at)}
+            </dd>
           </div>
           <div class="flex justify-between">
             <dt class="text-sm text-gray-500">Updated</dt>
-            <dd class="text-sm text-gray-900">{formatDate(journey.updated_at)}</dd>
+            <dd class="text-sm text-gray-900">
+              {formatDate(journey.updated_at)}
+            </dd>
           </div>
           {latestVersion && (
             <div class="flex justify-between">
               <dt class="text-sm text-gray-500">Latest Version</dt>
-              <dd class="text-sm text-gray-900">v{latestVersion.version_number}</dd>
+              <dd class="text-sm text-gray-900">
+                v{latestVersion.version_number}
+              </dd>
             </div>
           )}
         </dl>
@@ -87,13 +99,18 @@ const OverviewTab: FC<{
 
       {/* Triggers */}
       <div class="rounded-lg border border-gray-200 bg-white p-6">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">Triggers ({triggers.length})</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">
+          Triggers ({triggers.length})
+        </h3>
         {triggers.length === 0 ? (
           <p class="text-sm text-gray-500">No triggers configured</p>
         ) : (
           <ul class="space-y-2">
             {triggers.map((t) => (
-              <li key={t.id} class="flex items-center justify-between rounded border border-gray-100 px-3 py-2">
+              <li
+                key={t.id}
+                class="flex items-center justify-between rounded border border-gray-100 px-3 py-2"
+              >
                 <span class="text-sm capitalize text-gray-700">{t.type}</span>
                 <button
                   hx-delete={`/api/v1/journey/triggers/${t.id}`}
@@ -111,13 +128,19 @@ const OverviewTab: FC<{
 
       {/* Steps summary */}
       <div class="rounded-lg border border-gray-200 bg-white p-6 lg:col-span-2">
-        <h3 class="text-sm font-semibold text-gray-900 mb-4">Steps ({steps.length})</h3>
+        <h3 class="text-sm font-semibold text-gray-900 mb-4">
+          Steps ({steps.length})
+        </h3>
         {steps.length === 0 ? (
-          <p class="text-sm text-gray-500">No steps configured. Open the builder to add steps.</p>
+          <p class="text-sm text-gray-500">
+            No steps configured. Open the builder to add steps.
+          </p>
         ) : (
           <div class="flex flex-wrap gap-2">
             {steps.map((s) => {
-              const colors = stepTypeColors[s.type] ?? 'bg-gray-100 text-gray-700 border-gray-200';
+              const colors =
+                stepTypeColors[s.type] ??
+                'bg-gray-100 text-gray-700 border-gray-200';
               return (
                 <div
                   key={s.id}
@@ -196,8 +219,12 @@ const BuilderTab: FC<{
             </div>
           ) : (
             steps.map((step) => {
-              const colors = stepTypeColors[step.type] ?? 'bg-gray-100 text-gray-700 border-gray-200';
-              const outgoingConnections = connections.filter((conn) => conn.from_step_id === step.id);
+              const colors =
+                stepTypeColors[step.type] ??
+                'bg-gray-100 text-gray-700 border-gray-200';
+              const outgoingConnections = connections.filter(
+                (conn) => conn.from_step_id === step.id,
+              );
               const config = step.config as Record<string, unknown>;
 
               return (
@@ -205,11 +232,17 @@ const BuilderTab: FC<{
                   <div class={`rounded-lg border-2 p-4 ${colors}`}>
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-2">
-                        <span class="text-lg font-bold">{stepTypeIcons[step.type] ?? '?'}</span>
+                        <span class="text-lg font-bold">
+                          {stepTypeIcons[step.type] ?? '?'}
+                        </span>
                         <div>
-                          <p class="text-sm font-medium capitalize">{step.type}</p>
+                          <p class="text-sm font-medium capitalize">
+                            {step.type}
+                          </p>
                           {config.name && (
-                            <p class="text-xs opacity-75">{String(config.name)}</p>
+                            <p class="text-xs opacity-75">
+                              {String(config.name)}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -232,7 +265,8 @@ const BuilderTab: FC<{
                     <div class="ml-6 mt-1 mb-1 border-l-2 border-gray-300 pl-4 py-1">
                       {outgoingConnections.map((conn) => (
                         <span key={conn.id} class="text-xs text-gray-400">
-                          {conn.label ? `[${conn.label}]` : ''} connects to next step
+                          {conn.label ? `[${conn.label}]` : ''} connects to next
+                          step
                         </span>
                       ))}
                     </div>

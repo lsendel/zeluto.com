@@ -9,6 +9,8 @@ export const EnrichContactCommandSchema = z.object({
 
 export type EnrichContactCommand = z.infer<typeof EnrichContactCommandSchema>;
 
-export function enrichContactCommand(input: EnrichContactCommand): EnrichContactCommand {
+export function enrichContactCommand(
+  input: EnrichContactCommand,
+): EnrichContactCommand {
   return EnrichContactCommandSchema.parse(input);
 }

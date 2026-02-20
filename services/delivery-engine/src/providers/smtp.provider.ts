@@ -1,5 +1,9 @@
+import type {
+  DeliveryProvider,
+  DeliveryResult,
+  EmailPayload,
+} from '@mauntic/domain-kernel/delivery';
 import { createTransport, type Transporter } from 'nodemailer';
-import type { DeliveryProvider, EmailPayload, DeliveryResult } from '@mauntic/domain-kernel/delivery';
 
 export interface SmtpConfig {
   host: string;

@@ -1,10 +1,19 @@
 import { z } from 'zod';
 
 export const EnrichmentProviderTypeSchema = z.enum([
-  'clearbit', 'apollo', 'zoominfo', 'hunter', 'rocketreach', 'lusha', 'builtwith', 'wappalyzer',
+  'clearbit',
+  'apollo',
+  'zoominfo',
+  'hunter',
+  'rocketreach',
+  'lusha',
+  'builtwith',
+  'wappalyzer',
 ]);
 
-export type EnrichmentProviderType = z.infer<typeof EnrichmentProviderTypeSchema>;
+export type EnrichmentProviderType = z.infer<
+  typeof EnrichmentProviderTypeSchema
+>;
 
 export const EnrichmentProviderPropsSchema = z.object({
   id: z.string(),
@@ -23,7 +32,9 @@ export const EnrichmentProviderPropsSchema = z.object({
   updatedAt: z.coerce.date(),
 });
 
-export type EnrichmentProviderProps = z.infer<typeof EnrichmentProviderPropsSchema>;
+export type EnrichmentProviderProps = z.infer<
+  typeof EnrichmentProviderPropsSchema
+>;
 
 export class EnrichmentProvider {
   private constructor(private props: EnrichmentProviderProps) {}
@@ -57,18 +68,42 @@ export class EnrichmentProvider {
     return new EnrichmentProvider(EnrichmentProviderPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get name() { return this.props.name; }
-  get providerType() { return this.props.providerType; }
-  get supportedFields() { return this.props.supportedFields; }
-  get priority() { return this.props.priority; }
-  get costPerLookup() { return this.props.costPerLookup; }
-  get avgLatencyMs() { return this.props.avgLatencyMs; }
-  get successRate() { return this.props.successRate; }
-  get batchSupported() { return this.props.batchSupported; }
-  get config() { return this.props.config; }
-  get enabled() { return this.props.enabled; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get name() {
+    return this.props.name;
+  }
+  get providerType() {
+    return this.props.providerType;
+  }
+  get supportedFields() {
+    return this.props.supportedFields;
+  }
+  get priority() {
+    return this.props.priority;
+  }
+  get costPerLookup() {
+    return this.props.costPerLookup;
+  }
+  get avgLatencyMs() {
+    return this.props.avgLatencyMs;
+  }
+  get successRate() {
+    return this.props.successRate;
+  }
+  get batchSupported() {
+    return this.props.batchSupported;
+  }
+  get config() {
+    return this.props.config;
+  }
+  get enabled() {
+    return this.props.enabled;
+  }
 
   supportsField(field: string): boolean {
     return this.props.supportedFields.includes(field);

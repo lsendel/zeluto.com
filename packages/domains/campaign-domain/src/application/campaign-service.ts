@@ -1,22 +1,22 @@
 import { NotFoundError } from '@mauntic/domain-kernel';
-import { Campaign } from '../entities/campaign.js';
-import type { CampaignRepository } from '../repositories/campaign-repository.js';
 import {
   type CreateCampaignCommand,
   createCampaignCommand,
-  type UpdateCampaignCommand,
-  updateCampaignCommand,
-  type ScheduleCampaignCommand,
-  scheduleCampaignCommand,
-  type SendCampaignCommand,
-  sendCampaignCommand,
+  type DeleteCampaignCommand,
+  deleteCampaignCommand,
   type PauseCampaignCommand,
   pauseCampaignCommand,
   type ResumeCampaignCommand,
   resumeCampaignCommand,
-  type DeleteCampaignCommand,
-  deleteCampaignCommand,
+  type ScheduleCampaignCommand,
+  type SendCampaignCommand,
+  scheduleCampaignCommand,
+  sendCampaignCommand,
+  type UpdateCampaignCommand,
+  updateCampaignCommand,
 } from '../commands/index.js';
+import { Campaign } from '../entities/campaign.js';
+import type { CampaignRepository } from '../repositories/campaign-repository.js';
 import type { CampaignEventPublisher } from './ports.js';
 
 export class CampaignApplicationService {
@@ -153,7 +153,10 @@ export class CampaignApplicationService {
     await this.repository.delete(command.organizationId, command.campaignId);
   }
 
-  private async requireCampaign(orgId: string, campaignId: string): Promise<Campaign> {
+  private async requireCampaign(
+    orgId: string,
+    campaignId: string,
+  ): Promise<Campaign> {
     const campaign = await this.repository.findById(orgId, campaignId);
     if (!campaign) {
       throw new NotFoundError('Campaign', campaignId);

@@ -7,8 +7,12 @@ export const ScheduleCampaignCommandSchema = z.object({
   scheduledBy: z.string().uuid(),
 });
 
-export type ScheduleCampaignCommand = z.infer<typeof ScheduleCampaignCommandSchema>;
+export type ScheduleCampaignCommand = z.infer<
+  typeof ScheduleCampaignCommandSchema
+>;
 
-export function scheduleCampaignCommand(input: ScheduleCampaignCommand): ScheduleCampaignCommand {
+export function scheduleCampaignCommand(
+  input: ScheduleCampaignCommand,
+): ScheduleCampaignCommand {
   return ScheduleCampaignCommandSchema.parse(input);
 }

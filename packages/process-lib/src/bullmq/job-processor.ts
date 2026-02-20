@@ -1,4 +1,4 @@
-import { Worker, Queue, type Job } from 'bullmq';
+import { type Job, Queue, Worker } from 'bullmq';
 import { getRedis } from '../redis/connection.js';
 
 export interface JobHandler<TData = unknown, TResult = unknown> {

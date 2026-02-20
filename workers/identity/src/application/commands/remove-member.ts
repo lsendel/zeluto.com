@@ -1,16 +1,18 @@
-import { eq, and } from 'drizzle-orm';
 import { organizationMembers } from '@mauntic/identity-domain';
+import { and, eq } from 'drizzle-orm';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export async function removeMember(
   db: DrizzleDb,
   organizationId: string,
   userId: string,
-  actorRole: string
+  actorRole: string,
 ) {
   // Only owner/admin can remove members
   if (actorRole !== 'owner' && actorRole !== 'admin') {
-    throw new InsufficientPermissionsError('Only owners and admins can remove members');
+    throw new InsufficientPermissionsError(
+      'Only owners and admins can remove members',
+    );
   }
 
   // Find the membership
@@ -20,8 +22,8 @@ export async function removeMember(
     .where(
       and(
         eq(organizationMembers.organizationId, organizationId),
-        eq(organizationMembers.userId, userId)
-      )
+        eq(organizationMembers.userId, userId),
+      ),
     )
     .limit(1);
 
@@ -40,8 +42,8 @@ export async function removeMember(
     .where(
       and(
         eq(organizationMembers.organizationId, organizationId),
-        eq(organizationMembers.userId, userId)
-      )
+        eq(organizationMembers.userId, userId),
+      ),
     );
 
   return { success: true };

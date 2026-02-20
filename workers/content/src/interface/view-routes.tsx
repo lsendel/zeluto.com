@@ -1,9 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import {
-  findAllTemplates,
-  findTemplateById,
-} from '../infrastructure/repositories/template-repository.js';
+import { findAllAssets } from '../infrastructure/repositories/asset-repository.js';
 import {
   findAllForms,
   findFormById,
@@ -13,16 +10,17 @@ import {
   findLandingPageById,
 } from '../infrastructure/repositories/landing-page-repository.js';
 import {
-  findAllAssets,
-} from '../infrastructure/repositories/asset-repository.js';
-import { TemplateListView } from '../views/templates/list.js';
-import { TemplateFormView } from '../views/templates/form.js';
-import { FormListView } from '../views/forms/list.js';
-import { FormBuilderView } from '../views/forms/builder.js';
-import { PageListView } from '../views/pages/list.js';
-import { PageEditorView } from '../views/pages/editor.js';
+  findAllTemplates,
+  findTemplateById,
+} from '../infrastructure/repositories/template-repository.js';
 import { AssetListView } from '../views/assets/list.js';
 import { AssetUploadView } from '../views/assets/upload.js';
+import { FormBuilderView } from '../views/forms/builder.js';
+import { FormListView } from '../views/forms/list.js';
+import { PageEditorView } from '../views/pages/editor.js';
+import { PageListView } from '../views/pages/list.js';
+import { TemplateFormView } from '../views/templates/form.js';
+import { TemplateListView } from '../views/templates/list.js';
 
 /**
  * HTMX view routes for the Content worker.
@@ -245,7 +243,11 @@ viewRoutes.get('/app/content/pages/:id/edit', async (c) => {
   const id = c.req.param('id');
 
   try {
-    const landingPage = await findLandingPageById(db, tenant.organizationId, id);
+    const landingPage = await findLandingPageById(
+      db,
+      tenant.organizationId,
+      id,
+    );
     if (!landingPage) {
       return c.html(
         <div class="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-700">

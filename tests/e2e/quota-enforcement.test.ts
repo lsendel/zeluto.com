@@ -1,19 +1,18 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  apiRequest,
-  createTestUser,
   createTestOrganization,
-  type TestUser,
+  createTestUser,
   type TestOrganization,
+  type TestUser,
 } from './setup';
 
 describe('Quota Enforcement', () => {
   let user: TestUser;
-  let org: TestOrganization;
+  let _org: TestOrganization;
 
   beforeAll(async () => {
     user = await createTestUser();
-    org = await createTestOrganization(user.token);
+    _org = await createTestOrganization(user.token);
 
     // TODO: Set the organization to the free plan which has limited quotas
     // await apiRequest('/api/v1/billing/subscription/checkout', {

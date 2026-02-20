@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-export const AlertPrioritySchema = z.enum(['critical', 'high', 'medium', 'low']);
+export const AlertPrioritySchema = z.enum([
+  'critical',
+  'high',
+  'medium',
+  'low',
+]);
 export type AlertPriority = z.infer<typeof AlertPrioritySchema>;
 
 export const AlertStatusSchema = z.enum(['open', 'acknowledged', 'expired']);
@@ -55,15 +60,33 @@ export class SignalAlert {
     return new SignalAlert(SignalAlertPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get contactId() { return this.props.contactId; }
-  get signalType() { return this.props.signalType; }
-  get priority() { return this.props.priority; }
-  get deadline() { return this.props.deadline; }
-  get acknowledgedAt() { return this.props.acknowledgedAt; }
-  get acknowledgedBy() { return this.props.acknowledgedBy; }
-  get status() { return this.props.status; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get signalType() {
+    return this.props.signalType;
+  }
+  get priority() {
+    return this.props.priority;
+  }
+  get deadline() {
+    return this.props.deadline;
+  }
+  get acknowledgedAt() {
+    return this.props.acknowledgedAt;
+  }
+  get acknowledgedBy() {
+    return this.props.acknowledgedBy;
+  }
+  get status() {
+    return this.props.status;
+  }
 
   acknowledge(userId: string): void {
     if (this.props.status !== 'open') return;

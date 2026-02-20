@@ -1,6 +1,6 @@
-import { OnboardingLayout } from "./layout";
-import { Button, Input, Card } from "@mauntic/ui-kit";
-import type { FC } from "@mauntic/ui-kit";
+import type { FC } from '@mauntic/ui-kit';
+import { Button, Card, Input } from '@mauntic/ui-kit';
+import { OnboardingLayout } from './layout';
 
 interface SetupStep {
   id: string;
@@ -10,35 +10,35 @@ interface SetupStep {
 }
 
 export interface SetupViewProps {
-  currentSetupStep?: "domain" | "provider" | "contacts";
+  currentSetupStep?: 'domain' | 'provider' | 'contacts';
   domainVerified?: boolean;
   assetsBaseUrl?: string;
   isFragment?: boolean;
 }
 
 export const SetupView: FC<SetupViewProps> = ({
-  currentSetupStep = "domain",
+  currentSetupStep = 'domain',
   domainVerified = false,
   assetsBaseUrl,
   isFragment = false,
 }) => {
   const steps: SetupStep[] = [
     {
-      id: "domain",
-      title: "Add sending domain",
-      description: "Configure your domain to send emails",
+      id: 'domain',
+      title: 'Add sending domain',
+      description: 'Configure your domain to send emails',
       completed: domainVerified,
     },
     {
-      id: "provider",
-      title: "Configure provider",
-      description: "Connect your email delivery provider",
+      id: 'provider',
+      title: 'Configure provider',
+      description: 'Connect your email delivery provider',
       completed: false,
     },
     {
-      id: "contacts",
-      title: "Import contacts",
-      description: "Upload your contact list",
+      id: 'contacts',
+      title: 'Import contacts',
+      description: 'Upload your contact list',
       completed: false,
     },
   ];
@@ -61,18 +61,19 @@ export const SetupView: FC<SetupViewProps> = ({
           <Card
             class={
               step.id === currentSetupStep
-                ? "border-brand-500 ring-2 ring-brand-500"
-                : ""
+                ? 'border-brand-500 ring-2 ring-brand-500'
+                : ''
             }
           >
             <div class="flex items-start gap-4">
               <div
-                class={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${step.completed
-                    ? "bg-brand-600 text-white"
+                class={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                  step.completed
+                    ? 'bg-brand-600 text-white'
                     : step.id === currentSetupStep
-                      ? "bg-brand-100 text-brand-600"
-                      : "bg-gray-100 text-gray-400"
-                  }`}
+                      ? 'bg-brand-100 text-brand-600'
+                      : 'bg-gray-100 text-gray-400'
+                }`}
               >
                 {step.completed ? (
                   <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -95,11 +96,11 @@ export const SetupView: FC<SetupViewProps> = ({
                 {/* Step Content */}
                 {step.id === currentSetupStep && (
                   <div class="mt-4">
-                    {step.id === "domain" && (
+                    {step.id === 'domain' && (
                       <DomainSetupForm verified={domainVerified} />
                     )}
-                    {step.id === "provider" && <ProviderSetupForm />}
-                    {step.id === "contacts" && <ContactsImportForm />}
+                    {step.id === 'provider' && <ProviderSetupForm />}
+                    {step.id === 'contacts' && <ContactsImportForm />}
                   </div>
                 )}
               </div>
@@ -134,7 +135,11 @@ export const SetupView: FC<SetupViewProps> = ({
   return isFragment ? (
     content
   ) : (
-    <OnboardingLayout title="Setup" currentStep={4} assetsBaseUrl={assetsBaseUrl}>
+    <OnboardingLayout
+      title="Setup"
+      currentStep={4}
+      assetsBaseUrl={assetsBaseUrl}
+    >
       {content}
     </OnboardingLayout>
   );
@@ -197,7 +202,9 @@ const DomainSetupForm: FC<{ verified?: boolean }> = ({ verified = false }) => {
             <div class="space-y-3">
               <div class="bg-white rounded p-3 border border-blue-100">
                 <div class="flex items-center justify-between mb-1">
-                  <span class="text-xs font-medium text-gray-700">Type: TXT</span>
+                  <span class="text-xs font-medium text-gray-700">
+                    Type: TXT
+                  </span>
                   <button
                     type="button"
                     class="text-xs text-brand-600 hover:text-brand-700"
@@ -212,7 +219,9 @@ const DomainSetupForm: FC<{ verified?: boolean }> = ({ verified = false }) => {
               </div>
               <div class="bg-white rounded p-3 border border-blue-100">
                 <div class="flex items-center justify-between mb-1">
-                  <span class="text-xs font-medium text-gray-700">Type: CNAME</span>
+                  <span class="text-xs font-medium text-gray-700">
+                    Type: CNAME
+                  </span>
                   <button
                     type="button"
                     class="text-xs text-brand-600 hover:text-brand-700"
@@ -280,7 +289,8 @@ const ContactsImportForm: FC = () => {
           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100"
         />
         <p class="mt-2 text-xs text-gray-500">
-          CSV should include columns: email, name (optional), and any custom fields
+          CSV should include columns: email, name (optional), and any custom
+          fields
         </p>
       </div>
 

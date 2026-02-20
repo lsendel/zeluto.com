@@ -11,6 +11,8 @@ export const CreateContactCommandSchema = z.object({
 
 export type CreateContactCommand = z.infer<typeof CreateContactCommandSchema>;
 
-export function createContactCommand(input: CreateContactCommand): CreateContactCommand {
+export function createContactCommand(
+  input: CreateContactCommand,
+): CreateContactCommand {
   return CreateContactCommandSchema.parse(input);
 }

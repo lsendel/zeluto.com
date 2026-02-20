@@ -1,4 +1,4 @@
-import { Result, type DomainEvent } from '@mauntic/domain-kernel';
+import { type DomainEvent, Result } from '@mauntic/domain-kernel';
 import type { LeadScoreRepository } from '@mauntic/scoring-domain';
 import { LeadScore } from '@mauntic/scoring-domain';
 
@@ -24,7 +24,10 @@ export class ScoringService {
     context: ScoringContext,
   ): Promise<Result<LeadScore>> {
     try {
-      let leadScore = await this.leadScoreRepo.findByContact(organizationId, contactId);
+      let leadScore = await this.leadScoreRepo.findByContact(
+        organizationId,
+        contactId,
+      );
 
       if (!leadScore) {
         leadScore = LeadScore.create({
@@ -34,7 +37,10 @@ export class ScoringService {
         });
       }
 
-      const newTotal = (context.engagement ?? 0) + (context.demographic ?? 0) + (context.intent ?? 0);
+      const newTotal =
+        (context.engagement ?? 0) +
+        (context.demographic ?? 0) +
+        (context.intent ?? 0);
 
       leadScore.updateScore({
         totalScore: newTotal,

@@ -1,11 +1,17 @@
 import {
-  startHealthServer,
   createWorker,
-  registerScheduledJobs,
   type JobHandler,
+  registerScheduledJobs,
   type ScheduledJob,
+  startHealthServer,
 } from '@mauntic/process-lib';
-import { ResearchAgent, SDRAgent, type SDRMode, type LLMProvider, type LLMOptions } from '@mauntic/revops-domain';
+import {
+  type LLMOptions,
+  type LLMProvider,
+  ResearchAgent,
+  SDRAgent,
+  type SDRMode,
+} from '@mauntic/revops-domain';
 import pino from 'pino';
 
 const logger = pino({ name: 'revops-engine' });
@@ -18,7 +24,7 @@ function createLLMProvider(): LLMProvider {
   // Stub — actual provider selection based on env at runtime
   // Will be replaced when full adapter wiring is done
   return {
-    async complete(prompt: string, options?: LLMOptions) {
+    async complete(_prompt: string, _options?: LLMOptions) {
       logger.warn('LLM provider not configured — returning stub response');
       return { content: '{}', usage: { inputTokens: 0, outputTokens: 0 } };
     },
@@ -51,7 +57,10 @@ const researchWorker: JobHandler<ResearchJobData> = {
   concurrency: 3,
   async process(job) {
     const { jobId, organizationId, contactId, type, contactData } = job.data;
-    logger.info({ jobId, organizationId, contactId, type }, 'Processing research job');
+    logger.info(
+      { jobId, organizationId, contactId, type },
+      'Processing research job',
+    );
 
     // TODO: Update job status to 'running' in DB
     // TODO: Fetch contact data from CRM if not provided
@@ -92,8 +101,20 @@ const sdrWorker: JobHandler<SDRJobData> = {
   name: 'revops:sdr',
   concurrency: 5,
   async process(job) {
-    const { organizationId, contactId, sequenceId, stepIndex, mode, contactData, leadScore, dataCompleteness } = job.data;
-    logger.info({ organizationId, contactId, sequenceId, stepIndex, mode }, 'Executing sequence step');
+    const {
+      organizationId,
+      contactId,
+      sequenceId,
+      stepIndex,
+      mode,
+      contactData,
+      leadScore,
+      dataCompleteness,
+    } = job.data;
+    logger.info(
+      { organizationId, contactId, sequenceId, stepIndex, mode },
+      'Executing sequence step',
+    );
 
     const agent = new SDRAgent(createLLMProvider(), {
       mode,
@@ -112,7 +133,14 @@ const sdrWorker: JobHandler<SDRJobData> = {
         contactData: contactData ?? {},
       });
 
-      logger.info({ contactId, recommendation: qualification.recommendation, score: qualification.qualificationScore }, 'Qualification result');
+      logger.info(
+        {
+          contactId,
+          recommendation: qualification.recommendation,
+          score: qualification.qualificationScore,
+        },
+        'Qualification result',
+      );
 
       if (qualification.recommendation === 'enrich') {
         // TODO: Publish enrichment request event
@@ -138,7 +166,10 @@ const sdrWorker: JobHandler<SDRJobData> = {
       logger.info({ mode, stepIndex }, 'Creating suggestion in copilot mode');
     } else {
       // Learning: log what would be done
-      logger.info({ mode, stepIndex }, 'Logging step in learning mode (no execution)');
+      logger.info(
+        { mode, stepIndex },
+        'Logging step in learning mode (no execution)',
+      );
     }
 
     return { success: true, sequenceId, stepIndex, mode };
@@ -156,7 +187,10 @@ const routingWorker: JobHandler<RoutingJobData> = {
   concurrency: 10,
   async process(job) {
     const { organizationId, contactId, dealId } = job.data;
-    logger.info({ organizationId, contactId, dealId }, 'Processing lead routing');
+    logger.info(
+      { organizationId, contactId, dealId },
+      'Processing lead routing',
+    );
 
     // TODO: Wire up RoutingRule.selectRep
     // 1. Load enabled routing rules (priority-ordered) from DB

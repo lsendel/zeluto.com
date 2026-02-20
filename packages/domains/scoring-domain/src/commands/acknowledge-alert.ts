@@ -6,8 +6,12 @@ export const AcknowledgeAlertCommandSchema = z.object({
   userId: z.string().uuid(),
 });
 
-export type AcknowledgeAlertCommand = z.infer<typeof AcknowledgeAlertCommandSchema>;
+export type AcknowledgeAlertCommand = z.infer<
+  typeof AcknowledgeAlertCommandSchema
+>;
 
-export function acknowledgeAlertCommand(input: AcknowledgeAlertCommand): AcknowledgeAlertCommand {
+export function acknowledgeAlertCommand(
+  input: AcknowledgeAlertCommand,
+): AcknowledgeAlertCommand {
   return AcknowledgeAlertCommandSchema.parse(input);
 }

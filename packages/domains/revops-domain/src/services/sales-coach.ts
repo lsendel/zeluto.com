@@ -27,7 +27,8 @@ export class SalesCoach {
     const response = await this.llm.complete(prompt, {
       temperature: 0.3,
       maxTokens: 1024,
-      systemPrompt: 'You are an experienced sales coach. Provide actionable, specific feedback. Respond with JSON.',
+      systemPrompt:
+        'You are an experienced sales coach. Provide actionable, specific feedback. Respond with JSON.',
     });
 
     try {

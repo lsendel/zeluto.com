@@ -8,6 +8,8 @@ export const ExecuteStepCommandSchema = z.object({
 
 export type ExecuteStepCommand = z.infer<typeof ExecuteStepCommandSchema>;
 
-export function executeStepCommand(input: ExecuteStepCommand): ExecuteStepCommand {
+export function executeStepCommand(
+  input: ExecuteStepCommand,
+): ExecuteStepCommand {
   return ExecuteStepCommandSchema.parse(input);
 }

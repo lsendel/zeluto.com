@@ -1,15 +1,13 @@
+import { CampaignApplicationService } from '@mauntic/campaign-domain';
+import { DomainError } from '@mauntic/domain-kernel';
 import { Hono } from 'hono';
 import { ZodError } from 'zod';
-import { DomainError } from '@mauntic/domain-kernel';
-import {
-  CampaignApplicationService,
-} from '@mauntic/campaign-domain';
 import type { Env } from '../app.js';
+import { QueueCampaignEventPublisher } from '../application/event-publisher.js';
 import {
   DrizzleCampaignRepository,
   findCampaignStats,
 } from '../infrastructure/repositories/campaign-repository.js';
-import { QueueCampaignEventPublisher } from '../application/event-publisher.js';
 
 export const campaignRoutes = new Hono<Env>();
 
@@ -22,7 +20,10 @@ function getService(c: any) {
 
 function handleError(c: any, error: unknown) {
   if (error instanceof DomainError) {
-    return c.json({ code: error.code, message: error.message }, error.statusCode);
+    return c.json(
+      { code: error.code, message: error.message },
+      error.statusCode,
+    );
   }
   if (error instanceof ZodError) {
     return c.json(
@@ -57,7 +58,7 @@ campaignRoutes.get('/api/v1/campaign/campaigns', async (c) => {
   });
 
   return c.json({
-    data: result.data.map(c => c.toProps()), // Convert entities to DTOs
+    data: result.data.map((c) => c.toProps()), // Convert entities to DTOs
     total: result.total,
     page: pageNum,
     limit: limitNum,

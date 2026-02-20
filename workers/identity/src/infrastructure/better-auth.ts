@@ -1,8 +1,16 @@
+import {
+  accounts,
+  organizationInvites,
+  organizationMembers,
+  organizations,
+  sessions,
+  users,
+  verifications,
+} from '@mauntic/identity-domain';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins';
-import { users, sessions, accounts, verifications, organizations, organizationMembers, organizationInvites } from '@mauntic/identity-domain';
-import type { Env, DrizzleDb } from './database.js';
+import type { DrizzleDb, Env } from './database.js';
 
 /**
  * Create a per-request Better Auth instance

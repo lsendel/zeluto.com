@@ -28,7 +28,9 @@ const ENTITY_MAP: Record<string, string> = {
 export class SalesforceProvider implements SyncProvider {
   readonly name = 'salesforce';
 
-  async testConnection(config: Record<string, unknown>): Promise<{ success: boolean; message?: string }> {
+  async testConnection(
+    config: Record<string, unknown>,
+  ): Promise<{ success: boolean; message?: string }> {
     const { instanceUrl, accessToken } = parseConfig(config);
 
     try {
@@ -37,12 +39,18 @@ export class SalesforceProvider implements SyncProvider {
       });
 
       if (!response.ok) {
-        return { success: false, message: `Salesforce returned ${response.status}` };
+        return {
+          success: false,
+          message: `Salesforce returned ${response.status}`,
+        };
       }
 
       return { success: true, message: 'Connected to Salesforce' };
     } catch (error) {
-      return { success: false, message: `Connection failed: ${error instanceof Error ? error.message : String(error)}` };
+      return {
+        success: false,
+        message: `Connection failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
   }
 
@@ -70,14 +78,18 @@ export class SalesforceProvider implements SyncProvider {
         throw new Error(`Salesforce query failed: ${response.status}`);
       }
 
-      const result = (await response.json()) as { records: Array<Record<string, unknown>> };
+      const result = (await response.json()) as {
+        records: Array<Record<string, unknown>>;
+      };
 
       return (result.records ?? []).map((record) => ({
         externalId: record.Id as string,
         data: record,
       }));
     } catch (error) {
-      throw new Error(`Salesforce pull failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Salesforce pull failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -112,10 +124,14 @@ export class SalesforceProvider implements SyncProvider {
           recordsSynced++;
         } else {
           const body = await response.text();
-          errors.push(`Failed to sync record ${record.externalId ?? 'new'}: ${response.status} ${body}`);
+          errors.push(
+            `Failed to sync record ${record.externalId ?? 'new'}: ${response.status} ${body}`,
+          );
         }
       } catch (error) {
-        errors.push(`Error syncing record: ${error instanceof Error ? error.message : String(error)}`);
+        errors.push(
+          `Error syncing record: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 

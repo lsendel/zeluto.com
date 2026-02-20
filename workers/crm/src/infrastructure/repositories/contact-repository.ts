@@ -1,5 +1,5 @@
-import { eq, and, or, ilike, sql, desc } from 'drizzle-orm';
 import { contacts } from '@mauntic/crm-domain/drizzle';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ContactRow = typeof contacts.$inferSelect;
@@ -72,7 +72,10 @@ export async function findAllContacts(
 export async function createContact(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<ContactInsert, 'id' | 'organization_id' | 'created_at' | 'updated_at'>,
+  data: Omit<
+    ContactInsert,
+    'id' | 'organization_id' | 'created_at' | 'updated_at'
+  >,
 ): Promise<ContactRow> {
   const [contact] = await db
     .insert(contacts)

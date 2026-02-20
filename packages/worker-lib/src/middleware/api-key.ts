@@ -1,5 +1,5 @@
-import type { MiddlewareHandler } from 'hono';
 import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+import type { MiddlewareHandler } from 'hono';
 
 export interface ApiKeyData {
   /** The SHA-256 hash of the API key (stored in KV) */
@@ -73,7 +73,8 @@ export function apiKeyMiddleware(
       return c.json(
         {
           error: 'API_KEY_NOT_ALLOWED',
-          message: 'API key authentication is only available for Enterprise plans',
+          message:
+            'API key authentication is only available for Enterprise plans',
         },
         403,
       );
@@ -81,11 +82,7 @@ export function apiKeyMiddleware(
 
     // Rate limit check for API key
     const effectiveRpm = keyData.rateLimitRpm ?? rateLimitRpm;
-    const rateLimited = await checkApiKeyRateLimit(
-      kv,
-      keyHash,
-      effectiveRpm,
-    );
+    const rateLimited = await checkApiKeyRateLimit(kv, keyHash, effectiveRpm);
 
     if (rateLimited) {
       return c.json(
@@ -120,7 +117,9 @@ export function apiKeyMiddleware(
  * Extract API key from request headers.
  * Checks Authorization: Bearer and X-API-Key headers.
  */
-function extractApiKey(c: { req: { header: (name: string) => string | undefined } }): string | undefined {
+function extractApiKey(c: {
+  req: { header: (name: string) => string | undefined };
+}): string | undefined {
   const authHeader = c.req.header('Authorization');
   if (authHeader?.startsWith('Bearer ')) {
     const token = authHeader.slice(7);

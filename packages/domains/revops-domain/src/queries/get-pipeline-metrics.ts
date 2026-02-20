@@ -5,8 +5,12 @@ export const GetPipelineMetricsQuerySchema = z.object({
   period: z.string().optional(), // e.g. "2026-Q1"
 });
 
-export type GetPipelineMetricsQuery = z.infer<typeof GetPipelineMetricsQuerySchema>;
+export type GetPipelineMetricsQuery = z.infer<
+  typeof GetPipelineMetricsQuerySchema
+>;
 
-export function getPipelineMetricsQuery(input: GetPipelineMetricsQuery): GetPipelineMetricsQuery {
+export function getPipelineMetricsQuery(
+  input: GetPipelineMetricsQuery,
+): GetPipelineMetricsQuery {
   return GetPipelineMetricsQuerySchema.parse(input);
 }

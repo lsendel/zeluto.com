@@ -1,6 +1,6 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
-import { UserRoleSchema, type UserRole } from './user.js';
+import { z } from 'zod';
+import { type UserRole, UserRoleSchema } from './user.js';
 
 export const OrganizationInvitePropsSchema = z.object({
   id: z.string().uuid(),
@@ -14,7 +14,9 @@ export const OrganizationInvitePropsSchema = z.object({
   createdAt: z.coerce.date(),
 });
 
-export type OrganizationInviteProps = z.infer<typeof OrganizationInvitePropsSchema>;
+export type OrganizationInviteProps = z.infer<
+  typeof OrganizationInvitePropsSchema
+>;
 
 export class OrganizationInvite {
   private constructor(private props: OrganizationInviteProps) {}
@@ -30,7 +32,9 @@ export class OrganizationInvite {
   }): OrganizationInvite {
     const now = new Date();
     // Default expiry: 7 days
-    const expiresAt = new Date(now.getTime() + (input.expiresInMs ?? 7 * 24 * 60 * 60 * 1000));
+    const expiresAt = new Date(
+      now.getTime() + (input.expiresInMs ?? 7 * 24 * 60 * 60 * 1000),
+    );
 
     return new OrganizationInvite(
       OrganizationInvitePropsSchema.parse({

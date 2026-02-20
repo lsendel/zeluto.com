@@ -1,33 +1,33 @@
 export {
-  EnrichmentProvider,
-  EnrichmentProviderPropsSchema,
-  EnrichmentProviderTypeSchema,
-  type EnrichmentProviderProps,
-  type EnrichmentProviderType,
-} from './enrichment-provider.js';
-export {
-  EnrichmentJob,
-  EnrichmentJobPropsSchema,
-  EnrichmentJobStatusSchema,
-  EnrichmentResultSchema,
-  type EnrichmentJobProps,
-  type EnrichmentJobStatus,
-  type EnrichmentResult,
-} from './enrichment-job.js';
-export {
-  WaterfallConfig,
-  WaterfallConfigPropsSchema,
-  type WaterfallConfigProps,
-} from './waterfall-config.js';
-export {
-  ProviderHealth,
-  ProviderHealthPropsSchema,
-  CircuitStateSchema,
-  type ProviderHealthProps,
-  type CircuitState,
-} from './provider-health.js';
-export {
-  DataQualityScoreSchema,
   calculateDataQuality,
   type DataQualityScore,
+  DataQualityScoreSchema,
 } from './data-quality-score.js';
+export {
+  EnrichmentJob,
+  type EnrichmentJobProps,
+  EnrichmentJobPropsSchema,
+  type EnrichmentJobStatus,
+  EnrichmentJobStatusSchema,
+  type EnrichmentResult,
+  EnrichmentResultSchema,
+} from './enrichment-job.js';
+export {
+  EnrichmentProvider,
+  type EnrichmentProviderProps,
+  EnrichmentProviderPropsSchema,
+  type EnrichmentProviderType,
+  EnrichmentProviderTypeSchema,
+} from './enrichment-provider.js';
+export {
+  type CircuitState,
+  CircuitStateSchema,
+  ProviderHealth,
+  type ProviderHealthProps,
+  ProviderHealthPropsSchema,
+} from './provider-health.js';
+export {
+  WaterfallConfig,
+  type WaterfallConfigProps,
+  WaterfallConfigPropsSchema,
+} from './waterfall-config.js';

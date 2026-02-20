@@ -1,10 +1,18 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
-import { campaigns, campaignStats, campaignSummaries } from '@mauntic/campaign-domain/drizzle';
+import {
+  Campaign,
+  type CampaignProps,
+  type CampaignRepository,
+} from '@mauntic/campaign-domain';
+import {
+  campaignStats,
+  campaignSummaries,
+  campaigns,
+} from '@mauntic/campaign-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { Campaign, type CampaignRepository, type CampaignProps } from '@mauntic/campaign-domain';
 
 export class DrizzleCampaignRepository implements CampaignRepository {
-  constructor(private readonly db: NeonHttpDatabase) { }
+  constructor(private readonly db: NeonHttpDatabase) {}
 
   async findById(orgId: string, id: string): Promise<Campaign | null> {
     const [row] = await this.db
@@ -19,14 +27,20 @@ export class DrizzleCampaignRepository implements CampaignRepository {
 
   async findByOrganization(
     orgId: string,
-    pagination: { page: number; limit: number; status?: string; search?: string },
+    pagination: {
+      page: number;
+      limit: number;
+      status?: string;
+      search?: string;
+    },
   ): Promise<{ data: Campaign[]; total: number }> {
     const { page, limit, status, search } = pagination;
     const offset = (page - 1) * limit;
 
     const conditions = [eq(campaignSummaries.organizationId, orgId)];
     if (status) conditions.push(eq(campaignSummaries.status, status));
-    if (search) conditions.push(sql`${campaignSummaries.name} ILIKE ${'%' + search + '%'}`);
+    if (search)
+      conditions.push(sql`${campaignSummaries.name} ILIKE ${`%${search}%`}`);
 
     const where = and(...conditions);
 
@@ -98,7 +112,9 @@ export class DrizzleCampaignRepository implements CampaignRepository {
     });
   }
 
-  private mapSummaryToEntity(row: typeof campaignSummaries.$inferSelect): Campaign {
+  private mapSummaryToEntity(
+    row: typeof campaignSummaries.$inferSelect,
+  ): Campaign {
     return Campaign.reconstitute({
       id: row.campaignId,
       organizationId: row.organizationId,

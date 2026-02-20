@@ -1,6 +1,6 @@
+import { Result } from '@mauntic/domain-kernel';
 import { JourneyVersion } from '../entities/journey-version.js';
 import type { JourneyVersionRepository } from '../repositories/journey-version-repository.js';
-import { Result } from '@mauntic/domain-kernel';
 
 export interface JourneyDefinition {
   steps: Array<{
@@ -29,7 +29,7 @@ export interface JourneyDefinition {
  * New executions use the latest published version.
  */
 export class VersioningService {
-  constructor(private readonly versionRepo: JourneyVersionRepository) { }
+  constructor(private readonly versionRepo: JourneyVersionRepository) {}
 
   /**
    * Create a new immutable version from the current journey definition.
@@ -40,7 +40,10 @@ export class VersioningService {
     organizationId: string,
     definition: JourneyDefinition,
   ): Promise<Result<JourneyVersion>> {
-    const latest = await this.versionRepo.findLatestByJourney(organizationId, journeyId);
+    const latest = await this.versionRepo.findLatestByJourney(
+      organizationId,
+      journeyId,
+    );
     const nextVersionNumber = latest ? latest.versionNumber + 1 : 1;
 
     const versionResult = JourneyVersion.create({

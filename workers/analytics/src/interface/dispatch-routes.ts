@@ -1,23 +1,23 @@
+import { createDatabase, tenantMiddleware } from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import { tenantMiddleware, createDatabase } from '@mauntic/worker-lib';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import {
+  getCampaignStats,
+  getJourneyStats,
+  getOverviewStats,
+} from '../infrastructure/repositories/dashboard-repository.js';
 import {
   logEvent,
   queryAggregates,
   queryEvents,
 } from '../infrastructure/repositories/event-repository.js';
 import {
-  getOverviewStats,
-  getCampaignStats,
-  getJourneyStats,
-} from '../infrastructure/repositories/dashboard-repository.js';
-import {
-  findReportById,
-  findAllReports,
   createReport,
-  updateReport,
   deleteReport,
+  findAllReports,
+  findReportById,
+  updateReport,
 } from '../infrastructure/repositories/report-repository.js';
 
 export const analyticsDispatchRoutes = new Hono<Env>();
@@ -32,17 +32,21 @@ analyticsDispatchRoutes.use('*', async (c, next) => {
 analyticsDispatchRoutes.post('/events/log', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | {
-        contactId?: string;
-        eventType?: string;
-        eventSource?: string;
-        eventData?: Record<string, unknown>;
-      }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    contactId?: string;
+    eventType?: string;
+    eventSource?: string;
+    eventData?: Record<string, unknown>;
+  } | null;
 
   if (!body?.contactId || !body.eventType) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'contactId and eventType are required' }, 400);
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'contactId and eventType are required',
+      },
+      400,
+    );
   }
 
   const event = await logEvent(db, tenant.organizationId, {
@@ -58,16 +62,14 @@ analyticsDispatchRoutes.post('/events/log', async (c) => {
 analyticsDispatchRoutes.post('/events/list', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | {
-        page?: number;
-        limit?: number;
-        eventType?: string;
-        contactId?: string;
-        startDate?: string;
-        endDate?: string;
-      }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    page?: number;
+    limit?: number;
+    eventType?: string;
+    contactId?: string;
+    startDate?: string;
+    endDate?: string;
+  } | null;
 
   const page = Math.max(1, Number(body?.page ?? 1));
   const limit = Math.max(1, Math.min(100, Number(body?.limit ?? 25)));
@@ -93,13 +95,11 @@ analyticsDispatchRoutes.post('/events/list', async (c) => {
 analyticsDispatchRoutes.post('/events/aggregates', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | {
-        startDate?: string;
-        endDate?: string;
-        eventType?: string;
-      }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    startDate?: string;
+    endDate?: string;
+    eventType?: string;
+  } | null;
 
   const aggregates = await queryAggregates(db, tenant.organizationId, {
     startDate: body?.startDate ?? undefined,
@@ -113,12 +113,17 @@ analyticsDispatchRoutes.post('/events/aggregates', async (c) => {
 analyticsDispatchRoutes.post('/events/activity', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { contactId?: string; page?: number; limit?: number }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    contactId?: string;
+    page?: number;
+    limit?: number;
+  } | null;
 
   if (!body?.contactId) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'contactId is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'contactId is required' },
+      400,
+    );
   }
 
   const page = Math.max(1, Number(body?.page ?? 1));
@@ -153,8 +158,10 @@ analyticsDispatchRoutes.post('/overview', async (c) => {
     if (agg.eventType === 'email_clicked') totalClicked += agg.count;
   }
 
-  const openRate = emailsSentToday > 0 ? (totalOpened / emailsSentToday) * 100 : 0;
-  const clickRate = emailsSentToday > 0 ? (totalClicked / emailsSentToday) * 100 : 0;
+  const openRate =
+    emailsSentToday > 0 ? (totalOpened / emailsSentToday) * 100 : 0;
+  const clickRate =
+    emailsSentToday > 0 ? (totalClicked / emailsSentToday) * 100 : 0;
 
   return c.json({
     totalContacts: 0,
@@ -171,18 +178,28 @@ analyticsDispatchRoutes.post('/overview', async (c) => {
 analyticsDispatchRoutes.post('/campaigns/performance', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { campaignId?: string; startDate?: string; endDate?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    campaignId?: string;
+    startDate?: string;
+    endDate?: string;
+  } | null;
 
   if (!body?.campaignId) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'campaignId is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'campaignId is required' },
+      400,
+    );
   }
 
-  const dailyStats = await getCampaignStats(db, tenant.organizationId, body.campaignId, {
-    startDate: body.startDate ?? undefined,
-    endDate: body.endDate ?? undefined,
-  });
+  const dailyStats = await getCampaignStats(
+    db,
+    tenant.organizationId,
+    body.campaignId,
+    {
+      startDate: body.startDate ?? undefined,
+      endDate: body.endDate ?? undefined,
+    },
+  );
 
   let sent = 0,
     delivered = 0,
@@ -218,7 +235,10 @@ analyticsDispatchRoutes.post('/campaigns/performance', async (c) => {
     unsubscribed,
     openRate: sent > 0 ? Math.round((uniqueOpened / sent) * 10000) / 100 : 0,
     clickRate: sent > 0 ? Math.round((uniqueClicked / sent) * 10000) / 100 : 0,
-    clickToOpenRate: uniqueOpened > 0 ? Math.round((uniqueClicked / uniqueOpened) * 10000) / 100 : 0,
+    clickToOpenRate:
+      uniqueOpened > 0
+        ? Math.round((uniqueClicked / uniqueOpened) * 10000) / 100
+        : 0,
     bounceRate: sent > 0 ? Math.round((bounced / sent) * 10000) / 100 : 0,
     dailyStats,
   });
@@ -227,13 +247,22 @@ analyticsDispatchRoutes.post('/campaigns/performance', async (c) => {
 analyticsDispatchRoutes.post('/journeys/performance', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as { journeyId?: string } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    journeyId?: string;
+  } | null;
 
   if (!body?.journeyId) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'journeyId is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'journeyId is required' },
+      400,
+    );
   }
 
-  const dailyStats = await getJourneyStats(db, tenant.organizationId, body.journeyId);
+  const dailyStats = await getJourneyStats(
+    db,
+    tenant.organizationId,
+    body.journeyId,
+  );
 
   let totalStarted = 0,
     totalCompleted = 0,
@@ -254,7 +283,10 @@ analyticsDispatchRoutes.post('/journeys/performance', async (c) => {
     totalCompleted,
     totalFailed,
     currentlyActive,
-    completionRate: totalStarted > 0 ? Math.round((totalCompleted / totalStarted) * 10000) / 100 : 0,
+    completionRate:
+      totalStarted > 0
+        ? Math.round((totalCompleted / totalStarted) * 10000) / 100
+        : 0,
     avgTimeToComplete: null,
     dailyStats,
     stepStats: [],
@@ -264,7 +296,10 @@ analyticsDispatchRoutes.post('/journeys/performance', async (c) => {
 analyticsDispatchRoutes.post('/reports/list', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as { page?: number; limit?: number } | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    page?: number;
+    limit?: number;
+  } | null;
   const page = Math.max(1, Number(body?.page ?? 1));
   const limit = Math.max(1, Math.min(100, Number(body?.limit ?? 25)));
 
@@ -299,12 +334,17 @@ analyticsDispatchRoutes.post('/reports/get', async (c) => {
 analyticsDispatchRoutes.post('/reports/create', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { name?: string; type?: string; config?: Record<string, unknown> }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    name?: string;
+    type?: string;
+    config?: Record<string, unknown>;
+  } | null;
 
   if (!body?.name) {
-    return c.json({ code: 'VALIDATION_ERROR', message: 'name is required' }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'name is required' },
+      400,
+    );
   }
 
   const report = await createReport(db, tenant.organizationId, {
@@ -319,9 +359,11 @@ analyticsDispatchRoutes.post('/reports/create', async (c) => {
 analyticsDispatchRoutes.post('/reports/update', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { id?: string; name?: string; config?: Record<string, unknown> }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    id?: string;
+    name?: string;
+    config?: Record<string, unknown>;
+  } | null;
 
   if (!body?.id) {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);
@@ -331,7 +373,12 @@ analyticsDispatchRoutes.post('/reports/update', async (c) => {
   if (body.name !== undefined) updateData.name = body.name;
   if (body.config !== undefined) updateData.steps = body.config;
 
-  const report = await updateReport(db, tenant.organizationId, body.id, updateData);
+  const report = await updateReport(
+    db,
+    tenant.organizationId,
+    body.id,
+    updateData,
+  );
   if (!report) {
     return c.json({ code: 'NOT_FOUND', message: 'Report not found' }, 404);
   }
@@ -358,9 +405,11 @@ analyticsDispatchRoutes.post('/reports/delete', async (c) => {
 analyticsDispatchRoutes.post('/reports/run', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
-  const body = (await c.req.json().catch(() => null)) as
-    | { id?: string; startDate?: string; endDate?: string }
-    | null;
+  const body = (await c.req.json().catch(() => null)) as {
+    id?: string;
+    startDate?: string;
+    endDate?: string;
+  } | null;
 
   if (!body?.id) {
     return c.json({ code: 'VALIDATION_ERROR', message: 'id is required' }, 400);

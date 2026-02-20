@@ -1,18 +1,12 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { ContactCreatedEvent } from '@mauntic/domain-kernel/events';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
-  findTriggersByType,
-} from '../infrastructure/repositories/trigger-repository.js';
-import {
-  findJourneyById,
-} from '../infrastructure/repositories/journey-repository.js';
-import {
-  findLatestVersion,
-} from '../infrastructure/repositories/version-repository.js';
-import {
-  findActiveExecutionForContact,
   createExecution,
+  findActiveExecutionForContact,
 } from '../infrastructure/repositories/execution-repository.js';
+import { findJourneyById } from '../infrastructure/repositories/journey-repository.js';
+import { findTriggersByType } from '../infrastructure/repositories/trigger-repository.js';
+import { findLatestVersion } from '../infrastructure/repositories/version-repository.js';
 
 /**
  * Handles ContactCreated events by checking active journeys with segment triggers
@@ -38,7 +32,12 @@ export async function handleContactCreated(
     if (!journey || journey.status !== 'active') continue;
 
     // Check if contact already has an active execution
-    const existing = await findActiveExecutionForContact(db, orgId, journey.id, contactId);
+    const existing = await findActiveExecutionForContact(
+      db,
+      orgId,
+      journey.id,
+      contactId,
+    );
     if (existing) continue;
 
     // Get latest published version
@@ -70,7 +69,10 @@ export async function handleContactCreated(
         },
       });
     } catch (err) {
-      console.error('Failed to enqueue execution start for contact trigger:', err);
+      console.error(
+        'Failed to enqueue execution start for contact trigger:',
+        err,
+      );
     }
   }
 }

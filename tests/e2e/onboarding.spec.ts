@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 test.describe('Onboarding', () => {
   test('unauthenticated onboarding redirects to login', async ({ page }) => {

@@ -54,18 +54,47 @@ export const PageListView: FC<PageListProps> = ({
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Name</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Slug</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Visits</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Slug
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Visits
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
               {pages.length === 0 ? (
                 <tr>
-                  <td colspan={5} class="px-6 py-12 text-center text-sm text-gray-500">
-                    No landing pages found. Create your first page to get started.
+                  <td
+                    colspan={5}
+                    class="px-6 py-12 text-center text-sm text-gray-500"
+                  >
+                    No landing pages found. Create your first page to get
+                    started.
                   </td>
                 </tr>
               ) : (
@@ -83,18 +112,24 @@ export const PageListView: FC<PageListProps> = ({
                       </a>
                     </td>
                     <td class="px-6 py-4 text-sm text-gray-500">
-                      <code class="text-xs bg-gray-100 px-2 py-1 rounded">/p/{p.slug}</code>
+                      <code class="text-xs bg-gray-100 px-2 py-1 rounded">
+                        /p/{p.slug}
+                      </code>
                     </td>
                     <td class="px-6 py-4 text-sm">
-                      <span class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        p.isPublished
-                          ? 'bg-green-50 text-green-700'
-                          : 'bg-yellow-50 text-yellow-700'
-                      }`}>
+                      <span
+                        class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                          p.isPublished
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-yellow-50 text-yellow-700'
+                        }`}
+                      >
                         {p.isPublished ? 'Published' : 'Draft'}
                       </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{p.visitCount}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                      {p.visitCount}
+                    </td>
                     <td class="px-6 py-4 text-sm text-gray-500 space-x-2">
                       {p.isPublished ? (
                         <button

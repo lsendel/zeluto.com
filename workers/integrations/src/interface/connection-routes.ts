@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findConnectionById,
-  findAllConnections,
   createConnection,
-  updateConnection,
   deleteConnection,
+  findAllConnections,
+  findConnectionById,
+  updateConnection,
 } from '../infrastructure/repositories/connection-repository.js';
 
 export const connectionRoutes = new Hono<Env>();
@@ -34,7 +34,10 @@ connectionRoutes.get('/api/v1/integrations/connections', async (c) => {
     });
   } catch (error) {
     console.error('List connections error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list connections' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list connections' },
+      500,
+    );
   }
 });
 
@@ -66,7 +69,10 @@ connectionRoutes.post('/api/v1/integrations/connections', async (c) => {
     return c.json(connection, 201);
   } catch (error) {
     console.error('Create connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create connection' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create connection' },
+      500,
+    );
   }
 });
 
@@ -79,12 +85,18 @@ connectionRoutes.get('/api/v1/integrations/connections/:id', async (c) => {
   try {
     const connection = await findConnectionById(db, tenant.organizationId, id);
     if (!connection) {
-      return c.json({ code: 'NOT_FOUND', message: 'Connection not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Connection not found' },
+        404,
+      );
     }
     return c.json(connection);
   } catch (error) {
     console.error('Get connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get connection' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get connection' },
+      500,
+    );
   }
 });
 
@@ -106,15 +118,26 @@ connectionRoutes.patch('/api/v1/integrations/connections/:id', async (c) => {
     if (body.config !== undefined) updateData.config = body.config;
     if (body.status !== undefined) updateData.status = body.status;
 
-    const connection = await updateConnection(db, tenant.organizationId, id, updateData);
+    const connection = await updateConnection(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!connection) {
-      return c.json({ code: 'NOT_FOUND', message: 'Connection not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Connection not found' },
+        404,
+      );
     }
 
     return c.json(connection);
   } catch (error) {
     console.error('Update connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update connection' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update connection' },
+      500,
+    );
   }
 });
 
@@ -127,35 +150,54 @@ connectionRoutes.delete('/api/v1/integrations/connections/:id', async (c) => {
   try {
     const deleted = await deleteConnection(db, tenant.organizationId, id);
     if (!deleted) {
-      return c.json({ code: 'NOT_FOUND', message: 'Connection not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Connection not found' },
+        404,
+      );
     }
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete connection' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete connection' },
+      500,
+    );
   }
 });
 
 // POST /api/v1/integrations/connections/:id/test - Test connection
-connectionRoutes.post('/api/v1/integrations/connections/:id/test', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const id = c.req.param('id');
+connectionRoutes.post(
+  '/api/v1/integrations/connections/:id/test',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const id = c.req.param('id');
 
-  try {
-    const connection = await findConnectionById(db, tenant.organizationId, id);
-    if (!connection) {
-      return c.json({ code: 'NOT_FOUND', message: 'Connection not found' }, 404);
+    try {
+      const connection = await findConnectionById(
+        db,
+        tenant.organizationId,
+        id,
+      );
+      if (!connection) {
+        return c.json(
+          { code: 'NOT_FOUND', message: 'Connection not found' },
+          404,
+        );
+      }
+
+      // Test connectivity based on provider type
+      // This is a simplified test - actual provider-specific tests would be called here
+      return c.json({
+        success: true,
+        message: `Connection to ${connection.provider} is configured`,
+      });
+    } catch (error) {
+      console.error('Test connection error:', error);
+      return c.json(
+        { code: 'INTERNAL_ERROR', message: 'Failed to test connection' },
+        500,
+      );
     }
-
-    // Test connectivity based on provider type
-    // This is a simplified test - actual provider-specific tests would be called here
-    return c.json({
-      success: true,
-      message: `Connection to ${connection.provider} is configured`,
-    });
-  } catch (error) {
-    console.error('Test connection error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to test connection' }, 500);
-  }
-});
+  },
+);

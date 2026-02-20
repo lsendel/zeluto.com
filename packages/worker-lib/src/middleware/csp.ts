@@ -36,7 +36,9 @@ export function cspMiddleware(options?: CspOptions): MiddlewareHandler {
     ...(opts.allowInlineStyles !== false ? ["'unsafe-inline'"] : []),
     ...(opts.styleSrc ?? []),
   ].join(' ');
-  const imgSrc = ["'self'", 'data:', 'https:', ...(opts.imgSrc ?? [])].join(' ');
+  const imgSrc = ["'self'", 'data:', 'https:', ...(opts.imgSrc ?? [])].join(
+    ' ',
+  );
   const fontSrc = ["'self'", ...(opts.fontSrc ?? [])].join(' ');
   const connectSrc = opts.connectSrc?.length
     ? ["'self'", ...opts.connectSrc].join(' ')

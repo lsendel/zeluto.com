@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { AggregateRoot, Result } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const JourneyStatusSchema = z.enum([
   'draft',
@@ -137,7 +137,9 @@ export class Journey extends AggregateRoot<JourneyProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();
@@ -165,7 +167,9 @@ export class Journey extends AggregateRoot<JourneyProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();
@@ -193,7 +197,9 @@ export class Journey extends AggregateRoot<JourneyProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();
@@ -221,7 +227,9 @@ export class Journey extends AggregateRoot<JourneyProps> {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: this.id,
-        tenantContext: { organizationId: this.props.organizationId as unknown as number },
+        tenantContext: {
+          organizationId: this.props.organizationId as unknown as number,
+        },
       },
     });
     return Result.ok();

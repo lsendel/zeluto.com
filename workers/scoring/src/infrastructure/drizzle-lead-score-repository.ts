@@ -1,7 +1,7 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { LeadScore, type LeadScoreRepository } from '@mauntic/scoring-domain';
 import { leadScores } from '@mauntic/scoring-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 function mapToEntity(row: typeof leadScores.$inferSelect): LeadScore {
   return LeadScore.reconstitute({
@@ -24,27 +24,46 @@ function mapToEntity(row: typeof leadScores.$inferSelect): LeadScore {
 export class DrizzleLeadScoreRepository implements LeadScoreRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
-  async findByContact(orgId: string, contactId: string): Promise<LeadScore | null> {
+  async findByContact(
+    orgId: string,
+    contactId: string,
+  ): Promise<LeadScore | null> {
     const [row] = await this.db
       .select()
       .from(leadScores)
-      .where(and(eq(leadScores.organization_id, orgId), eq(leadScores.contact_id, contactId)));
+      .where(
+        and(
+          eq(leadScores.organization_id, orgId),
+          eq(leadScores.contact_id, contactId),
+        ),
+      );
     if (!row) return null;
     return mapToEntity(row);
   }
 
   async findByOrganization(
     orgId: string,
-    options?: { minScore?: number; grade?: string; limit?: number; offset?: number },
+    options?: {
+      minScore?: number;
+      grade?: string;
+      limit?: number;
+      offset?: number;
+    },
   ): Promise<LeadScore[]> {
-    let query = this.db.select().from(leadScores).where(eq(leadScores.organization_id, orgId));
+    const conditions: any[] = [eq(leadScores.organization_id, orgId)];
     if (options?.minScore) {
-      query = query.where(sql`${leadScores.total_score} >= ${options.minScore}`) as any;
+      conditions.push(sql`${leadScores.total_score} >= ${options.minScore}`);
     }
     if (options?.grade) {
-      query = query.where(eq(leadScores.grade, options.grade as any)) as any;
+      conditions.push(eq(leadScores.grade, options.grade as any));
     }
-    const rows = await query.limit(options?.limit ?? 20).offset(options?.offset ?? 0);
+    const query = this.db
+      .select()
+      .from(leadScores)
+      .where(and(...conditions));
+    const rows = await query
+      .limit(options?.limit ?? 20)
+      .offset(options?.offset ?? 0);
     return rows.map(mapToEntity);
   }
 
@@ -96,6 +115,11 @@ export class DrizzleLeadScoreRepository implements LeadScoreRepository {
   async delete(orgId: string, contactId: string): Promise<void> {
     await this.db
       .delete(leadScores)
-      .where(and(eq(leadScores.organization_id, orgId), eq(leadScores.contact_id, contactId)));
+      .where(
+        and(
+          eq(leadScores.organization_id, orgId),
+          eq(leadScores.contact_id, contactId),
+        ),
+      );
   }
 }

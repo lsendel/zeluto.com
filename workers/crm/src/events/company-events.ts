@@ -1,7 +1,7 @@
 import type {
   CompanyCreatedEvent,
-  CompanyUpdatedEvent,
   CompanyDeletedEvent,
+  CompanyUpdatedEvent,
   DomainEventMetadata,
 } from '@mauntic/domain-kernel';
 

@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { eq, and, ne } from 'drizzle-orm';
 import { users } from '@mauntic/identity-domain';
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const UpdateUserInput = z.object({
@@ -53,7 +53,10 @@ export const UpdateUserRoleInput = z.object({
 
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleInput>;
 
-export async function updateUserRole(db: DrizzleDb, input: UpdateUserRoleInput) {
+export async function updateUserRole(
+  db: DrizzleDb,
+  input: UpdateUserRoleInput,
+) {
   const parsed = UpdateUserRoleInput.parse(input);
 
   const [existing] = await db

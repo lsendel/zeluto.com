@@ -1,5 +1,5 @@
-import { eq, and, sql } from 'drizzle-orm';
 import { fields } from '@mauntic/crm-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type FieldRow = typeof fields.$inferSelect;
@@ -51,7 +51,9 @@ export async function updateField(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Pick<FieldInsert, 'label' | 'options' | 'is_required' | 'sort_order'>>,
+  data: Partial<
+    Pick<FieldInsert, 'label' | 'options' | 'is_required' | 'sort_order'>
+  >,
 ): Promise<FieldRow | null> {
   const [field] = await db
     .update(fields)

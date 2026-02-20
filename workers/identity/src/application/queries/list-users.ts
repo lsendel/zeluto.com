@@ -1,5 +1,5 @@
-import { eq, sql, ilike, or } from 'drizzle-orm';
-import { users, organizationMembers } from '@mauntic/identity-domain';
+import { organizationMembers, users } from '@mauntic/identity-domain';
+import { eq, ilike, or, sql } from 'drizzle-orm';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export interface ListUsersParams {
@@ -22,21 +22,19 @@ export async function listUsers(db: DrizzleDb, params: ListUsersParams) {
 
   // Build where clause with optional search
   const searchCondition = search
-    ? or(
-        ilike(users.name, `%${search}%`),
-        ilike(users.email, `%${search}%`)
-      )
+    ? or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`))
     : undefined;
 
   // Get total count
   const [countResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(users)
-    .innerJoin(
-      organizationMembers,
-      eq(users.id, organizationMembers.userId)
-    )
-    .where(searchCondition ? sql`${baseCondition} AND ${searchCondition}` : baseCondition);
+    .innerJoin(organizationMembers, eq(users.id, organizationMembers.userId))
+    .where(
+      searchCondition
+        ? sql`${baseCondition} AND ${searchCondition}`
+        : baseCondition,
+    );
 
   const total = countResult?.count ?? 0;
 
@@ -56,11 +54,12 @@ export async function listUsers(db: DrizzleDb, params: ListUsersParams) {
       updatedAt: users.updatedAt,
     })
     .from(users)
-    .innerJoin(
-      organizationMembers,
-      eq(users.id, organizationMembers.userId)
+    .innerJoin(organizationMembers, eq(users.id, organizationMembers.userId))
+    .where(
+      searchCondition
+        ? sql`${baseCondition} AND ${searchCondition}`
+        : baseCondition,
     )
-    .where(searchCondition ? sql`${baseCondition} AND ${searchCondition}` : baseCondition)
     .orderBy(users.createdAt)
     .limit(limit)
     .offset(offset);

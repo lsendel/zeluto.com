@@ -1,15 +1,18 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { forwardToService } from './forward.js';
 
-function createMockContext(overrides: {
-  url?: string;
-  method?: string;
-  headers?: Record<string, string>;
-  tenantContext?: Record<string, unknown>;
-  requestId?: string;
-} = {}) {
+function createMockContext(
+  overrides: {
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    tenantContext?: Record<string, unknown>;
+    requestId?: string;
+  } = {},
+) {
   const store = new Map<string, unknown>();
-  if (overrides.tenantContext) store.set('tenantContext', overrides.tenantContext);
+  if (overrides.tenantContext)
+    store.set('tenantContext', overrides.tenantContext);
   if (overrides.requestId) store.set('requestId', overrides.requestId);
 
   const loggerWarn = vi.fn();
@@ -35,7 +38,9 @@ describe('forwardToService', () => {
   it('forwards GET request to service binding', async () => {
     const c = createMockContext({ requestId: 'req-1' });
     const mockService = {
-      fetch: vi.fn().mockResolvedValue(new Response('{"ok":true}', { status: 200 })),
+      fetch: vi
+        .fn()
+        .mockResolvedValue(new Response('{"ok":true}', { status: 200 })),
     };
 
     const result = await forwardToService(c as any, mockService as any);
@@ -45,7 +50,12 @@ describe('forwardToService', () => {
 
   it('propagates X-Tenant-Context when tenant is set', async () => {
     const c = createMockContext({
-      tenantContext: { organizationId: 'org-1', userId: 'user-1', plan: 'pro', userRole: 'admin' },
+      tenantContext: {
+        organizationId: 'org-1',
+        userId: 'user-1',
+        plan: 'pro',
+        userRole: 'admin',
+      },
     });
     const mockService = {
       fetch: vi.fn().mockResolvedValue(new Response('{}', { status: 200 })),

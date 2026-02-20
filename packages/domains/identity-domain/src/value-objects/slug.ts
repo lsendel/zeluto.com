@@ -14,7 +14,10 @@ export const SlugSchema = z
     /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
     'Slug must be lowercase alphanumeric with hyphens, no leading/trailing hyphens',
   )
-  .refine((v) => !v.includes('--'), 'Slug must not contain consecutive hyphens');
+  .refine(
+    (v) => !v.includes('--'),
+    'Slug must not contain consecutive hyphens',
+  );
 
 export type Slug = z.output<typeof SlugSchema>;
 

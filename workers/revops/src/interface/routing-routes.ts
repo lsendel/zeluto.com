@@ -1,6 +1,9 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import { findRulesByOrganization, createRule } from '../infrastructure/repositories/routing-rule-repository.js';
+import {
+  createRule,
+  findRulesByOrganization,
+} from '../infrastructure/repositories/routing-rule-repository.js';
 
 export const routingRoutes = new Hono<Env>();
 
@@ -13,7 +16,10 @@ routingRoutes.get('/api/v1/revops/routing/rules', async (c) => {
     return c.json(rules);
   } catch (error) {
     console.error('List routing rules error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list routing rules' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list routing rules' },
+      500,
+    );
   }
 });
 
@@ -27,6 +33,9 @@ routingRoutes.post('/api/v1/revops/routing/rules', async (c) => {
     return c.json(rule, 201);
   } catch (error) {
     console.error('Create routing rule error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create routing rule' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create routing rule' },
+      500,
+    );
   }
 });

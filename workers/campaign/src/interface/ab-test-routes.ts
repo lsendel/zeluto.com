@@ -1,13 +1,13 @@
+import { AbTest } from '@mauntic/campaign-domain';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
+  createAbTest,
   findAbTestById,
   findAbTestsByCampaign,
-  createAbTest,
   updateAbTest,
 } from '../infrastructure/repositories/ab-test-repository.js';
 import { DrizzleCampaignRepository } from '../infrastructure/repositories/campaign-repository.js';
-import { AbTest } from '@mauntic/campaign-domain';
 
 export const abTestRoutes = new Hono<Env>();
 
@@ -29,9 +29,17 @@ abTestRoutes.post('/api/v1/campaign/ab-tests', async (c) => {
     testPercentage?: number;
   }>();
 
-  if (!body.campaignId || !body.name || !body.variants || !body.winningCriteria) {
+  if (
+    !body.campaignId ||
+    !body.name ||
+    !body.variants ||
+    !body.winningCriteria
+  ) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'campaignId, name, variants, and winningCriteria are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'campaignId, name, variants, and winningCriteria are required',
+      },
       400,
     );
   }
@@ -174,6 +182,10 @@ abTestRoutes.get('/api/v1/campaign/campaigns/:id/ab-tests', async (c) => {
   const db = c.get('db');
   const campaignId = c.req.param('id');
 
-  const tests = await findAbTestsByCampaign(db, tenant.organizationId, campaignId);
+  const tests = await findAbTestsByCampaign(
+    db,
+    tenant.organizationId,
+    campaignId,
+  );
   return c.json({ data: tests });
 });

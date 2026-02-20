@@ -1,8 +1,8 @@
 import type { DeliveryProvider, DeliveryResult } from '@mauntic/domain-kernel';
 import type { Channel } from '../entities/delivery-job.js';
+import type { ProviderConfig } from '../entities/provider-config.js';
 import type { SuppressionRepository } from '../repositories/suppression-repository.js';
 import type { ProviderResolver } from './provider-resolver.js';
-import type { ProviderConfig } from '../entities/provider-config.js';
 
 export interface DeliveryPipelineResult {
   success: boolean;
@@ -122,7 +122,10 @@ export class DeliveryPipeline {
         });
 
       default:
-        return { success: false, error: `Unsupported channel: ${input.channel as string}` };
+        return {
+          success: false,
+          error: `Unsupported channel: ${input.channel as string}`,
+        };
     }
   }
 }

@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import { DrizzleContactRepository } from '../infrastructure/repositories/drizzle-contact-repository.js';
+import { Hono } from 'hono';
 import { ContactService } from '../application/contact-service.js';
 import { QueueDomainEventPublisher } from '../application/domain-event-publisher.js';
+import { DrizzleContactRepository } from '../infrastructure/repositories/drizzle-contact-repository.js';
 
 export const contactRoutes = new Hono();
 
@@ -59,7 +59,10 @@ contactRoutes.post('/api/v1/crm/contacts', async (c) => {
   });
 
   if (result.isFailure) {
-    return c.json({ code: 'VALIDATION_ERROR', message: result.getError() }, 400);
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: result.getError() },
+      400,
+    );
   }
 
   return c.json(result.getValue().toProps(), 201);

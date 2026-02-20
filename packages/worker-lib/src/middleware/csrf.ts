@@ -50,8 +50,7 @@ export function csrfMiddleware(kv: KVNamespace): MiddlewareHandler {
 
     // Validate CSRF token on mutating requests
     const token =
-      c.req.header('X-CSRF-Token') ??
-      getCsrfFromCookie(c.req.header('Cookie'));
+      c.req.header('X-CSRF-Token') ?? getCsrfFromCookie(c.req.header('Cookie'));
 
     if (!token || !sessionId) {
       return c.json({ error: 'CSRF_TOKEN_REQUIRED' }, 403);
@@ -88,7 +87,10 @@ async function getOrCreateToken(
  * Set CSRF token as an HttpOnly=false cookie so HTMX JS can read it.
  * SameSite=Strict provides additional CSRF protection.
  */
-function setCsrfCookie(c: { header: (name: string, value: string) => void }, token: string): void {
+function setCsrfCookie(
+  c: { header: (name: string, value: string) => void },
+  token: string,
+): void {
   c.header(
     'Set-Cookie',
     `csrf-token=${token}; Path=/; SameSite=Strict; Secure`,
@@ -98,7 +100,9 @@ function setCsrfCookie(c: { header: (name: string, value: string) => void }, tok
 /**
  * Extract CSRF token from cookie header string.
  */
-function getCsrfFromCookie(cookieHeader: string | undefined): string | undefined {
+function getCsrfFromCookie(
+  cookieHeader: string | undefined,
+): string | undefined {
   if (!cookieHeader) return undefined;
 
   const match = cookieHeader.match(/(?:^|;\s*)csrf-token=([^;]+)/);

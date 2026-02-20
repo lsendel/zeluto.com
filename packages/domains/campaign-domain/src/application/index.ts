@@ -1,8 +1,6 @@
-export {
-  CampaignApplicationService,
-} from './campaign-service.js';
+export { CampaignApplicationService } from './campaign-service.js';
 
-export {
-  type CampaignEventPublisher,
-  type CampaignEventPayload,
+export type {
+  CampaignEventPayload,
+  CampaignEventPublisher,
 } from './ports.js';

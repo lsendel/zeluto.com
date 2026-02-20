@@ -1,8 +1,25 @@
-import { z } from 'zod';
 import type { Column } from 'drizzle-orm';
-import { sql, and, or, eq, ne, gt, lt, gte, lte, like, notLike, inArray, notInArray, isNotNull, isNull, type SQL } from 'drizzle-orm';
-import type { Contact } from '../entities/contact.js';
+import {
+  and,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  notLike,
+  or,
+  type SQL,
+  sql,
+} from 'drizzle-orm';
+import { z } from 'zod';
 import { contacts } from '../../drizzle/schema.js';
+import type { Contact } from '../entities/contact.js';
 
 // ---------------------------------------------------------------------------
 // Filter types
@@ -71,7 +88,10 @@ function getContactFieldValue(contact: Contact, field: string): unknown {
   }
 }
 
-function evaluateCondition(contact: Contact, condition: FilterCondition): boolean {
+function evaluateCondition(
+  contact: Contact,
+  condition: FilterCondition,
+): boolean {
   const fieldValue = getContactFieldValue(contact, condition.field);
   const conditionValue = condition.value;
 
@@ -81,23 +101,55 @@ function evaluateCondition(contact: Contact, condition: FilterCondition): boolea
     case 'neq':
       return fieldValue !== conditionValue;
     case 'gt':
-      return fieldValue != null && conditionValue != null && (fieldValue as number) > (conditionValue as number);
+      return (
+        fieldValue != null &&
+        conditionValue != null &&
+        (fieldValue as number) > (conditionValue as number)
+      );
     case 'lt':
-      return fieldValue != null && conditionValue != null && (fieldValue as number) < (conditionValue as number);
+      return (
+        fieldValue != null &&
+        conditionValue != null &&
+        (fieldValue as number) < (conditionValue as number)
+      );
     case 'gte':
-      return fieldValue != null && conditionValue != null && (fieldValue as number) >= (conditionValue as number);
+      return (
+        fieldValue != null &&
+        conditionValue != null &&
+        (fieldValue as number) >= (conditionValue as number)
+      );
     case 'lte':
-      return fieldValue != null && conditionValue != null && (fieldValue as number) <= (conditionValue as number);
+      return (
+        fieldValue != null &&
+        conditionValue != null &&
+        (fieldValue as number) <= (conditionValue as number)
+      );
     case 'contains':
-      return typeof fieldValue === 'string' && typeof conditionValue === 'string' && fieldValue.toLowerCase().includes(conditionValue.toLowerCase());
+      return (
+        typeof fieldValue === 'string' &&
+        typeof conditionValue === 'string' &&
+        fieldValue.toLowerCase().includes(conditionValue.toLowerCase())
+      );
     case 'not_contains':
-      return typeof fieldValue === 'string' && typeof conditionValue === 'string' && !fieldValue.toLowerCase().includes(conditionValue.toLowerCase());
+      return (
+        typeof fieldValue === 'string' &&
+        typeof conditionValue === 'string' &&
+        !fieldValue.toLowerCase().includes(conditionValue.toLowerCase())
+      );
     case 'starts_with':
-      return typeof fieldValue === 'string' && typeof conditionValue === 'string' && fieldValue.toLowerCase().startsWith(conditionValue.toLowerCase());
+      return (
+        typeof fieldValue === 'string' &&
+        typeof conditionValue === 'string' &&
+        fieldValue.toLowerCase().startsWith(conditionValue.toLowerCase())
+      );
     case 'in':
-      return Array.isArray(conditionValue) && conditionValue.includes(fieldValue);
+      return (
+        Array.isArray(conditionValue) && conditionValue.includes(fieldValue)
+      );
     case 'not_in':
-      return Array.isArray(conditionValue) && !conditionValue.includes(fieldValue);
+      return (
+        Array.isArray(conditionValue) && !conditionValue.includes(fieldValue)
+      );
     case 'is_set':
       return fieldValue != null && fieldValue !== '';
     case 'is_not_set':
@@ -111,7 +163,10 @@ function evaluateCondition(contact: Contact, condition: FilterCondition): boolea
  * Evaluate a set of filter criteria against a contact entity in-memory.
  * Used for dynamic segment membership checks without hitting the database.
  */
-export function evaluateFilter(contact: Contact, criteria: FilterCriteria): boolean {
+export function evaluateFilter(
+  contact: Contact,
+  criteria: FilterCriteria,
+): boolean {
   const parsed = FilterCriteriaSchema.parse(criteria);
 
   if (parsed.conditions.length === 0) {
@@ -119,10 +174,14 @@ export function evaluateFilter(contact: Contact, criteria: FilterCriteria): bool
   }
 
   if (parsed.operator === 'and') {
-    return parsed.conditions.every((condition) => evaluateCondition(contact, condition));
+    return parsed.conditions.every((condition) =>
+      evaluateCondition(contact, condition),
+    );
   }
 
-  return parsed.conditions.some((condition) => evaluateCondition(contact, condition));
+  return parsed.conditions.some((condition) =>
+    evaluateCondition(contact, condition),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -202,11 +261,11 @@ function buildConditionSQL(condition: FilterCondition): SQL | null {
     case 'lte':
       return sql`${jsonPath} <= ${value as string}`;
     case 'contains':
-      return sql`${jsonPath} ILIKE ${'%' + (value as string) + '%'}`;
+      return sql`${jsonPath} ILIKE ${`%${value as string}%`}`;
     case 'not_contains':
-      return sql`${jsonPath} NOT ILIKE ${'%' + (value as string) + '%'}`;
+      return sql`${jsonPath} NOT ILIKE ${`%${value as string}%`}`;
     case 'starts_with':
-      return sql`${jsonPath} ILIKE ${(value as string) + '%'}`;
+      return sql`${jsonPath} ILIKE ${`${value as string}%`}`;
     case 'is_set':
       return sql`${jsonPath} IS NOT NULL`;
     case 'is_not_set':
@@ -220,7 +279,10 @@ function buildConditionSQL(condition: FilterCondition): SQL | null {
  * Build a Drizzle SQL `where` clause from filter criteria for the contacts table.
  * Includes organization_id scoping automatically.
  */
-export function buildDrizzleWhere(criteria: FilterCriteria, orgId: string): SQL {
+export function buildDrizzleWhere(
+  criteria: FilterCriteria,
+  orgId: string,
+): SQL {
   const parsed = FilterCriteriaSchema.parse(criteria);
   const orgFilter = eq(contacts.organization_id, orgId);
 
@@ -237,9 +299,7 @@ export function buildDrizzleWhere(criteria: FilterCriteria, orgId: string): SQL 
   }
 
   const combined =
-    parsed.operator === 'and'
-      ? and(...conditionSQLs)
-      : or(...conditionSQLs);
+    parsed.operator === 'and' ? and(...conditionSQLs) : or(...conditionSQLs);
 
   return combined ? and(orgFilter, combined)! : orgFilter;
 }

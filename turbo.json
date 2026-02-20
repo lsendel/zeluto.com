@@ -12,7 +12,9 @@
     "test": {
       "dependsOn": ["build"]
     },
-    "lint": {},
+    "lint": {
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "**/*.spec.ts", "biome.json"]
+    },
     "typecheck": {
       "dependsOn": ["^build"]
     },

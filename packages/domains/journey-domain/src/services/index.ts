@@ -1,8 +1,8 @@
 export {
-  VersioningService,
-  type JourneyDefinition,
-} from './versioning-service.js';
-export {
-  evaluateRandomSplit,
   evaluateConditionSplit,
+  evaluateRandomSplit,
 } from './split-evaluator.js';
+export {
+  type JourneyDefinition,
+  VersioningService,
+} from './versioning-service.js';

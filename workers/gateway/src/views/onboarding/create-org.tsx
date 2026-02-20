@@ -1,6 +1,6 @@
-import { OnboardingLayout } from "./layout";
-import { Button, Input } from "@mauntic/ui-kit";
-import type { FC } from "@mauntic/ui-kit";
+import type { FC } from '@mauntic/ui-kit';
+import { Button, Input } from '@mauntic/ui-kit';
+import { OnboardingLayout } from './layout';
 
 type CreateOrgViewProps = {
   assetsBaseUrl?: string;
@@ -8,7 +8,11 @@ type CreateOrgViewProps = {
 
 export const CreateOrgView: FC<CreateOrgViewProps> = ({ assetsBaseUrl }) => {
   return (
-    <OnboardingLayout title="Create Organization" currentStep={2} assetsBaseUrl={assetsBaseUrl}>
+    <OnboardingLayout
+      title="Create Organization"
+      currentStep={2}
+      assetsBaseUrl={assetsBaseUrl}
+    >
       <div class="rounded-xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
         {/* Heading */}
         <div class="mb-8 text-center">
@@ -59,7 +63,11 @@ export const CreateOrgView: FC<CreateOrgViewProps> = ({ assetsBaseUrl }) => {
             </div>
 
             <div class="pt-2">
-              <Button type="submit" class="w-full justify-center" variant="primary">
+              <Button
+                type="submit"
+                class="w-full justify-center"
+                variant="primary"
+              >
                 <span class="loading htmx-indicator">
                   <svg
                     class="animate-spin h-5 w-5 mr-2"

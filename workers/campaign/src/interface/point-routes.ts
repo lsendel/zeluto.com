@@ -1,15 +1,15 @@
+import { PointRule } from '@mauntic/campaign-domain';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findPointRuleById,
-  findPointRulesByOrganization,
   createPointRule,
-  updatePointRule,
   deletePointRule,
   findPointLogByContact,
+  findPointRuleById,
+  findPointRulesByOrganization,
   getContactTotalPoints,
+  updatePointRule,
 } from '../infrastructure/repositories/point-rule-repository.js';
-import { PointRule } from '@mauntic/campaign-domain';
 
 export const pointRoutes = new Hono<Env>();
 
@@ -48,7 +48,10 @@ pointRoutes.post('/api/v1/campaign/points/rules', async (c) => {
 
   if (!body.eventType || body.points === undefined) {
     return c.json(
-      { code: 'VALIDATION_ERROR', message: 'eventType and points are required' },
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'eventType and points are required',
+      },
       400,
     );
   }
@@ -140,7 +143,11 @@ pointRoutes.get('/api/v1/campaign/points/contacts/:contactId', async (c) => {
   const db = c.get('db');
   const contactId = c.req.param('contactId');
 
-  const totalPoints = await getContactTotalPoints(db, tenant.organizationId, contactId);
+  const totalPoints = await getContactTotalPoints(
+    db,
+    tenant.organizationId,
+    contactId,
+  );
 
   return c.json({
     contactId,
@@ -149,25 +156,33 @@ pointRoutes.get('/api/v1/campaign/points/contacts/:contactId', async (c) => {
 });
 
 // GET /api/v1/campaign/points/contacts/:contactId/log - Get contact point log
-pointRoutes.get('/api/v1/campaign/points/contacts/:contactId/log', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const contactId = c.req.param('contactId');
-  const { page = '1', limit = '20' } = c.req.query();
+pointRoutes.get(
+  '/api/v1/campaign/points/contacts/:contactId/log',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const contactId = c.req.param('contactId');
+    const { page = '1', limit = '20' } = c.req.query();
 
-  const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
 
-  const result = await findPointLogByContact(db, tenant.organizationId, contactId, {
-    page: pageNum,
-    limit: limitNum,
-  });
+    const result = await findPointLogByContact(
+      db,
+      tenant.organizationId,
+      contactId,
+      {
+        page: pageNum,
+        limit: limitNum,
+      },
+    );
 
-  return c.json({
-    data: result.data,
-    total: result.total,
-    page: pageNum,
-    limit: limitNum,
-    totalPages: Math.ceil(result.total / limitNum),
-  });
-});
+    return c.json({
+      data: result.data,
+      total: result.total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(result.total / limitNum),
+    });
+  },
+);

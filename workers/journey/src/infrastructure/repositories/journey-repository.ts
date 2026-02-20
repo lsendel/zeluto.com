@@ -1,5 +1,5 @@
-import { eq, and, ilike, or, sql, desc } from 'drizzle-orm';
 import { journeys } from '@mauntic/journey-domain/drizzle';
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type JourneyRow = typeof journeys.$inferSelect;
@@ -30,10 +30,7 @@ export async function findAllJourneys(
   if (search) {
     const pattern = `%${search}%`;
     conditions.push(
-      or(
-        ilike(journeys.name, pattern),
-        ilike(journeys.description, pattern),
-      )!,
+      or(ilike(journeys.name, pattern), ilike(journeys.description, pattern))!,
     );
   }
 
@@ -63,7 +60,10 @@ export async function findAllJourneys(
 export async function createJourney(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<JourneyInsert, 'id' | 'organization_id' | 'created_at' | 'updated_at'>,
+  data: Omit<
+    JourneyInsert,
+    'id' | 'organization_id' | 'created_at' | 'updated_at'
+  >,
 ): Promise<JourneyRow> {
   const [journey] = await db
     .insert(journeys)
@@ -106,15 +106,14 @@ export async function findJourneysByStatus(
   return db
     .select()
     .from(journeys)
-    .where(and(eq(journeys.organization_id, orgId), eq(journeys.status, status)))
+    .where(
+      and(eq(journeys.organization_id, orgId), eq(journeys.status, status)),
+    )
     .orderBy(desc(journeys.updated_at));
 }
 
 export async function findActiveJourneys(
   db: NeonHttpDatabase,
 ): Promise<JourneyRow[]> {
-  return db
-    .select()
-    .from(journeys)
-    .where(eq(journeys.status, 'active'));
+  return db.select().from(journeys).where(eq(journeys.status, 'active'));
 }

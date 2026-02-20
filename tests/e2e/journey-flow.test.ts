@@ -1,25 +1,24 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  apiRequest,
-  createTestUser,
   createTestOrganization,
-  type TestUser,
+  createTestUser,
   type TestOrganization,
+  type TestUser,
 } from './setup';
 
 describe('Journey Flow - End to End', () => {
   let user: TestUser;
-  let org: TestOrganization;
+  let _org: TestOrganization;
 
   beforeAll(async () => {
     user = await createTestUser();
-    org = await createTestOrganization(user.token);
+    _org = await createTestOrganization(user.token);
   });
 
   describe('Complete journey lifecycle', () => {
-    let contactId: number;
-    let journeyId: number;
-    let templateId: number;
+    let _contactId: number;
+    let _journeyId: number;
+    let _templateId: number;
 
     it('should create a contact', async () => {
       // TODO: POST /api/v1/crm/contacts with test data

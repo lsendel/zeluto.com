@@ -1,8 +1,8 @@
+import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type { TenantContext } from '@mauntic/domain-kernel';
 import type { Logger } from '@mauntic/worker-lib';
-import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import { createApp } from './app.js';
-import type { SessionUser, SessionOrganization } from './middleware/auth.js';
+import type { SessionOrganization, SessionUser } from './middleware/auth.js';
 
 /**
  * Cloudflare Workers environment bindings
@@ -16,6 +16,7 @@ export interface Env {
     userId?: string; // UUID
     organizationId?: string; // UUID
     tenantContext?: TenantContext;
+    tenantContextHeader?: string;
     tenantContextCacheKey?: string;
   };
   Bindings: {
@@ -55,5 +56,5 @@ export default {
   fetch: app.fetch,
 };
 
-export { RateLimiter } from './rate-limiter.js';
 export { TenantContextDurableObject } from '@mauntic/worker-lib';
+export { RateLimiter } from './rate-limiter.js';

@@ -1,5 +1,5 @@
+import { ConflictError, InvariantViolation } from '@mauntic/domain-kernel';
 import { z } from 'zod';
-import { InvariantViolation, ConflictError } from '@mauntic/domain-kernel';
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -166,9 +166,14 @@ export class SubscriptionAggregate {
    * - Cannot downgrade during trial
    * - currentPlanPrice and newPlanPrice are in cents
    */
-  validatePlanChange(newPlanPriceMonthly: number, currentPlanPriceMonthly: number): void {
+  validatePlanChange(
+    newPlanPriceMonthly: number,
+    currentPlanPriceMonthly: number,
+  ): void {
     if (this.data.status === 'canceled') {
-      throw new InvariantViolation('Cannot change plan on a canceled subscription');
+      throw new InvariantViolation(
+        'Cannot change plan on a canceled subscription',
+      );
     }
 
     const isDowngrade = newPlanPriceMonthly < currentPlanPriceMonthly;
@@ -180,7 +185,9 @@ export class SubscriptionAggregate {
   /** Build the update payload for a plan change. */
   changePlan(newPlanId: string): UpdateSubscription {
     if (this.data.status === 'canceled') {
-      throw new InvariantViolation('Cannot change plan on a canceled subscription');
+      throw new InvariantViolation(
+        'Cannot change plan on a canceled subscription',
+      );
     }
     return { planId: newPlanId };
   }

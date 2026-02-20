@@ -9,6 +9,8 @@ export const UpdateReportCommandSchema = z.object({
 
 export type UpdateReportCommand = z.infer<typeof UpdateReportCommandSchema>;
 
-export function updateReportCommand(input: UpdateReportCommand): UpdateReportCommand {
+export function updateReportCommand(
+  input: UpdateReportCommand,
+): UpdateReportCommand {
   return UpdateReportCommandSchema.parse(input);
 }

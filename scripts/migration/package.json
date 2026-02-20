@@ -6,7 +6,8 @@
   "scripts": {
     "migrate": "tsx migrate-mautic-to-mauntic.ts",
     "migrate:dry-run": "tsx migrate-mautic-to-mauntic.ts --dry-run",
-    "validate": "tsx validate-migration.ts"
+    "validate": "tsx validate-migration.ts",
+    "lint": "biome check ."
   },
   "dependencies": {
     "@neondatabase/serverless": "catalog:"

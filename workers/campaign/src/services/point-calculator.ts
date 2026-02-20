@@ -1,9 +1,9 @@
+import { mapDomainEventToPointEvent } from '@mauntic/campaign-domain';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
-  findPointRulesByEventType,
   createPointLogEntry,
+  findPointRulesByEventType,
 } from '../infrastructure/repositories/point-rule-repository.js';
-import { mapDomainEventToPointEvent } from '@mauntic/campaign-domain';
 
 /**
  * Calculates and awards points to a contact based on a domain event.

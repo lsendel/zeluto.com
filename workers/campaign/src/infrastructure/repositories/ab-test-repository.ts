@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
 import { abTests } from '@mauntic/campaign-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type AbTestRow = typeof abTests.$inferSelect;
@@ -25,7 +25,12 @@ export async function findAbTestsByCampaign(
   return db
     .select()
     .from(abTests)
-    .where(and(eq(abTests.campaignId, campaignId), eq(abTests.organizationId, orgId)));
+    .where(
+      and(
+        eq(abTests.campaignId, campaignId),
+        eq(abTests.organizationId, orgId),
+      ),
+    );
 }
 
 export async function createAbTest(
@@ -40,7 +45,12 @@ export async function updateAbTest(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Pick<AbTestInsert, 'winnerVariantId' | 'status' | 'completedAt' | 'updatedAt'>>,
+  data: Partial<
+    Pick<
+      AbTestInsert,
+      'winnerVariantId' | 'status' | 'completedAt' | 'updatedAt'
+    >
+  >,
 ): Promise<AbTestRow | null> {
   const [test] = await db
     .update(abTests)

@@ -1,6 +1,6 @@
 import type { AnyDomainEvent } from '@mauntic/domain-kernel';
-import type { SignalConfigRepository } from '../repositories/signal-config-repository.js';
 import { IntentSignal } from '../entities/intent-signal.js';
+import type { SignalConfigRepository } from '../repositories/signal-config-repository.js';
 
 export interface DetectedSignal {
   signalType: string;
@@ -11,17 +11,48 @@ export interface DetectedSignal {
 }
 
 // Maps domain event types to signal types
-const EVENT_SIGNAL_MAP: Record<string, { signalType: string; defaultWeight: number; source: string }> = {
-  'content.PageVisited': { signalType: 'WEBSITE_VISIT', defaultWeight: 5, source: 'content' },
-  'content.FormSubmitted': { signalType: 'FORM_SUBMISSION', defaultWeight: 15, source: 'content' },
-  'content.AssetDownloaded': { signalType: 'CONTENT_DOWNLOAD', defaultWeight: 10, source: 'content' },
-  'delivery.MessageOpened': { signalType: 'EMAIL_OPEN', defaultWeight: 3, source: 'delivery' },
-  'delivery.MessageClicked': { signalType: 'EMAIL_CLICK', defaultWeight: 8, source: 'delivery' },
-  'crm.ContactUpdated': { signalType: 'PROFILE_UPDATE', defaultWeight: 2, source: 'crm' },
+const EVENT_SIGNAL_MAP: Record<
+  string,
+  { signalType: string; defaultWeight: number; source: string }
+> = {
+  'content.PageVisited': {
+    signalType: 'WEBSITE_VISIT',
+    defaultWeight: 5,
+    source: 'content',
+  },
+  'content.FormSubmitted': {
+    signalType: 'FORM_SUBMISSION',
+    defaultWeight: 15,
+    source: 'content',
+  },
+  'content.AssetDownloaded': {
+    signalType: 'CONTENT_DOWNLOAD',
+    defaultWeight: 10,
+    source: 'content',
+  },
+  'delivery.MessageOpened': {
+    signalType: 'EMAIL_OPEN',
+    defaultWeight: 3,
+    source: 'delivery',
+  },
+  'delivery.MessageClicked': {
+    signalType: 'EMAIL_CLICK',
+    defaultWeight: 8,
+    source: 'delivery',
+  },
+  'crm.ContactUpdated': {
+    signalType: 'PROFILE_UPDATE',
+    defaultWeight: 2,
+    source: 'crm',
+  },
 };
 
 // URL-based signal overrides
-const URL_SIGNAL_OVERRIDES: Array<{ pattern: RegExp; signalType: string; weight: number }> = [
+const URL_SIGNAL_OVERRIDES: Array<{
+  pattern: RegExp;
+  signalType: string;
+  weight: number;
+}> = [
   { pattern: /\/pricing/i, signalType: 'PRICING_PAGE', weight: 20 },
   { pattern: /\/demo/i, signalType: 'DEMO_REQUEST', weight: 30 },
   { pattern: /\/free-trial/i, signalType: 'FREE_TRIAL', weight: 25 },
@@ -32,7 +63,10 @@ const URL_SIGNAL_OVERRIDES: Array<{ pattern: RegExp; signalType: string; weight:
 export class SignalDetector {
   constructor(private readonly signalConfigRepo: SignalConfigRepository) {}
 
-  async detect(orgId: string, event: AnyDomainEvent): Promise<DetectedSignal | null> {
+  async detect(
+    orgId: string,
+    event: AnyDomainEvent,
+  ): Promise<DetectedSignal | null> {
     const mapping = EVENT_SIGNAL_MAP[event.type];
     if (!mapping) return null;
 
@@ -68,7 +102,10 @@ export class SignalDetector {
     }
 
     // Apply org-level config overrides
-    const config = await this.signalConfigRepo.findBySignalType(orgId, signalType);
+    const config = await this.signalConfigRepo.findBySignalType(
+      orgId,
+      signalType,
+    );
     if (config) {
       if (!config.enabled) return null;
       weight = config.weight;
@@ -83,8 +120,14 @@ export class SignalDetector {
     };
   }
 
-  async createSignal(orgId: string, detected: DetectedSignal): Promise<IntentSignal> {
-    const config = await this.signalConfigRepo.findBySignalType(orgId, detected.signalType);
+  async createSignal(
+    orgId: string,
+    detected: DetectedSignal,
+  ): Promise<IntentSignal> {
+    const config = await this.signalConfigRepo.findBySignalType(
+      orgId,
+      detected.signalType,
+    );
     const decayHours = config?.decayHours ?? 168;
 
     return IntentSignal.create({

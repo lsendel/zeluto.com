@@ -29,7 +29,10 @@ export const AssetUploadView: FC = () => {
         <div class="space-y-6">
           {/* File upload area */}
           <div>
-            <label for="file" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="file"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               File
             </label>
             <div class="mt-1 flex justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 pt-5 pb-6 hover:border-brand-500 transition-colors">
@@ -54,7 +57,13 @@ export const AssetUploadView: FC = () => {
                     class="relative cursor-pointer rounded-md font-medium text-brand-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-500 focus-within:ring-offset-2 hover:text-brand-500"
                   >
                     <span>Upload a file</span>
-                    <input id="file" name="file" type="file" class="sr-only" required />
+                    <input
+                      id="file"
+                      name="file"
+                      type="file"
+                      class="sr-only"
+                      required
+                    />
                   </label>
                   <p class="pl-1">or drag and drop</p>
                 </div>
@@ -67,7 +76,10 @@ export const AssetUploadView: FC = () => {
 
           {/* Name */}
           <div>
-            <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="name"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Display Name (optional)
             </label>
             <input
@@ -81,7 +93,10 @@ export const AssetUploadView: FC = () => {
 
           {/* Folder */}
           <div>
-            <label for="folder" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="folder"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Folder (optional)
             </label>
             <input

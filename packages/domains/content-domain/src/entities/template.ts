@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const TemplateTypeSchema = z.enum(['email', 'sms', 'push', 'page']);
 export type TemplateType = z.infer<typeof TemplateTypeSchema>;
@@ -131,7 +131,8 @@ export class Template {
     if (input.bodyText !== undefined) this.props.bodyText = input.bodyText;
     if (input.bodyJson !== undefined) this.props.bodyJson = input.bodyJson;
     if (input.category !== undefined) this.props.category = input.category;
-    if (input.thumbnailUrl !== undefined) this.props.thumbnailUrl = input.thumbnailUrl;
+    if (input.thumbnailUrl !== undefined)
+      this.props.thumbnailUrl = input.thumbnailUrl;
     this.props.updatedAt = new Date();
   }
 

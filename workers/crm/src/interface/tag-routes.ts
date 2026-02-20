@@ -1,8 +1,8 @@
-import { Hono } from 'hono';
-import { eq, and, inArray } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { contact_tags, contacts, tags } from '@mauntic/crm-domain/drizzle';
 import type { TenantContext } from '@mauntic/domain-kernel';
-import { tags, contact_tags, contacts } from '@mauntic/crm-domain/drizzle';
+import { and, eq, inArray } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { Hono } from 'hono';
 
 // ---------------------------------------------------------------------------
 // Env
@@ -175,10 +175,7 @@ tagRoutes.post('/api/v1/crm/contacts/:id/tags', async (c) => {
       .limit(1);
 
     if (!contact) {
-      return c.json(
-        { code: 'NOT_FOUND', message: 'Contact not found' },
-        404,
-      );
+      return c.json({ code: 'NOT_FOUND', message: 'Contact not found' }, 404);
     }
 
     const body = await c.req.json<{ tagIds: string[] }>();
@@ -262,10 +259,7 @@ tagRoutes.delete('/api/v1/crm/contacts/:id/tags', async (c) => {
       .limit(1);
 
     if (!contact) {
-      return c.json(
-        { code: 'NOT_FOUND', message: 'Contact not found' },
-        404,
-      );
+      return c.json({ code: 'NOT_FOUND', message: 'Contact not found' }, 404);
     }
 
     const body = await c.req.json<{ tagIds: string[] }>();

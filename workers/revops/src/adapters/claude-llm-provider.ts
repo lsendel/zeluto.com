@@ -1,5 +1,9 @@
-import type { LLMProvider, LLMOptions, LLMResponse } from '@mauntic/revops-domain';
 import Anthropic from '@anthropic-ai/sdk';
+import type {
+  LLMOptions,
+  LLMProvider,
+  LLMResponse,
+} from '@mauntic/revops-domain';
 
 export class ClaudeLLMProvider implements LLMProvider {
   private readonly client: Anthropic;
@@ -41,7 +45,10 @@ export class ClaudeLLMProvider implements LLMProvider {
     });
 
     for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+      if (
+        event.type === 'content_block_delta' &&
+        event.delta.type === 'text_delta'
+      ) {
         yield event.delta.text;
       }
     }

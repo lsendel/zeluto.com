@@ -1,6 +1,6 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
-import { ChannelSchema, type Channel } from './delivery-job.js';
+import { z } from 'zod';
+import { type Channel, ChannelSchema } from './delivery-job.js';
 
 export const ProviderTypeSchema = z.enum([
   'ses',

@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { deals } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type DealRow = typeof deals.$inferSelect;
@@ -33,10 +33,7 @@ export async function findDealsByOrganization(
       .orderBy(desc(deals.updated_at))
       .limit(opts.limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)` })
-      .from(deals)
-      .where(where),
+    db.select({ count: sql<number>`count(*)` }).from(deals).where(where),
   ]);
 
   return { data, total: Number(countResult[0]?.count ?? 0) };
@@ -62,7 +59,9 @@ export async function findDealsByContact(
   return db
     .select()
     .from(deals)
-    .where(and(eq(deals.organization_id, orgId), eq(deals.contact_id, contactId)))
+    .where(
+      and(eq(deals.organization_id, orgId), eq(deals.contact_id, contactId)),
+    )
     .orderBy(desc(deals.created_at));
 }
 
@@ -117,5 +116,9 @@ export async function countDealsByStage(
     .from(deals)
     .where(eq(deals.organization_id, orgId))
     .groupBy(deals.stage);
-  return results.map((r) => ({ stage: r.stage, count: Number(r.count), totalValue: r.totalValue }));
+  return results.map((r) => ({
+    stage: r.stage,
+    count: Number(r.count),
+    totalValue: r.totalValue,
+  }));
 }

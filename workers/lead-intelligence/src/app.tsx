@@ -1,12 +1,16 @@
+import type { TenantContext } from '@mauntic/domain-kernel';
+import {
+  createDatabase,
+  errorHandler,
+  tenantMiddleware,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { TenantContext } from '@mauntic/domain-kernel';
-import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-lib';
 import { enrichmentRoutes } from './interface/enrichment-routes.js';
-import { providerRoutes } from './interface/provider-routes.js';
 import { healthRoutes } from './interface/health-routes.js';
+import { providerRoutes } from './interface/provider-routes.js';
 import { waterfallRoutes } from './interface/waterfall-routes.js';
 
 export type Env = {
@@ -29,7 +33,9 @@ app.use('*', cors());
 app.use('*', errorHandler());
 
 // Health check (no auth required)
-app.get('/health', (c) => c.json({ status: 'ok', service: 'lead-intelligence' }));
+app.get('/health', (c) =>
+  c.json({ status: 'ok', service: 'lead-intelligence' }),
+);
 
 // Database middleware
 app.use('/api/*', async (c, next) => {

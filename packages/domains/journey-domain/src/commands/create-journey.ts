@@ -9,6 +9,8 @@ export const CreateJourneyCommandSchema = z.object({
 
 export type CreateJourneyCommand = z.infer<typeof CreateJourneyCommandSchema>;
 
-export function createJourneyCommand(input: CreateJourneyCommand): CreateJourneyCommand {
+export function createJourneyCommand(
+  input: CreateJourneyCommand,
+): CreateJourneyCommand {
   return CreateJourneyCommandSchema.parse(input);
 }

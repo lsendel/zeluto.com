@@ -6,10 +6,14 @@ export class Result<T, E = string> {
 
   private constructor(isSuccess: boolean, error?: E, value?: T) {
     if (isSuccess && error) {
-      throw new Error('InvalidOperation: a result cannot be successful and contain an error');
+      throw new Error(
+        'InvalidOperation: a result cannot be successful and contain an error',
+      );
     }
     if (!isSuccess && !error) {
-      throw new Error('InvalidOperation: a failing result needs to contain an error message');
+      throw new Error(
+        'InvalidOperation: a failing result needs to contain an error message',
+      );
     }
 
     this.isSuccess = isSuccess;
@@ -24,14 +28,18 @@ export class Result<T, E = string> {
 
   public getValue(): T {
     if (!this.isSuccess) {
-      throw new Error("Can't get the value of an error result. Use getError instead.");
+      throw new Error(
+        "Can't get the value of an error result. Use getError instead.",
+      );
     }
     return this.successValue;
   }
 
   public getError(): E {
     if (this.isSuccess) {
-      throw new Error("Can't get the error of a success result. Use getValue instead.");
+      throw new Error(
+        "Can't get the error of a success result. Use getValue instead.",
+      );
     }
     return this.errorValue;
   }

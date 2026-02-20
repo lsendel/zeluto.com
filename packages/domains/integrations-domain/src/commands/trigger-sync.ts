@@ -9,6 +9,8 @@ export const TriggerSyncCommandSchema = z.object({
 
 export type TriggerSyncCommand = z.infer<typeof TriggerSyncCommandSchema>;
 
-export function triggerSyncCommand(input: TriggerSyncCommand): TriggerSyncCommand {
+export function triggerSyncCommand(
+  input: TriggerSyncCommand,
+): TriggerSyncCommand {
   return TriggerSyncCommandSchema.parse(input);
 }

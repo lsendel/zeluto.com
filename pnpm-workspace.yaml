@@ -8,9 +8,11 @@ packages:
 
 catalogs:
   default:
+    '@biomejs/biome': ^2.4.3
     '@cloudflare/workers-types': ^4.20260219.0
     '@neondatabase/serverless': ^1.0.2
     '@ts-rest/core': ^3.52.1
+    '@ts-rest/serverless': ^3.52.1
     '@types/node': ^25.3.0
     bullmq: ^5.69.3
     drizzle-kit: ^0.31.9

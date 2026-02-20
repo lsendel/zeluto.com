@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 export const SequenceStepTypeSchema = z.enum([
-  'email', 'linkedin_connect', 'linkedin_message', 'sms', 'phone_call', 'wait',
+  'email',
+  'linkedin_connect',
+  'linkedin_message',
+  'sms',
+  'phone_call',
+  'wait',
 ]);
 export type SequenceStepType = z.infer<typeof SequenceStepTypeSchema>;
 
@@ -11,7 +16,9 @@ export const SequenceStepSchema = z.object({
   templateId: z.string().optional(),
   subject: z.string().optional(),
   body: z.string().optional(),
-  abVariants: z.array(z.object({ subject: z.string(), body: z.string() })).optional(),
+  abVariants: z
+    .array(z.object({ subject: z.string(), body: z.string() }))
+    .optional(),
 });
 
 export type SequenceStep = z.infer<typeof SequenceStepSchema>;
@@ -28,7 +35,12 @@ export const SendWindowSchema = z.object({
   timezone: z.string(),
 });
 
-export const SequenceStatusSchema = z.enum(['draft', 'active', 'paused', 'archived']);
+export const SequenceStatusSchema = z.enum([
+  'draft',
+  'active',
+  'paused',
+  'archived',
+]);
 export type SequenceStatus = z.infer<typeof SequenceStatusSchema>;
 
 export const SequencePropsSchema = z.object({
@@ -73,23 +85,41 @@ export class Sequence {
     return new Sequence(SequencePropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get name() { return this.props.name; }
-  get steps() { return this.props.steps; }
-  get dailyLimits() { return this.props.dailyLimits; }
-  get sendWindow() { return this.props.sendWindow; }
-  get status() { return this.props.status; }
-  get stepCount() { return this.props.steps.length; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get name() {
+    return this.props.name;
+  }
+  get steps() {
+    return this.props.steps;
+  }
+  get dailyLimits() {
+    return this.props.dailyLimits;
+  }
+  get sendWindow() {
+    return this.props.sendWindow;
+  }
+  get status() {
+    return this.props.status;
+  }
+  get stepCount() {
+    return this.props.steps.length;
+  }
 
   addStep(step: SequenceStep): void {
-    if (this.props.steps.length >= 8) throw new Error('Maximum 8 steps per sequence');
+    if (this.props.steps.length >= 8)
+      throw new Error('Maximum 8 steps per sequence');
     this.props.steps.push(SequenceStepSchema.parse(step));
     this.props.updatedAt = new Date();
   }
 
   activate(): void {
-    if (this.props.steps.length === 0) throw new Error('Cannot activate empty sequence');
+    if (this.props.steps.length === 0)
+      throw new Error('Cannot activate empty sequence');
     this.props.status = 'active';
     this.props.updatedAt = new Date();
   }

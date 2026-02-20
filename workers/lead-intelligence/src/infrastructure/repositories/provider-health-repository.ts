@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
 import { providerHealth } from '@mauntic/lead-intelligence-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ProviderHealthRow = typeof providerHealth.$inferSelect;
@@ -13,10 +13,12 @@ export async function findHealthByProvider(
   const [row] = await db
     .select()
     .from(providerHealth)
-    .where(and(
-      eq(providerHealth.organization_id, orgId),
-      eq(providerHealth.provider_id, providerId),
-    ));
+    .where(
+      and(
+        eq(providerHealth.organization_id, orgId),
+        eq(providerHealth.provider_id, providerId),
+      ),
+    );
   return row ?? null;
 }
 

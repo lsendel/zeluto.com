@@ -10,8 +10,12 @@ export const ConfigureProviderCommandSchema = z.object({
   priority: z.number().int().nonnegative().optional(),
 });
 
-export type ConfigureProviderCommand = z.infer<typeof ConfigureProviderCommandSchema>;
+export type ConfigureProviderCommand = z.infer<
+  typeof ConfigureProviderCommandSchema
+>;
 
-export function configureProviderCommand(input: ConfigureProviderCommand): ConfigureProviderCommand {
+export function configureProviderCommand(
+  input: ConfigureProviderCommand,
+): ConfigureProviderCommand {
   return ConfigureProviderCommandSchema.parse(input);
 }

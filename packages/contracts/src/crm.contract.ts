@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   ErrorSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -205,10 +205,14 @@ export const crmContract = c.router({
         201: z.object({
           imported: z.number(),
           failed: z.number(),
-          errors: z.array(z.object({
-            index: z.number(),
-            error: z.string(),
-          })).optional(),
+          errors: z
+            .array(
+              z.object({
+                index: z.number(),
+                error: z.string(),
+              }),
+            )
+            .optional(),
         }),
         400: ErrorSchema,
       },

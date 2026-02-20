@@ -22,7 +22,9 @@ const PriorityBadge: FC<{ priority: string }> = ({ priority }) => {
   };
 
   return (
-    <span class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors[priority] ?? 'bg-gray-100 text-gray-800'}`}>
+    <span
+      class={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors[priority] ?? 'bg-gray-100 text-gray-800'}`}
+    >
       {priority}
     </span>
   );
@@ -35,7 +37,9 @@ export const AlertDashboardView: FC<AlertDashboardProps> = ({ alerts }) => {
       <div class="flex justify-between items-center mb-6">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">Signal Alerts</h1>
-          <p class="mt-1 text-sm text-gray-500">{openAlerts.length} open alerts</p>
+          <p class="mt-1 text-sm text-gray-500">
+            {openAlerts.length} open alerts
+          </p>
         </div>
       </div>
 
@@ -43,26 +47,45 @@ export const AlertDashboardView: FC<AlertDashboardProps> = ({ alerts }) => {
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Priority</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Signal</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Contact</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Deadline</th>
-              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">Actions</th>
+              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                Priority
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                Signal
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                Contact
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                Deadline
+              </th>
+              <th class="px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 bg-white">
             {alerts.length === 0 ? (
               <tr>
-                <td colspan={5} class="px-6 py-12 text-center text-sm text-gray-500">
+                <td
+                  colspan={5}
+                  class="px-6 py-12 text-center text-sm text-gray-500"
+                >
                   No alerts to display.
                 </td>
               </tr>
             ) : (
               alerts.map((a) => (
                 <tr class={a.acknowledged ? 'opacity-50' : ''}>
-                  <td class="px-6 py-4"><PriorityBadge priority={a.priority} /></td>
-                  <td class="px-6 py-4 text-sm text-gray-900">{a.signalType}</td>
-                  <td class="px-6 py-4 text-sm text-gray-500">{a.contactId.slice(0, 8)}...</td>
+                  <td class="px-6 py-4">
+                    <PriorityBadge priority={a.priority} />
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-900">
+                    {a.signalType}
+                  </td>
+                  <td class="px-6 py-4 text-sm text-gray-500">
+                    {a.contactId.slice(0, 8)}...
+                  </td>
                   <td class="px-6 py-4 text-sm text-gray-500">{a.deadline}</td>
                   <td class="px-6 py-4">
                     {!a.acknowledged && (

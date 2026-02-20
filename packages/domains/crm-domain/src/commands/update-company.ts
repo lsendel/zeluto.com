@@ -11,6 +11,8 @@ export const UpdateCompanyCommandSchema = z.object({
 
 export type UpdateCompanyCommand = z.infer<typeof UpdateCompanyCommandSchema>;
 
-export function updateCompanyCommand(input: UpdateCompanyCommand): UpdateCompanyCommand {
+export function updateCompanyCommand(
+  input: UpdateCompanyCommand,
+): UpdateCompanyCommand {
   return UpdateCompanyCommandSchema.parse(input);
 }

@@ -31,9 +31,15 @@ export async function dispatchRequest(
   };
 
   if (!options?.skipTenant) {
-    const tenant = c.get('tenantContext');
-    if (!tenant) return null;
-    headers['X-Tenant-Context'] = encodeTenantHeader(tenant);
+    const encoded = c.get('tenantContextHeader');
+    if (encoded) {
+      headers['X-Tenant-Context'] = encoded;
+    } else {
+      const tenant = c.get('tenantContext');
+      if (!tenant) return null;
+      headers['X-Tenant-Context'] = encodeTenantHeader(tenant);
+    }
+
     const cacheKey = c.get('tenantContextCacheKey');
     if (cacheKey) {
       headers['X-Tenant-Context-Key'] = cacheKey;

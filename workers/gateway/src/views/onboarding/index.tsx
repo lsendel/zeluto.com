@@ -1,6 +1,6 @@
-export { OnboardingLayout } from "./layout";
-export { SignupView } from "./signup";
-export { CreateOrgView } from "./create-org";
-export { SelectPlanView } from "./select-plan";
-export { SetupView } from "./setup";
-export type { SetupViewProps } from "./setup";
+export { CreateOrgView } from './create-org';
+export { OnboardingLayout } from './layout';
+export { SelectPlanView } from './select-plan';
+export type { SetupViewProps } from './setup';
+export { SetupView } from './setup';
+export { SignupView } from './signup';

@@ -1,14 +1,21 @@
+import type { TenantContext } from '@mauntic/domain-kernel';
+import {
+  createDatabase,
+  errorHandler,
+  tenantMiddleware,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
-import type { TenantContext } from '@mauntic/domain-kernel';
-import { tenantMiddleware, createDatabase, errorHandler } from '@mauntic/worker-lib';
-import { contactRoutes } from './interface/contact-routes.js';
 import { companyRoutes } from './interface/company-routes.js';
-import { viewRoutes } from './interface/view-routes.js';
+import { contactRoutes } from './interface/contact-routes.js';
 import { segmentRoutes } from './interface/segment-routes.js';
-import { querySegmentContacts, SegmentNotFoundError } from './services/segment-query.js';
+import { viewRoutes } from './interface/view-routes.js';
+import {
+  querySegmentContacts,
+  SegmentNotFoundError,
+} from './services/segment-query.js';
 
 export type Env = {
   Bindings: {
@@ -44,7 +51,13 @@ app.post('/__dispatch/crm/segments/query', async (c) => {
       }>()
       .catch(() => null);
     if (!body?.organizationId || !body.segmentId) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'organizationId and segmentId required' }, 400);
+      return c.json(
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'organizationId and segmentId required',
+        },
+        400,
+      );
     }
 
     const db = createDatabase(c.env.DATABASE_URL);
@@ -60,7 +73,10 @@ app.post('/__dispatch/crm/segments/query', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Segment not found' }, 404);
     }
     console.error('CRM dispatch segments query failed:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to query segment contacts' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to query segment contacts' },
+      500,
+    );
   }
 });
 

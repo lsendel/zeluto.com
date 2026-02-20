@@ -26,7 +26,9 @@ export const ScheduledTriggerConfigSchema = z.object({
   cron: z.string(),
 });
 
-export type ScheduledTriggerConfig = z.infer<typeof ScheduledTriggerConfigSchema>;
+export type ScheduledTriggerConfig = z.infer<
+  typeof ScheduledTriggerConfigSchema
+>;
 
 /** Union of all known trigger configurations. */
 export const TriggerConfigSchema = z.discriminatedUnion('type', [

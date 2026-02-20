@@ -1,7 +1,7 @@
-import type { MiddlewareHandler } from 'hono';
 import type { TenantContext } from '@mauntic/domain-kernel';
-import { cacheTenantContext } from '@mauntic/worker-lib';
 import type { Logger } from '@mauntic/worker-lib';
+import { cacheTenantContext } from '@mauntic/worker-lib';
+import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../index.js';
 
 /**
@@ -12,28 +12,7 @@ import type { Env } from '../index.js';
  * The TenantContext includes plan information so downstream workers
  * can enforce plan-specific quota limits and feature gates.
  */
-const TENANT_OPTIONAL_PATHS = new Set(['/login', '/signup', '/health']);
-const TENANT_OPTIONAL_PREFIXES = [
-  '/api/auth/',
-  '/api/v1/billing/webhooks/stripe',
-  '/api/v1/identity/organizations',
-  '/public/',
-  '/app/signup',
-  '/app/onboarding',
-  '/api/v1/onboarding',
-  '/api/v1/me',
-  '/assets/',
-];
-
-function shouldSkipTenantContext(path: string): boolean {
-  if (TENANT_OPTIONAL_PATHS.has(path)) return true;
-  return TENANT_OPTIONAL_PREFIXES.some((prefix) => path.startsWith(prefix));
-}
-
-function attachTenantContext(
-  c: any,
-  tenantContext: TenantContext,
-): void {
+function attachTenantContext(c: any, tenantContext: TenantContext): void {
   const logger = c.get('logger') as Logger | undefined;
   c.set('tenantContext', tenantContext);
   c.set('organizationId', tenantContext.organizationId);
@@ -51,12 +30,6 @@ function attachTenantContext(
 
 export function tenantMiddleware(): MiddlewareHandler<Env> {
   return async (c, next) => {
-    const path = c.req.path;
-
-    if (shouldSkipTenantContext(path)) {
-      return next();
-    }
-
     const organization = c.get('organization');
     const user = c.get('user');
 
@@ -74,18 +47,29 @@ export function tenantMiddleware(): MiddlewareHandler<Env> {
     };
 
     attachTenantContext(c, tenantContext);
+
+    // Pre-compute encoded header for proxy requests to save CPU cycles
+    const encodedContext = btoa(JSON.stringify(tenantContext));
+    c.set('tenantContextHeader', encodedContext);
+
     const cacheKey = `tenant:${tenantContext.organizationId}:${tenantContext.userId}`;
     const tenantCache = c.env.TENANT_CACHE;
     if (tenantCache) {
-      await cacheTenantContext(tenantCache, cacheKey, tenantContext, 300).catch((error) => {
-        c.get('logger')?.warn(
-          { error: String(error), cacheKey, event: 'tenant.cache.fallback' },
-          'Tenant context DO cache write failed, falling back to KV',
-        );
-        return c.env.KV.put(cacheKey, JSON.stringify(tenantContext), { expirationTtl: 300 });
-      });
+      await cacheTenantContext(tenantCache, cacheKey, tenantContext, 300).catch(
+        (error) => {
+          c.get('logger')?.warn(
+            { error: String(error), cacheKey, event: 'tenant.cache.fallback' },
+            'Tenant context DO cache write failed, falling back to KV',
+          );
+          return c.env.KV.put(cacheKey, JSON.stringify(tenantContext), {
+            expirationTtl: 300,
+          });
+        },
+      );
     } else {
-      await c.env.KV.put(cacheKey, JSON.stringify(tenantContext), { expirationTtl: 300 });
+      await c.env.KV.put(cacheKey, JSON.stringify(tenantContext), {
+        expirationTtl: 300,
+      });
     }
     c.set('tenantContextCacheKey', cacheKey);
 

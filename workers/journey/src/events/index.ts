@@ -1,14 +1,14 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
+  cacheTenantState,
   createDatabase,
   createLoggerFromEnv,
-  logQueueMetric,
   fetchTenantState,
-  cacheTenantState,
+  logQueueMetric,
 } from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { handleContactCreated } from './contact-event-handler.js';
-import { handleFormSubmitted } from './form-event-handler.js';
 import { handleDeliveryEvent } from './delivery-event-handler.js';
+import { handleFormSubmitted } from './form-event-handler.js';
 
 interface QueueEnv {
   DATABASE_URL: string;
@@ -47,17 +47,31 @@ export async function handleJourneyQueue(
     const idempotencyKey = `journey-queue:${msg.id}`;
     let existing: string | null = null;
     if (tenantCacheKey && env.TENANT_CACHE) {
-      existing = await fetchTenantState(env.TENANT_CACHE, tenantCacheKey, idempotencyKey);
+      existing = await fetchTenantState(
+        env.TENANT_CACHE,
+        tenantCacheKey,
+        idempotencyKey,
+      );
     } else {
       existing = await env.KV.get(idempotencyKey);
     }
     if (existing) {
       msg.ack();
-      logQueueMetric({ queue: queueName, messageId: msg.id, status: 'duplicate', eventType: eventType ?? 'unknown', organizationId: orgId ?? undefined });
+      logQueueMetric({
+        queue: queueName,
+        messageId: msg.id,
+        status: 'duplicate',
+        eventType: eventType ?? 'unknown',
+        organizationId: orgId ?? undefined,
+      });
       continue;
     }
 
-    const messageLogger = baseLogger.child({ messageId: msg.id, eventType, organizationId: orgId });
+    const messageLogger = baseLogger.child({
+      messageId: msg.id,
+      eventType,
+      organizationId: orgId,
+    });
 
     try {
       switch (eventType) {
@@ -82,18 +96,38 @@ export async function handleJourneyQueue(
       }
 
       if (tenantCacheKey && env.TENANT_CACHE) {
-        await cacheTenantState(env.TENANT_CACHE, tenantCacheKey, idempotencyKey, '1', 86400);
+        await cacheTenantState(
+          env.TENANT_CACHE,
+          tenantCacheKey,
+          idempotencyKey,
+          '1',
+          86400,
+        );
       } else {
         await env.KV.put(idempotencyKey, '1', { expirationTtl: 86400 });
       }
       const durationMs = Date.now() - startedAt;
       msg.ack();
-      logQueueMetric({ queue: queueName, messageId: msg.id, status: 'ack', eventType: eventType ?? 'unknown', durationMs, organizationId: orgId ?? undefined });
+      logQueueMetric({
+        queue: queueName,
+        messageId: msg.id,
+        status: 'ack',
+        eventType: eventType ?? 'unknown',
+        durationMs,
+        organizationId: orgId ?? undefined,
+      });
       messageLogger.info({ durationMs, event: 'queue.job.success' });
     } catch (error) {
       const durationMs = Date.now() - startedAt;
       msg.retry();
-      logQueueMetric({ queue: queueName, messageId: msg.id, status: 'retry', eventType: eventType ?? 'unknown', durationMs, organizationId: orgId ?? undefined });
+      logQueueMetric({
+        queue: queueName,
+        messageId: msg.id,
+        status: 'retry',
+        eventType: eventType ?? 'unknown',
+        durationMs,
+        organizationId: orgId ?? undefined,
+      });
       messageLogger.error(
         {
           durationMs,

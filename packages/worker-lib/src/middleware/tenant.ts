@@ -1,10 +1,10 @@
-import type { MiddlewareHandler } from 'hono';
 import type { TenantContext } from '@mauntic/domain-kernel/tenant';
+import type { MiddlewareHandler } from 'hono';
+import type { Logger } from '../logger/index.js';
 import {
   cacheTenantContext,
   fetchTenantContext,
 } from '../tenant/tenant-context-do.js';
-import type { Logger } from '../logger/index.js';
 
 function attachTenant(c: any, tenant: TenantContext) {
   c.set('tenant', tenant);
@@ -29,7 +29,9 @@ function attachTenant(c: any, tenant: TenantContext) {
  */
 export function tenantMiddleware(): MiddlewareHandler {
   return async (c, next) => {
-    const tenantCache = (c.env as any)?.TENANT_CACHE as DurableObjectNamespace | undefined;
+    const tenantCache = (c.env as any)?.TENANT_CACHE as
+      | DurableObjectNamespace
+      | undefined;
     const kv = (c.env as any)?.KV as KVNamespace | undefined;
     const cacheKey = c.req.header('X-Tenant-Context-Key');
     if (cacheKey && tenantCache) {
@@ -64,22 +66,36 @@ export function tenantMiddleware(): MiddlewareHandler {
       const tenant: TenantContext = JSON.parse(contextJson);
 
       // Validate required fields
-      if (!tenant.organizationId || !tenant.userId || !tenant.userRole || !tenant.plan) {
+      if (
+        !tenant.organizationId ||
+        !tenant.userId ||
+        !tenant.userRole ||
+        !tenant.plan
+      ) {
         return c.json({ error: 'INVALID_TENANT_CONTEXT' }, 400);
       }
 
       attachTenant(c, tenant);
       if (cacheKey) {
         if (tenantCache) {
-          await cacheTenantContext(tenantCache, cacheKey, tenant, 300).catch((error) => {
-            console.warn('Failed to cache tenant context in DO, falling back to KV:', error);
-            if (kv) {
-              return kv.put(cacheKey, JSON.stringify(tenant), { expirationTtl: 300 });
-            }
-            return Promise.resolve();
-          });
+          await cacheTenantContext(tenantCache, cacheKey, tenant, 300).catch(
+            (error) => {
+              console.warn(
+                'Failed to cache tenant context in DO, falling back to KV:',
+                error,
+              );
+              if (kv) {
+                return kv.put(cacheKey, JSON.stringify(tenant), {
+                  expirationTtl: 300,
+                });
+              }
+              return Promise.resolve();
+            },
+          );
         } else if (kv) {
-          await kv.put(cacheKey, JSON.stringify(tenant), { expirationTtl: 300 });
+          await kv.put(cacheKey, JSON.stringify(tenant), {
+            expirationTtl: 300,
+          });
         }
       }
       await next();

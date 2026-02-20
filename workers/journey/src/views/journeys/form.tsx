@@ -13,7 +13,7 @@ export const JourneyFormView: FC<JourneyFormProps> = ({
   const isEdit = !!journey;
   const title = isEdit ? 'Edit Journey' : 'New Journey';
   const submitUrl = isEdit
-    ? `/api/v1/journey/journeys/${journey!.id}`
+    ? `/api/v1/journey/journeys/${journey?.id}`
     : '/api/v1/journey/journeys';
 
   return (
@@ -46,7 +46,10 @@ export const JourneyFormView: FC<JourneyFormProps> = ({
         <div class="space-y-6">
           {/* Name */}
           <div>
-            <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="name"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Name
             </label>
             <input
@@ -73,7 +76,10 @@ export const JourneyFormView: FC<JourneyFormProps> = ({
 
           {/* Description */}
           <div>
-            <label for="description" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="description"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Description
             </label>
             <textarea
@@ -107,7 +113,11 @@ export const JourneyFormView: FC<JourneyFormProps> = ({
           </button>
           <button
             type="button"
-            hx-get={isEdit ? `/app/journey/journeys/${journey!.id}` : '/app/journey/journeys'}
+            hx-get={
+              isEdit
+                ? `/app/journey/journeys/${journey?.id}`
+                : '/app/journey/journeys'
+            }
             hx-target="#app-content"
             hx-push-url="true"
             class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"

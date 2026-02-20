@@ -5,7 +5,12 @@ export interface EmailGenerationRequest {
   contactName: string;
   company: string;
   title?: string;
-  purpose: 'cold_outreach' | 'follow_up' | 'breakup' | 'referral' | 'reengagement';
+  purpose:
+    | 'cold_outreach'
+    | 'follow_up'
+    | 'breakup'
+    | 'referral'
+    | 'reengagement';
   insights?: ResearchInsight[];
   previousEmails?: string[];
   tone?: 'professional' | 'casual' | 'direct';
@@ -26,14 +31,18 @@ export interface EmailGenerationResult {
 export class EmailCopilot {
   constructor(private readonly llm: LLMProvider) {}
 
-  async generate(request: EmailGenerationRequest): Promise<EmailGenerationResult> {
-    const insightContext = request.insights && request.insights.length > 0
-      ? `\nResearch Insights:\n${request.insights.map(i => `- ${i.insightType}: ${i.content}`).join('\n')}`
-      : '';
+  async generate(
+    request: EmailGenerationRequest,
+  ): Promise<EmailGenerationResult> {
+    const insightContext =
+      request.insights && request.insights.length > 0
+        ? `\nResearch Insights:\n${request.insights.map((i) => `- ${i.insightType}: ${i.content}`).join('\n')}`
+        : '';
 
-    const previousContext = request.previousEmails && request.previousEmails.length > 0
-      ? `\nPrevious emails in thread:\n${request.previousEmails.join('\n---\n')}`
-      : '';
+    const previousContext =
+      request.previousEmails && request.previousEmails.length > 0
+        ? `\nPrevious emails in thread:\n${request.previousEmails.join('\n---\n')}`
+        : '';
 
     const prompt = `Generate a ${request.purpose.replace('_', ' ')} sales email:
 To: ${request.contactName}, ${request.title ?? ''} at ${request.company}
@@ -44,7 +53,8 @@ Respond with JSON: { subject, body, personalization_tokens[] }${request.generate
     const response = await this.llm.complete(prompt, {
       temperature: 0.7,
       maxTokens: 1024,
-      systemPrompt: 'You are an expert sales copywriter. Write concise, personalized emails that drive action. Respond with JSON only.',
+      systemPrompt:
+        'You are an expert sales copywriter. Write concise, personalized emails that drive action. Respond with JSON only.',
     });
 
     try {

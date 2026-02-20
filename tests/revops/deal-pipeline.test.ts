@@ -1,9 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Deal Pipeline', () => {
   const STAGES = [
-    'prospecting', 'qualification', 'discovery', 'proposal',
-    'negotiation', 'closed_won', 'closed_lost',
+    'prospecting',
+    'qualification',
+    'discovery',
+    'proposal',
+    'negotiation',
+    'closed_won',
+    'closed_lost',
   ] as const;
 
   const STAGE_PROBABILITY: Record<string, number> = {
@@ -62,7 +67,8 @@ describe('Deal Pipeline', () => {
       const pipeline = 25000;
 
       // closed×1.0 + commit×1.0 + best_case×0.5 + pipeline×0.25
-      const forecast = closed * 1.0 + commit * 1.0 + bestCase * 0.5 + pipeline * 0.25;
+      const forecast =
+        closed * 1.0 + commit * 1.0 + bestCase * 0.5 + pipeline * 0.25;
 
       expect(forecast).toBe(131250);
     });

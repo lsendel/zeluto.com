@@ -17,6 +17,14 @@ export interface ResearchRepository {
   findJobById(orgId: string, id: string): Promise<ResearchJob | null>;
   findJobsByContact(orgId: string, contactId: string): Promise<ResearchJob[]>;
   saveJob(orgId: string, job: ResearchJob): Promise<void>;
-  findInsightsByContact(orgId: string, contactId: string, options?: { insightType?: string; limit?: number }): Promise<ResearchInsight[]>;
-  saveInsight(orgId: string, contactId: string, insight: ResearchInsight): Promise<void>;
+  findInsightsByContact(
+    orgId: string,
+    contactId: string,
+    options?: { insightType?: string; limit?: number },
+  ): Promise<ResearchInsight[]>;
+  saveInsight(
+    orgId: string,
+    contactId: string,
+    insight: ResearchInsight,
+  ): Promise<void>;
 }

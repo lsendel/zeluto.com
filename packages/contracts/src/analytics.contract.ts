@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   ErrorSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -112,13 +112,15 @@ export const JourneyPerformanceSchema = z.object({
   completionRate: z.number(),
   avgTimeToComplete: z.number().nullable(),
   dailyStats: z.array(JourneyDailyStatsSchema),
-  stepStats: z.array(z.object({
-    stepId: z.string(),
-    stepName: z.string(),
-    entered: z.number(),
-    completed: z.number(),
-    failed: z.number(),
-  })),
+  stepStats: z.array(
+    z.object({
+      stepId: z.string(),
+      stepName: z.string(),
+      entered: z.number(),
+      completed: z.number(),
+      failed: z.number(),
+    }),
+  ),
 });
 
 export const ReportResultSchema = z.object({
@@ -171,24 +173,28 @@ const CreateWidgetBodySchema = z.object({
 const UpdateWidgetBodySchema = z.object({
   name: z.string().min(1).optional(),
   config: z.record(z.string(), z.unknown()).optional(),
-  position: z.object({
-    x: z.number(),
-    y: z.number(),
-    w: z.number(),
-    h: z.number(),
-  }).optional(),
-});
-
-const ReorderWidgetsBodySchema = z.object({
-  widgets: z.array(z.object({
-    id: z.number(),
-    position: z.object({
+  position: z
+    .object({
       x: z.number(),
       y: z.number(),
       w: z.number(),
       h: z.number(),
+    })
+    .optional(),
+});
+
+const ReorderWidgetsBodySchema = z.object({
+  widgets: z.array(
+    z.object({
+      id: z.number(),
+      position: z.object({
+        x: z.number(),
+        y: z.number(),
+        w: z.number(),
+        h: z.number(),
+      }),
     }),
-  })),
+  ),
 });
 
 // ---------------------------------------------------------------------------

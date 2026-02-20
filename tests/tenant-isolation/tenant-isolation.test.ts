@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
  * Tenant Isolation Audit Tests
@@ -58,9 +58,7 @@ async function apiRequest(
 function extractSessionCookie(res: Response): string {
   const raw = res.headers.get('set-cookie') ?? '';
   // Match the __Secure-better-auth.session_token cookie
-  const match = raw.match(
-    /(__Secure-better-auth\.session_token=[^;]+)/,
-  );
+  const match = raw.match(/(__Secure-better-auth\.session_token=[^;]+)/);
   if (match) return match[1];
   // Fallback: first cookie
   const first = raw.split(';')[0];
@@ -70,10 +68,7 @@ function extractSessionCookie(res: Response): string {
 /**
  * Helper: create a test organization via the API
  */
-async function createTestOrg(
-  email: string,
-  orgName: string,
-): Promise<TestOrg> {
+async function createTestOrg(email: string, orgName: string): Promise<TestOrg> {
   const slug = orgName.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
   // Step 1: Sign up user via Better Auth
@@ -102,18 +97,15 @@ async function createTestOrg(
   }
 
   // Step 2: Create organization via Better Auth organization plugin
-  const orgRes = await fetch(
-    `${API_BASE_URL}/api/auth/organization/create`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Cookie: sessionCookie,
-        Origin: API_BASE_URL,
-      },
-      body: JSON.stringify({ name: orgName, slug }),
+  const orgRes = await fetch(`${API_BASE_URL}/api/auth/organization/create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: sessionCookie,
+      Origin: API_BASE_URL,
     },
-  );
+    body: JSON.stringify({ name: orgName, slug }),
+  });
 
   if (!orgRes.ok) {
     throw new Error(
@@ -151,8 +143,8 @@ async function createTestOrg(
 }
 
 describe('Tenant Isolation Audit', () => {
-  let orgAContacts: TestContact[] = [];
-  let orgBContacts: TestContact[] = [];
+  const orgAContacts: TestContact[] = [];
+  const orgBContacts: TestContact[] = [];
 
   beforeAll(async () => {
     try {
@@ -430,11 +422,7 @@ describe('Tenant Isolation Audit', () => {
     it('Org A should only see own analytics', async () => {
       if (!orgA) return;
 
-      const res = await apiRequest(
-        orgA,
-        'GET',
-        '/api/v1/analytics/overview',
-      );
+      const res = await apiRequest(orgA, 'GET', '/api/v1/analytics/overview');
 
       expect(res.status).toBe(200);
     });
@@ -442,11 +430,7 @@ describe('Tenant Isolation Audit', () => {
     it('Org B should only see own analytics', async () => {
       if (!orgB) return;
 
-      const res = await apiRequest(
-        orgB,
-        'GET',
-        '/api/v1/analytics/overview',
-      );
+      const res = await apiRequest(orgB, 'GET', '/api/v1/analytics/overview');
 
       expect(res.status).toBe(200);
     });

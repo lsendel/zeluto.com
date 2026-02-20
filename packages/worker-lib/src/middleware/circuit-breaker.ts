@@ -66,7 +66,8 @@ export class CircuitBreaker {
   private async setState(state: CircuitBreakerState): Promise<void> {
     // TTL = failure window + open duration + buffer, so stale entries clean up
     const ttl = Math.ceil(
-      (this.config.failureWindowMs + this.config.openDurationMs + 60_000) / 1000,
+      (this.config.failureWindowMs + this.config.openDurationMs + 60_000) /
+        1000,
     );
     await this.kv.put(this.stateKey, JSON.stringify(state), {
       expirationTtl: ttl,
@@ -107,7 +108,8 @@ export class CircuitBreaker {
     }
 
     // Determine current effective state after possible transition
-    const effectiveState = current.state === 'open' ? 'half-open' : current.state;
+    const effectiveState =
+      current.state === 'open' ? 'half-open' : current.state;
 
     try {
       const result = await fn();

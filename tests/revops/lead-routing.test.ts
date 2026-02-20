@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Lead Routing', () => {
   describe('Round Robin Strategy', () => {
@@ -20,8 +20,18 @@ describe('Lead Routing', () => {
 
   describe('Rule Priority Matching', () => {
     const rules = [
-      { name: 'Enterprise', priority: 10, conditions: { minDealValue: 50000 }, targetReps: ['rep-1', 'rep-2'] },
-      { name: 'SMB', priority: 5, conditions: { maxDealValue: 50000 }, targetReps: ['rep-3', 'rep-4'] },
+      {
+        name: 'Enterprise',
+        priority: 10,
+        conditions: { minDealValue: 50000 },
+        targetReps: ['rep-1', 'rep-2'],
+      },
+      {
+        name: 'SMB',
+        priority: 5,
+        conditions: { maxDealValue: 50000 },
+        targetReps: ['rep-3', 'rep-4'],
+      },
       { name: 'Default', priority: 0, conditions: {}, targetReps: ['rep-5'] },
     ];
 

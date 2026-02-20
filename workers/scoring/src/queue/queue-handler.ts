@@ -1,9 +1,16 @@
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
-import { createDatabase, logQueueMetric, createLoggerFromEnv } from '@mauntic/worker-lib';
 import type { DomainEvent } from '@mauntic/domain-kernel';
+import {
+  createDatabase,
+  createLoggerFromEnv,
+  logQueueMetric,
+} from '@mauntic/worker-lib';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import {
+  type ScoringContext,
+  ScoringService,
+} from '../application/scoring-service.js';
 import { DrizzleLeadScoreRepository } from '../infrastructure/drizzle-lead-score-repository.js';
-import { ScoringService, type ScoringContext } from '../application/scoring-service.js';
 
 export interface ScoringQueueEnv {
   DATABASE_URL: string;
@@ -110,7 +117,10 @@ export async function handleScoringQueue(
           break;
         }
         default:
-          messageLogger.warn({ event: 'queue.job.unknown' }, 'Unknown scoring queue message');
+          messageLogger.warn(
+            { event: 'queue.job.unknown' },
+            'Unknown scoring queue message',
+          );
       }
       const durationMs = Date.now() - startedAt;
       message.ack();
@@ -149,25 +159,38 @@ export async function handleScoringQueue(
   }
 }
 
-function extractOrganizationId(message: ScoringQueueMessage | undefined): string | null {
+function extractOrganizationId(
+  message: ScoringQueueMessage | undefined,
+): string | null {
   if (!message) return null;
   if (message.type === 'scoring.CalculateScore') {
-    return message.data?.organizationId ? String(message.data.organizationId) : null;
+    return message.data?.organizationId
+      ? String(message.data.organizationId)
+      : null;
   }
   return null;
 }
 
-function extractMetadata(message: ScoringQueueMessage | undefined): Record<string, unknown> | undefined {
+function extractMetadata(
+  message: ScoringQueueMessage | undefined,
+): Record<string, unknown> | undefined {
   if (!message) return undefined;
   if (message.type === 'scoring.CalculateScore') {
     return {
-      contactId: message.data?.contactId ? String(message.data.contactId) : undefined,
+      contactId: message.data?.contactId
+        ? String(message.data.contactId)
+        : undefined,
     };
   }
-  return message.scheduledFor ? { scheduledFor: message.scheduledFor } : undefined;
+  return message.scheduledFor
+    ? { scheduledFor: message.scheduledFor }
+    : undefined;
 }
 
-async function runBatchRecompute(db: NeonHttpDatabase, scheduledFor?: string): Promise<void> {
+async function runBatchRecompute(
+  db: NeonHttpDatabase,
+  scheduledFor?: string,
+): Promise<void> {
   console.info(
     { scheduledFor, worker: 'scoring-queue' },
     'Batch scoring placeholder executed (implement aggregation logic)',
@@ -176,7 +199,10 @@ async function runBatchRecompute(db: NeonHttpDatabase, scheduledFor?: string): P
   void db;
 }
 
-async function runSignalDecay(db: NeonHttpDatabase, scheduledFor?: string): Promise<void> {
+async function runSignalDecay(
+  db: NeonHttpDatabase,
+  scheduledFor?: string,
+): Promise<void> {
   console.info(
     { scheduledFor, worker: 'scoring-queue' },
     'Signal decay placeholder executed (implement decay cleanup)',
@@ -184,7 +210,10 @@ async function runSignalDecay(db: NeonHttpDatabase, scheduledFor?: string): Prom
   void db;
 }
 
-async function runAlertExpiry(db: NeonHttpDatabase, scheduledFor?: string): Promise<void> {
+async function runAlertExpiry(
+  db: NeonHttpDatabase,
+  scheduledFor?: string,
+): Promise<void> {
   console.info(
     { scheduledFor, worker: 'scoring-queue' },
     'Alert expiry placeholder executed (implement alert checks)',

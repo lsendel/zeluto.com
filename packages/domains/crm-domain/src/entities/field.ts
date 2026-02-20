@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const FieldEntityTypeSchema = z.enum(['contact', 'company']);
 

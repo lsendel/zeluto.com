@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
 import { provider_configs } from '@mauntic/delivery-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ProviderConfigRow = typeof provider_configs.$inferSelect;
@@ -13,7 +13,12 @@ export async function findProviderConfigById(
   const [config] = await db
     .select()
     .from(provider_configs)
-    .where(and(eq(provider_configs.id, id), eq(provider_configs.organization_id, orgId)));
+    .where(
+      and(
+        eq(provider_configs.id, id),
+        eq(provider_configs.organization_id, orgId),
+      ),
+    );
   return config ?? null;
 }
 
@@ -51,7 +56,10 @@ export async function findActiveProviderByChannel(
 export async function createProviderConfig(
   db: NeonHttpDatabase,
   orgId: string,
-  data: Omit<ProviderConfigInsert, 'id' | 'organization_id' | 'created_at' | 'updated_at'>,
+  data: Omit<
+    ProviderConfigInsert,
+    'id' | 'organization_id' | 'created_at' | 'updated_at'
+  >,
 ): Promise<ProviderConfigRow> {
   const [config] = await db
     .insert(provider_configs)
@@ -64,12 +72,19 @@ export async function updateProviderConfig(
   db: NeonHttpDatabase,
   orgId: string,
   id: string,
-  data: Partial<Pick<ProviderConfigInsert, 'config' | 'is_active' | 'priority'>>,
+  data: Partial<
+    Pick<ProviderConfigInsert, 'config' | 'is_active' | 'priority'>
+  >,
 ): Promise<ProviderConfigRow | null> {
   const [config] = await db
     .update(provider_configs)
     .set({ ...data, updated_at: new Date() })
-    .where(and(eq(provider_configs.id, id), eq(provider_configs.organization_id, orgId)))
+    .where(
+      and(
+        eq(provider_configs.id, id),
+        eq(provider_configs.organization_id, orgId),
+      ),
+    )
     .returning();
   return config ?? null;
 }
@@ -81,7 +96,12 @@ export async function deleteProviderConfig(
 ): Promise<boolean> {
   const result = await db
     .delete(provider_configs)
-    .where(and(eq(provider_configs.id, id), eq(provider_configs.organization_id, orgId)))
+    .where(
+      and(
+        eq(provider_configs.id, id),
+        eq(provider_configs.organization_id, orgId),
+      ),
+    )
     .returning({ id: provider_configs.id });
   return result.length > 0;
 }

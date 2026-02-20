@@ -7,10 +7,17 @@ export interface ScheduledJob {
   data?: Record<string, unknown>;
 }
 
-export async function registerScheduledJobs(queueName: string, jobs: ScheduledJob[]): Promise<Queue> {
+export async function registerScheduledJobs(
+  queueName: string,
+  jobs: ScheduledJob[],
+): Promise<Queue> {
   const queue = new Queue(queueName, { connection: getRedis() as any });
   for (const job of jobs) {
-    await queue.upsertJobScheduler(job.name, { pattern: job.pattern }, { data: job.data ?? {} });
+    await queue.upsertJobScheduler(
+      job.name,
+      { pattern: job.pattern },
+      { data: job.data ?? {} },
+    );
   }
   return queue;
 }

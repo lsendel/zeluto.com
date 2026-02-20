@@ -1,13 +1,11 @@
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import type { SegmentContactSource } from '../application/segment-contact-source.js';
 import { DrizzleCampaignRepository } from '../infrastructure/repositories/campaign-repository.js';
 import {
   publishCampaignCompleted,
   publishCampaignStarted,
   publishDeliveryBatch,
 } from './publisher.js';
-import type {
-  SegmentContactSource,
-} from '../application/segment-contact-source.js';
 
 const FAN_OUT_BATCH_SIZE = 500;
 
@@ -24,11 +22,17 @@ export async function handleFanOutBatch(
   payload: FanOutBatchPayload,
 ): Promise<void> {
   const repo = new DrizzleCampaignRepository(db);
-  const campaign = await repo.findById(payload.organizationId, payload.campaignId);
+  const campaign = await repo.findById(
+    payload.organizationId,
+    payload.campaignId,
+  );
 
   if (!campaign) {
     console.warn(
-      { campaignId: payload.campaignId, organizationId: payload.organizationId },
+      {
+        campaignId: payload.campaignId,
+        organizationId: payload.organizationId,
+      },
       'Fan-out skipped: campaign not found',
     );
     return;

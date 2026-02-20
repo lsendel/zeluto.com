@@ -8,12 +8,12 @@ export interface TemplateListProps {
   limit: number;
 }
 
-const Pagination: FC<{ total: number; page: number; limit: number; basePath: string }> = ({
-  total,
-  page,
-  limit,
-  basePath,
-}) => {
+const Pagination: FC<{
+  total: number;
+  page: number;
+  limit: number;
+  basePath: string;
+}> = ({ total, page, limit, basePath }) => {
   const totalPages = Math.ceil(total / limit);
   if (totalPages <= 1) return null;
 
@@ -110,18 +110,47 @@ export const TemplateListView: FC<TemplateListProps> = ({
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Name</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Type</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Category</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Type
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Category
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
               {templates.length === 0 ? (
                 <tr>
-                  <td colspan={5} class="px-6 py-12 text-center text-sm text-gray-500">
-                    No templates found. Create your first template to get started.
+                  <td
+                    colspan={5}
+                    class="px-6 py-12 text-center text-sm text-gray-500"
+                  >
+                    No templates found. Create your first template to get
+                    started.
                   </td>
                 </tr>
               ) : (
@@ -143,13 +172,17 @@ export const TemplateListView: FC<TemplateListProps> = ({
                         {t.type}
                       </span>
                     </td>
-                    <td class="px-6 py-4 text-sm text-gray-500">{t.category ?? '-'}</td>
+                    <td class="px-6 py-4 text-sm text-gray-500">
+                      {t.category ?? '-'}
+                    </td>
                     <td class="px-6 py-4 text-sm">
-                      <span class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        t.isActive
-                          ? 'bg-green-50 text-green-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span
+                        class={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                          t.isActive
+                            ? 'bg-green-50 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
                         {t.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -170,7 +203,12 @@ export const TemplateListView: FC<TemplateListProps> = ({
             </tbody>
           </table>
         </div>
-        <Pagination total={total} page={page} limit={limit} basePath="/app/content/templates" />
+        <Pagination
+          total={total}
+          page={page}
+          limit={limit}
+          basePath="/app/content/templates"
+        />
       </div>
     </div>
   );

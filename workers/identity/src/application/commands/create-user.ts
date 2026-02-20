@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { organizationMembers, users } from '@mauntic/identity-domain';
 import { eq } from 'drizzle-orm';
-import { users, organizationMembers } from '@mauntic/identity-domain';
+import { z } from 'zod';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const CreateUserInput = z.object({
@@ -30,7 +30,7 @@ export interface CreateUserResult {
 
 export async function createUser(
   db: DrizzleDb,
-  input: CreateUserInput
+  input: CreateUserInput,
 ): Promise<CreateUserResult> {
   const parsed = CreateUserInput.parse(input);
 

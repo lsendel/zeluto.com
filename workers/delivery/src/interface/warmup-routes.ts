@@ -1,15 +1,15 @@
-import { Hono } from 'hono';
-import type { Env } from '../app.js';
-import {
-  findAllSendingDomains,
-  findSendingDomainById,
-} from '../infrastructure/repositories/sending-domain-repository.js';
 import {
   getDaysSinceStart,
   getWarmupLimit,
   getWarmupProgress,
   isWarmupComplete,
 } from '@mauntic/delivery-domain';
+import { Hono } from 'hono';
+import type { Env } from '../app.js';
+import {
+  findAllSendingDomains,
+  findSendingDomainById,
+} from '../infrastructure/repositories/sending-domain-repository.js';
 
 export const warmupRoutes = new Hono<Env>();
 
@@ -41,7 +41,10 @@ warmupRoutes.get('/api/v1/delivery/warmup', async (c) => {
     return c.json(warmupStatuses);
   } catch (error) {
     console.error('List warmup error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list warmup status' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list warmup status' },
+      500,
+    );
   }
 });
 
@@ -54,7 +57,10 @@ warmupRoutes.get('/api/v1/delivery/warmup/:id/progress', async (c) => {
   try {
     const domain = await findSendingDomainById(db, tenant.organizationId, id);
     if (!domain) {
-      return c.json({ code: 'NOT_FOUND', message: 'Sending domain not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Sending domain not found' },
+        404,
+      );
     }
 
     const daysSinceStart = getDaysSinceStart(new Date(domain.created_at));
@@ -64,7 +70,10 @@ warmupRoutes.get('/api/v1/delivery/warmup/:id/progress', async (c) => {
 
     // In a full implementation, we would query actual sent counts for today
     const sentToday = 0;
-    const remainingToday = currentDayLimit === Infinity ? Infinity : Math.max(0, currentDayLimit - sentToday);
+    const remainingToday =
+      currentDayLimit === Infinity
+        ? Infinity
+        : Math.max(0, currentDayLimit - sentToday);
 
     return c.json({
       schedule: {
@@ -82,6 +91,9 @@ warmupRoutes.get('/api/v1/delivery/warmup/:id/progress', async (c) => {
     });
   } catch (error) {
     console.error('Get warmup progress error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get warmup progress' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get warmup progress' },
+      500,
+    );
   }
 });

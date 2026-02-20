@@ -7,6 +7,8 @@ export const SendCampaignCommandSchema = z.object({
 
 export type SendCampaignCommand = z.infer<typeof SendCampaignCommandSchema>;
 
-export function sendCampaignCommand(input: SendCampaignCommand): SendCampaignCommand {
+export function sendCampaignCommand(
+  input: SendCampaignCommand,
+): SendCampaignCommand {
   return SendCampaignCommandSchema.parse(input);
 }

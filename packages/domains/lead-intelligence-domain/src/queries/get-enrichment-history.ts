@@ -7,8 +7,12 @@ export const GetEnrichmentHistoryQuerySchema = z.object({
   limit: z.number().int().min(1).max(100).default(20),
 });
 
-export type GetEnrichmentHistoryQuery = z.infer<typeof GetEnrichmentHistoryQuerySchema>;
+export type GetEnrichmentHistoryQuery = z.infer<
+  typeof GetEnrichmentHistoryQuerySchema
+>;
 
-export function getEnrichmentHistoryQuery(input: GetEnrichmentHistoryQuery): GetEnrichmentHistoryQuery {
+export function getEnrichmentHistoryQuery(
+  input: GetEnrichmentHistoryQuery,
+): GetEnrichmentHistoryQuery {
   return GetEnrichmentHistoryQuerySchema.parse(input);
 }

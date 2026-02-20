@@ -1,5 +1,5 @@
-import { eq, and } from 'drizzle-orm';
 import { enrichmentProviders } from '@mauntic/lead-intelligence-domain/drizzle';
+import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type EnrichmentProviderRow = typeof enrichmentProviders.$inferSelect;
@@ -13,7 +13,12 @@ export async function findProviderById(
   const [row] = await db
     .select()
     .from(enrichmentProviders)
-    .where(and(eq(enrichmentProviders.id, id), eq(enrichmentProviders.organization_id, orgId)));
+    .where(
+      and(
+        eq(enrichmentProviders.id, id),
+        eq(enrichmentProviders.organization_id, orgId),
+      ),
+    );
   return row ?? null;
 }
 
@@ -50,7 +55,12 @@ export async function deleteProvider(
 ): Promise<boolean> {
   const result = await db
     .delete(enrichmentProviders)
-    .where(and(eq(enrichmentProviders.id, id), eq(enrichmentProviders.organization_id, orgId)))
+    .where(
+      and(
+        eq(enrichmentProviders.id, id),
+        eq(enrichmentProviders.organization_id, orgId),
+      ),
+    )
     .returning({ id: enrichmentProviders.id });
   return result.length > 0;
 }

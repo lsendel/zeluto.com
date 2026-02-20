@@ -40,7 +40,10 @@ export interface WebhookTarget {
  * Sign payload with HMAC-SHA256 using the webhook secret.
  * Returns a hex-encoded signature string.
  */
-export async function signPayload(payload: string, secret: string): Promise<string> {
+export async function signPayload(
+  payload: string,
+  secret: string,
+): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
   const payloadData = encoder.encode(payload);

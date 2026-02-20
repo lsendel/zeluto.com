@@ -44,7 +44,9 @@ export const StepAddForm: FC<StepAddFormProps> = ({ journeyId, stepType }) => {
 
         {stepType === 'action' && (
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Action Type</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">
+              Action Type
+            </label>
             <select
               name="config.action"
               class="block w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
@@ -61,7 +63,9 @@ export const StepAddForm: FC<StepAddFormProps> = ({ journeyId, stepType }) => {
         {stepType === 'delay' && (
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Duration</label>
+              <label class="block text-xs font-medium text-gray-700 mb-1">
+                Duration
+              </label>
               <input
                 name="config.duration"
                 type="number"
@@ -71,13 +75,17 @@ export const StepAddForm: FC<StepAddFormProps> = ({ journeyId, stepType }) => {
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+              <label class="block text-xs font-medium text-gray-700 mb-1">
+                Unit
+              </label>
               <select
                 name="config.unit"
                 class="block w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
               >
                 <option value="minutes">Minutes</option>
-                <option value="hours" selected>Hours</option>
+                <option value="hours" selected>
+                  Hours
+                </option>
                 <option value="days">Days</option>
               </select>
             </div>
@@ -86,7 +94,9 @@ export const StepAddForm: FC<StepAddFormProps> = ({ journeyId, stepType }) => {
 
         {stepType === 'condition' && (
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Condition Expression</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">
+              Condition Expression
+            </label>
             <input
               name="config.expression"
               type="text"
@@ -98,7 +108,9 @@ export const StepAddForm: FC<StepAddFormProps> = ({ journeyId, stepType }) => {
 
         {stepType === 'split' && (
           <div>
-            <label class="block text-xs font-medium text-gray-700 mb-1">Split Type</label>
+            <label class="block text-xs font-medium text-gray-700 mb-1">
+              Split Type
+            </label>
             <select
               name="config.splitType"
               class="block w-full rounded border border-gray-300 px-2 py-1.5 text-sm"
@@ -110,7 +122,9 @@ export const StepAddForm: FC<StepAddFormProps> = ({ journeyId, stepType }) => {
         )}
 
         <div>
-          <label class="block text-xs font-medium text-gray-700 mb-1">Label (optional)</label>
+          <label class="block text-xs font-medium text-gray-700 mb-1">
+            Label (optional)
+          </label>
           <input
             name="config.name"
             type="text"

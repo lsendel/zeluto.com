@@ -1,4 +1,8 @@
-import type { DeliveryProvider, DeliveryResult, EmailPayload } from '@mauntic/domain-kernel';
+import type {
+  DeliveryProvider,
+  DeliveryResult,
+  EmailPayload,
+} from '@mauntic/domain-kernel';
 
 export interface SendGridProviderConfig {
   apiKey: string;

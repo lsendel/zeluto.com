@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { Entity, Result } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 
 export const JourneyVersionPropsSchema = z.object({
   id: z.string().uuid(),
@@ -44,7 +44,9 @@ export class JourneyVersion extends Entity<JourneyVersionProps> {
   }
 
   static reconstitute(props: JourneyVersionProps): Result<JourneyVersion> {
-    return Result.ok(new JourneyVersion(JourneyVersionPropsSchema.parse(props)));
+    return Result.ok(
+      new JourneyVersion(JourneyVersionPropsSchema.parse(props)),
+    );
   }
 
   // ---- Accessors ----

@@ -7,6 +7,8 @@ export const GetLeaderboardQuerySchema = z.object({
 
 export type GetLeaderboardQuery = z.infer<typeof GetLeaderboardQuerySchema>;
 
-export function getLeaderboardQuery(input: GetLeaderboardQuery): GetLeaderboardQuery {
+export function getLeaderboardQuery(
+  input: GetLeaderboardQuery,
+): GetLeaderboardQuery {
   return GetLeaderboardQuerySchema.parse(input);
 }

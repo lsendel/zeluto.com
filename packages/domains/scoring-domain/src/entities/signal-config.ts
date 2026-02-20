@@ -45,13 +45,27 @@ export class SignalConfig {
     return new SignalConfig(SignalConfigPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get signalType() { return this.props.signalType; }
-  get weight() { return this.props.weight; }
-  get decayHours() { return this.props.decayHours; }
-  get tier() { return this.props.tier; }
-  get enabled() { return this.props.enabled; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get signalType() {
+    return this.props.signalType;
+  }
+  get weight() {
+    return this.props.weight;
+  }
+  get decayHours() {
+    return this.props.decayHours;
+  }
+  get tier() {
+    return this.props.tier;
+  }
+  get enabled() {
+    return this.props.enabled;
+  }
 
   update(input: {
     weight?: number;
@@ -60,7 +74,8 @@ export class SignalConfig {
     enabled?: boolean;
   }): void {
     if (input.weight !== undefined) this.props.weight = input.weight;
-    if (input.decayHours !== undefined) this.props.decayHours = input.decayHours;
+    if (input.decayHours !== undefined)
+      this.props.decayHours = input.decayHours;
     if (input.tier !== undefined) this.props.tier = input.tier;
     if (input.enabled !== undefined) this.props.enabled = input.enabled;
     this.props.updatedAt = new Date();

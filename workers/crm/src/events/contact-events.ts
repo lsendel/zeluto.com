@@ -1,9 +1,9 @@
 import type {
   ContactCreatedEvent,
-  ContactUpdatedEvent,
   ContactDeletedEvent,
-  ContactMergedEvent,
   ContactImportedEvent,
+  ContactMergedEvent,
+  ContactUpdatedEvent,
   DomainEventMetadata,
 } from '@mauntic/domain-kernel';
 
@@ -11,7 +11,10 @@ import type {
 // Metadata helper
 // ---------------------------------------------------------------------------
 
-function meta(organizationId: string, sourceContext = 'crm'): DomainEventMetadata {
+function meta(
+  organizationId: string,
+  sourceContext = 'crm',
+): DomainEventMetadata {
   return {
     id: crypto.randomUUID(),
     version: 1,

@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import type { Env } from '../index.js';
-import { dispatchRequest, type ServiceBinding } from '../lib/dispatch.js';
 import { forwardToService } from '../lib/forward.js';
 
 export function createCrmRoutes() {
@@ -25,7 +24,9 @@ export function createCrmRoutes() {
  * CRM segment query dispatch — reads the request body for cursor/limit params,
  * dispatches to the CRM worker, and handles non-ok responses by falling back.
  */
-async function forwardCrmSegmentQueryViaDispatch(c: any): Promise<Response | null> {
+async function forwardCrmSegmentQueryViaDispatch(
+  c: any,
+): Promise<Response | null> {
   const dispatch = c.env.CRM_DISPATCH;
   if (!dispatch) {
     return null;
@@ -36,9 +37,10 @@ async function forwardCrmSegmentQueryViaDispatch(c: any): Promise<Response | nul
     return null;
   }
 
-  const requestBody = (await c.req.json().catch(() => null)) as
-    | { cursor?: string; limit?: number }
-    | null;
+  const requestBody = (await c.req.json().catch(() => null)) as {
+    cursor?: string;
+    limit?: number;
+  } | null;
   if (!requestBody || typeof requestBody !== 'object') {
     return null;
   }
@@ -46,8 +48,10 @@ async function forwardCrmSegmentQueryViaDispatch(c: any): Promise<Response | nul
   const payload = {
     organizationId: tenantContext.organizationId,
     segmentId: c.req.param('segmentId'),
-    cursor: typeof requestBody.cursor === 'string' ? requestBody.cursor : undefined,
-    limit: typeof requestBody.limit === 'number' ? requestBody.limit : undefined,
+    cursor:
+      typeof requestBody.cursor === 'string' ? requestBody.cursor : undefined,
+    limit:
+      typeof requestBody.limit === 'number' ? requestBody.limit : undefined,
   };
 
   try {
@@ -87,8 +91,7 @@ async function forwardCrmSegmentQueryViaDispatch(c: any): Promise<Response | nul
       return null;
     }
 
-    const clonedBody = await response.text();
-    return new Response(clonedBody, {
+    return new Response(response.body, {
       status: response.status,
       headers: response.headers,
     });

@@ -70,7 +70,10 @@ trackingRoutes.post('/api/v1/delivery/tracking/ses', async (c) => {
 
           // Auto-suppress on hard bounce or complaint
           if (eventType === 'bounced' || eventType === 'complained') {
-            const recipients = message.bounce?.bouncedRecipients || message.complaint?.complainedRecipients || [];
+            const recipients =
+              message.bounce?.bouncedRecipients ||
+              message.complaint?.complainedRecipients ||
+              [];
             for (const recipient of recipients) {
               const email = recipient.emailAddress;
               if (email) {
@@ -105,15 +108,18 @@ trackingRoutes.post('/api/v1/delivery/tracking/sendgrid', async (c) => {
   const db = c.get('db');
 
   try {
-    const events = await c.req.json<Array<{
-      event: string;
-      sg_message_id?: string;
-      email?: string;
-      timestamp?: number;
-      url?: string;
-      useragent?: string;
-      [key: string]: unknown;
-    }>>();
+    const events =
+      await c.req.json<
+        Array<{
+          event: string;
+          sg_message_id?: string;
+          email?: string;
+          timestamp?: number;
+          url?: string;
+          useragent?: string;
+          [key: string]: unknown;
+        }>
+      >();
 
     if (!Array.isArray(events)) {
       return c.json({ received: true });
@@ -166,10 +172,17 @@ trackingRoutes.post('/api/v1/delivery/tracking/sendgrid', async (c) => {
 
           // Auto-suppress on bounce, complaint, or unsubscribe
           if (
-            (eventType === 'bounced' || eventType === 'complained' || eventType === 'unsubscribed') &&
+            (eventType === 'bounced' ||
+              eventType === 'complained' ||
+              eventType === 'unsubscribed') &&
             event.email
           ) {
-            const reason = eventType === 'bounced' ? 'bounce' : eventType === 'complained' ? 'complaint' : 'unsubscribe';
+            const reason =
+              eventType === 'bounced'
+                ? 'bounce'
+                : eventType === 'complained'
+                  ? 'complaint'
+                  : 'unsubscribe';
             try {
               await createSuppression(db, originalEvent.organization_id, {
                 email: event.email,
@@ -202,9 +215,9 @@ trackingRoutes.post('/api/v1/delivery/tracking/twilio', async (c) => {
     // Twilio sends form-encoded data
     const formData = await c.req.parseBody();
 
-    const messageSid = formData['MessageSid'] as string | undefined;
-    const messageStatus = formData['MessageStatus'] as string | undefined;
-    const errorCode = formData['ErrorCode'] as string | undefined;
+    const messageSid = formData.MessageSid as string | undefined;
+    const messageStatus = formData.MessageStatus as string | undefined;
+    const errorCode = formData.ErrorCode as string | undefined;
 
     if (!messageSid || !messageStatus) {
       return c.json({ received: true });

@@ -8,6 +8,8 @@ export const PauseJourneyCommandSchema = z.object({
 
 export type PauseJourneyCommand = z.infer<typeof PauseJourneyCommandSchema>;
 
-export function pauseJourneyCommand(input: PauseJourneyCommand): PauseJourneyCommand {
+export function pauseJourneyCommand(
+  input: PauseJourneyCommand,
+): PauseJourneyCommand {
   return PauseJourneyCommandSchema.parse(input);
 }

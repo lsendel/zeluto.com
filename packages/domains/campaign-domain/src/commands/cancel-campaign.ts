@@ -7,6 +7,8 @@ export const CancelCampaignCommandSchema = z.object({
 
 export type CancelCampaignCommand = z.infer<typeof CancelCampaignCommandSchema>;
 
-export function cancelCampaignCommand(input: CancelCampaignCommand): CancelCampaignCommand {
+export function cancelCampaignCommand(
+  input: CancelCampaignCommand,
+): CancelCampaignCommand {
   return CancelCampaignCommandSchema.parse(input);
 }

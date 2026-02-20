@@ -1,13 +1,5 @@
-import {
-  and,
-  or,
-  eq,
-  sql,
-  inArray,
-  notInArray,
-  type SQL,
-} from 'drizzle-orm';
 import { contacts } from '@mauntic/crm-domain/drizzle';
+import { and, eq, inArray, notInArray, or, type SQL, sql } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -90,16 +82,16 @@ function buildCondition(cond: FilterCondition): SQL | undefined {
       return sql`${column} <= ${value}`;
 
     case 'contains':
-      return sql`${column} ILIKE ${'%' + String(value) + '%'}`;
+      return sql`${column} ILIKE ${`%${String(value)}%`}`;
 
     case 'not_contains':
-      return sql`${column} NOT ILIKE ${'%' + String(value) + '%'}`;
+      return sql`${column} NOT ILIKE ${`%${String(value)}%`}`;
 
     case 'starts_with':
-      return sql`${column} ILIKE ${String(value) + '%'}`;
+      return sql`${column} ILIKE ${`${String(value)}%`}`;
 
     case 'ends_with':
-      return sql`${column} ILIKE ${'%' + String(value)}`;
+      return sql`${column} ILIKE ${`%${String(value)}`}`;
 
     case 'in':
       if (Array.isArray(value) && value.length > 0) {

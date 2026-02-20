@@ -1,35 +1,33 @@
 export {
-  DeliveryJob,
-  DeliveryJobPropsSchema,
-  DeliveryJobStatusSchema,
-  ChannelSchema,
-  type DeliveryJobProps,
-  type DeliveryJobStatus,
   type Channel,
+  ChannelSchema,
+  DeliveryJob,
+  type DeliveryJobProps,
+  DeliveryJobPropsSchema,
+  type DeliveryJobStatus,
+  DeliveryJobStatusSchema,
 } from './delivery-job.js';
 
 export {
   ProviderConfig,
-  ProviderConfigPropsSchema,
-  ProviderTypeSchema,
   type ProviderConfigProps,
+  ProviderConfigPropsSchema,
   type ProviderType,
+  ProviderTypeSchema,
 } from './provider-config.js';
-
+export {
+  type DnsRecord,
+  DnsRecordSchema,
+  SendingDomain,
+  type SendingDomainProps,
+  SendingDomainPropsSchema,
+  type SendingDomainStatus,
+  SendingDomainStatusSchema,
+} from './sending-domain.js';
 export {
   SuppressionEntry,
-  SuppressionEntryPropsSchema,
-  SuppressionReasonSchema,
   type SuppressionEntryProps,
+  SuppressionEntryPropsSchema,
   type SuppressionReason,
+  SuppressionReasonSchema,
 } from './suppression-entry.js';
-
-export {
-  SendingDomain,
-  SendingDomainPropsSchema,
-  SendingDomainStatusSchema,
-  DnsRecordSchema,
-  type SendingDomainProps,
-  type SendingDomainStatus,
-  type DnsRecord,
-} from './sending-domain.js';

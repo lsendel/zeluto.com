@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findCompanyById,
-  findAllCompanies,
   createCompany,
-  updateCompany,
   deleteCompany,
+  findAllCompanies,
+  findCompanyById,
+  updateCompany,
 } from '../infrastructure/repositories/company-repository.js';
 
 export const companyRoutes = new Hono<Env>();
@@ -35,7 +35,10 @@ companyRoutes.get('/api/v1/crm/companies', async (c) => {
     });
   } catch (error) {
     console.error('List companies error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list companies' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list companies' },
+      500,
+    );
   }
 });
 
@@ -71,7 +74,10 @@ companyRoutes.post('/api/v1/crm/companies', async (c) => {
     return c.json(company, 201);
   } catch (error) {
     console.error('Create company error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create company' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create company' },
+      500,
+    );
   }
 });
 
@@ -89,7 +95,10 @@ companyRoutes.get('/api/v1/crm/companies/:id', async (c) => {
     return c.json(company);
   } catch (error) {
     console.error('Get company error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get company' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get company' },
+      500,
+    );
   }
 });
 
@@ -113,9 +122,15 @@ companyRoutes.patch('/api/v1/crm/companies/:id', async (c) => {
     if (body.domain !== undefined) updateData.domain = body.domain;
     if (body.industry !== undefined) updateData.industry = body.industry;
     if (body.size !== undefined) updateData.size = body.size;
-    if (body.customFields !== undefined) updateData.custom_fields = body.customFields;
+    if (body.customFields !== undefined)
+      updateData.custom_fields = body.customFields;
 
-    const company = await updateCompany(db, tenant.organizationId, id, updateData);
+    const company = await updateCompany(
+      db,
+      tenant.organizationId,
+      id,
+      updateData,
+    );
     if (!company) {
       return c.json({ code: 'NOT_FOUND', message: 'Company not found' }, 404);
     }
@@ -123,7 +138,10 @@ companyRoutes.patch('/api/v1/crm/companies/:id', async (c) => {
     return c.json(company);
   } catch (error) {
     console.error('Update company error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update company' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update company' },
+      500,
+    );
   }
 });
 
@@ -141,6 +159,9 @@ companyRoutes.delete('/api/v1/crm/companies/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete company error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete company' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete company' },
+      500,
+    );
   }
 });

@@ -1,6 +1,6 @@
-import { OnboardingLayout } from "./layout";
-import { Button, Input } from "@mauntic/ui-kit";
-import type { FC } from "@mauntic/ui-kit";
+import type { FC } from '@mauntic/ui-kit';
+import { Button, Input } from '@mauntic/ui-kit';
+import { OnboardingLayout } from './layout';
 
 type SignupViewProps = {
   assetsBaseUrl: string;
@@ -8,7 +8,11 @@ type SignupViewProps = {
 
 export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
   return (
-    <OnboardingLayout title="Sign Up" currentStep={1} assetsBaseUrl={assetsBaseUrl}>
+    <OnboardingLayout
+      title="Sign Up"
+      currentStep={1}
+      assetsBaseUrl={assetsBaseUrl}
+    >
       <div class="rounded-xl border border-gray-200 bg-white px-8 py-10 shadow-sm">
         {/* Heading */}
         <div class="mb-8 text-center">
@@ -72,7 +76,9 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
             <div class="w-full border-t border-gray-200"></div>
           </div>
           <div class="relative flex justify-center text-sm">
-            <span class="bg-white px-4 text-gray-500">Or continue with email</span>
+            <span class="bg-white px-4 text-gray-500">
+              Or continue with email
+            </span>
           </div>
         </div>
 
@@ -118,7 +124,11 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
               hint="At least 8 characters"
             />
 
-            <Button type="submit" class="w-full justify-center" variant="primary">
+            <Button
+              type="submit"
+              class="w-full justify-center"
+              variant="primary"
+            >
               <span class="loading htmx-indicator">
                 <svg
                   class="animate-spin h-5 w-5 mr-2"
@@ -148,11 +158,11 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
 
         {/* Terms */}
         <p class="mt-6 text-center text-xs text-gray-500">
-          By signing up, you agree to our{" "}
+          By signing up, you agree to our{' '}
           <a href="/terms" class="text-brand-600 hover:text-brand-700">
             Terms of Service
-          </a>{" "}
-          and{" "}
+          </a>{' '}
+          and{' '}
           <a href="/privacy" class="text-brand-600 hover:text-brand-700">
             Privacy Policy
           </a>
@@ -161,7 +171,7 @@ export const SignupView: FC<SignupViewProps> = ({ assetsBaseUrl }) => {
 
       {/* Footer */}
       <div class="mt-6 text-center text-sm text-gray-600">
-        Already have an account?{" "}
+        Already have an account?{' '}
         <a
           href="/login"
           class="font-medium text-brand-600 hover:text-brand-700"

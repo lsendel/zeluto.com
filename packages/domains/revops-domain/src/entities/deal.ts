@@ -1,8 +1,14 @@
 import { z } from 'zod';
 
 export const DealStageSchema = z.enum([
-  'prospecting', 'qualification', 'needs_analysis', 'proposal',
-  'negotiation', 'contract_sent', 'closed_won', 'closed_lost',
+  'prospecting',
+  'qualification',
+  'needs_analysis',
+  'proposal',
+  'negotiation',
+  'contract_sent',
+  'closed_won',
+  'closed_lost',
 ]);
 export type DealStage = z.infer<typeof DealStageSchema>;
 
@@ -17,9 +23,15 @@ const STAGE_PROBABILITY: Record<DealStage, number> = {
   closed_lost: 0,
 };
 
-const STAGE_ORDER: DealStage[] = [
-  'prospecting', 'qualification', 'needs_analysis', 'proposal',
-  'negotiation', 'contract_sent', 'closed_won', 'closed_lost',
+const _STAGE_ORDER: DealStage[] = [
+  'prospecting',
+  'qualification',
+  'needs_analysis',
+  'proposal',
+  'negotiation',
+  'contract_sent',
+  'closed_won',
+  'closed_lost',
 ];
 
 export const DealPropsSchema = z.object({
@@ -76,22 +88,53 @@ export class Deal {
     return new Deal(DealPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get accountId() { return this.props.accountId; }
-  get contactId() { return this.props.contactId; }
-  get name() { return this.props.name; }
-  get stage() { return this.props.stage; }
-  get value() { return this.props.value; }
-  get probability() { return this.props.probability; }
-  get priority() { return this.props.priority; }
-  get assignedRep() { return this.props.assignedRep; }
-  get expectedCloseAt() { return this.props.expectedCloseAt; }
-  get closedAt() { return this.props.closedAt; }
-  get lostReason() { return this.props.lostReason; }
-  get notes() { return this.props.notes; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get accountId() {
+    return this.props.accountId;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get name() {
+    return this.props.name;
+  }
+  get stage() {
+    return this.props.stage;
+  }
+  get value() {
+    return this.props.value;
+  }
+  get probability() {
+    return this.props.probability;
+  }
+  get priority() {
+    return this.props.priority;
+  }
+  get assignedRep() {
+    return this.props.assignedRep;
+  }
+  get expectedCloseAt() {
+    return this.props.expectedCloseAt;
+  }
+  get closedAt() {
+    return this.props.closedAt;
+  }
+  get lostReason() {
+    return this.props.lostReason;
+  }
+  get notes() {
+    return this.props.notes;
+  }
 
-  moveToStage(newStage: DealStage): { fromStage: DealStage; toStage: DealStage } {
+  moveToStage(newStage: DealStage): {
+    fromStage: DealStage;
+    toStage: DealStage;
+  } {
     const fromStage = this.props.stage;
     if (fromStage === 'closed_won' || fromStage === 'closed_lost') {
       throw new Error('Cannot change stage of a closed deal');

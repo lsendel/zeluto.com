@@ -11,7 +11,12 @@ export interface DnsVerificationResult {
   details: {
     mx: { found: boolean; records: string[]; error?: string };
     spf: { found: boolean; record?: string; error?: string };
-    dkim: { found: boolean; record?: string; selector?: string; error?: string };
+    dkim: {
+      found: boolean;
+      record?: string;
+      selector?: string;
+      error?: string;
+    };
     dmarc: { found: boolean; record?: string; error?: string };
   };
 }
@@ -42,7 +47,16 @@ export class DnsVerifier {
       details: { mx, spf, dkim, dmarc },
     };
 
-    logger.info({ domain, mx: mx.found, spf: spf.found, dkim: dkim.found, dmarc: dmarc.found }, 'DNS verification complete');
+    logger.info(
+      {
+        domain,
+        mx: mx.found,
+        spf: spf.found,
+        dkim: dkim.found,
+        dmarc: dmarc.found,
+      },
+      'DNS verification complete',
+    );
 
     return result;
   }
@@ -51,7 +65,9 @@ export class DnsVerifier {
    * Check MX records for the domain.
    * Verifies that at least one MX record exists.
    */
-  async checkMx(domain: string): Promise<{ found: boolean; records: string[]; error?: string }> {
+  async checkMx(
+    domain: string,
+  ): Promise<{ found: boolean; records: string[]; error?: string }> {
     try {
       const mxRecords = await dns.resolveMx(domain);
       const records = mxRecords
@@ -70,7 +86,9 @@ export class DnsVerifier {
    * Check SPF record for the domain.
    * Looks for a TXT record starting with "v=spf1".
    */
-  async checkSpf(domain: string): Promise<{ found: boolean; record?: string; error?: string }> {
+  async checkSpf(
+    domain: string,
+  ): Promise<{ found: boolean; record?: string; error?: string }> {
     try {
       const txtRecords = await dns.resolveTxt(domain);
       const flat = txtRecords.map((parts) => parts.join(''));
@@ -95,7 +113,12 @@ export class DnsVerifier {
   async checkDkim(
     domain: string,
     selector?: string,
-  ): Promise<{ found: boolean; record?: string; selector?: string; error?: string }> {
+  ): Promise<{
+    found: boolean;
+    record?: string;
+    selector?: string;
+    error?: string;
+  }> {
     const sel = selector ?? this.dkimSelector;
     const dkimDomain = `${sel}._domainkey.${domain}`;
 
@@ -120,7 +143,9 @@ export class DnsVerifier {
    * Check DMARC record for the domain.
    * Looks for a TXT record at _dmarc.{domain} starting with "v=DMARC1".
    */
-  async checkDmarc(domain: string): Promise<{ found: boolean; record?: string; error?: string }> {
+  async checkDmarc(
+    domain: string,
+  ): Promise<{ found: boolean; record?: string; error?: string }> {
     const dmarcDomain = `_dmarc.${domain}`;
 
     try {
@@ -135,7 +160,10 @@ export class DnsVerifier {
       return { found: false, error: 'No DMARC record found' };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      logger.warn({ domain: dmarcDomain, error: message }, 'DMARC lookup failed');
+      logger.warn(
+        { domain: dmarcDomain, error: message },
+        'DMARC lookup failed',
+      );
       return { found: false, error: message };
     }
   }

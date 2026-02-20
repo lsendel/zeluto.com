@@ -28,7 +28,12 @@ export interface QualificationResult {
 
 export interface ResponseAnalysis {
   sentiment: 'positive' | 'neutral' | 'negative';
-  intent: 'interested' | 'not_interested' | 'needs_info' | 'objection' | 'meeting_request';
+  intent:
+    | 'interested'
+    | 'not_interested'
+    | 'needs_info'
+    | 'objection'
+    | 'meeting_request';
   suggestedAction: string;
 }
 
@@ -61,7 +66,8 @@ Provide: qualification_score (0-100), icp_match (0-1), reasoning, recommendation
     const response = await this.llm.complete(prompt, {
       temperature: 0.2,
       maxTokens: 512,
-      systemPrompt: 'You are an SDR qualification engine. Respond with structured JSON.',
+      systemPrompt:
+        'You are an SDR qualification engine. Respond with structured JSON.',
     });
 
     // Parse LLM response
@@ -81,7 +87,10 @@ Provide: qualification_score (0-100), icp_match (0-1), reasoning, recommendation
         qualificationScore: input.leadScore,
         icpMatch: 0.5,
         reasoning: 'Qualification completed with default scoring',
-        recommendation: input.leadScore >= this.config.minQualificationScore ? 'sequence' : 'manual_review',
+        recommendation:
+          input.leadScore >= this.config.minQualificationScore
+            ? 'sequence'
+            : 'manual_review',
       };
     }
   }
@@ -95,7 +104,8 @@ Determine: sentiment (positive/neutral/negative), intent (interested/not_interes
     const response = await this.llm.complete(prompt, {
       temperature: 0.1,
       maxTokens: 256,
-      systemPrompt: 'You are a sales response analyzer. Respond with structured JSON.',
+      systemPrompt:
+        'You are a sales response analyzer. Respond with structured JSON.',
     });
 
     try {

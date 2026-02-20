@@ -1,5 +1,3 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import {
   campaignDailyStats,
   contactActivity,
@@ -8,8 +6,10 @@ import {
   eventAggregates,
 } from '@mauntic/analytics-domain/drizzle';
 import { sending_domains } from '@mauntic/delivery-domain/drizzle';
-import { leadScores } from '@mauntic/scoring-domain/drizzle';
 import { enrichmentJobs } from '@mauntic/lead-intelligence-domain/drizzle';
+import { leadScores } from '@mauntic/scoring-domain/drizzle';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type {
   AnalyticsAggregationRepository,
   DailyReportResult,
@@ -20,7 +20,9 @@ export interface WarmupCounterStore {
   resetDailyCounter(organizationId: string, domain: string): Promise<void>;
 }
 
-export class DrizzleAnalyticsRepository implements AnalyticsAggregationRepository {
+export class DrizzleAnalyticsRepository
+  implements AnalyticsAggregationRepository
+{
   constructor(
     private readonly db: NeonHttpDatabase<Record<string, unknown>> | any,
     private readonly warmupStore?: WarmupCounterStore,
@@ -122,11 +124,15 @@ export class DrizzleAnalyticsRepository implements AnalyticsAggregationRepositor
         });
       }
       const entry = campaignMap.get(key)!;
-      entry.metrics[row.eventType] = { count: row.count, uniqueCount: row.uniqueCount };
+      entry.metrics[row.eventType] = {
+        count: row.count,
+        uniqueCount: row.uniqueCount,
+      };
     }
 
     for (const [, { orgId, campaignId, metrics }] of campaignMap) {
-      const getMetric = (type: string) => metrics[type] ?? { count: 0, uniqueCount: 0 };
+      const getMetric = (type: string) =>
+        metrics[type] ?? { count: 0, uniqueCount: 0 };
 
       await this.db.insert(campaignDailyStats).values({
         campaignId,

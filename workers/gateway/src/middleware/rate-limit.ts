@@ -81,7 +81,10 @@ export function rateLimitMiddleware(): MiddlewareHandler<Env> {
         throw new Error(`Rate limiter update failed: ${doResponse.status}`);
       }
 
-      const payload = (await doResponse.json()) as { allowed: boolean; count: number };
+      const payload = (await doResponse.json()) as {
+        allowed: boolean;
+        count: number;
+      };
 
       if (!payload.allowed) {
         return c.json(
@@ -96,7 +99,10 @@ export function rateLimitMiddleware(): MiddlewareHandler<Env> {
 
       // Set rate limit headers
       c.header('X-RateLimit-Limit', String(limit));
-      c.header('X-RateLimit-Remaining', String(Math.max(0, limit - payload.count)));
+      c.header(
+        'X-RateLimit-Remaining',
+        String(Math.max(0, limit - payload.count)),
+      );
       c.header('X-RateLimit-Reset', String(resetEpoch));
 
       await next();

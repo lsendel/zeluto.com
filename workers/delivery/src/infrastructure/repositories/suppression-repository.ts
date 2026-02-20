@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { suppressions } from '@mauntic/delivery-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type SuppressionRow = typeof suppressions.$inferSelect;
@@ -13,7 +13,9 @@ export async function findSuppressionById(
   const [suppression] = await db
     .select()
     .from(suppressions)
-    .where(and(eq(suppressions.id, id), eq(suppressions.organization_id, orgId)));
+    .where(
+      and(eq(suppressions.id, id), eq(suppressions.organization_id, orgId)),
+    );
   return suppression ?? null;
 }
 
@@ -55,7 +57,12 @@ export async function isEmailSuppressed(
   const [row] = await db
     .select({ reason: suppressions.reason })
     .from(suppressions)
-    .where(and(eq(suppressions.organization_id, orgId), eq(suppressions.email, email.toLowerCase())))
+    .where(
+      and(
+        eq(suppressions.organization_id, orgId),
+        eq(suppressions.email, email.toLowerCase()),
+      ),
+    )
     .limit(1);
   if (row) {
     return { suppressed: true, reason: row.reason };
@@ -70,7 +77,11 @@ export async function createSuppression(
 ): Promise<SuppressionRow> {
   const [suppression] = await db
     .insert(suppressions)
-    .values({ ...data, email: data.email.toLowerCase(), organization_id: orgId })
+    .values({
+      ...data,
+      email: data.email.toLowerCase(),
+      organization_id: orgId,
+    })
     .returning();
   return suppression;
 }
@@ -82,7 +93,9 @@ export async function deleteSuppression(
 ): Promise<boolean> {
   const result = await db
     .delete(suppressions)
-    .where(and(eq(suppressions.id, id), eq(suppressions.organization_id, orgId)))
+    .where(
+      and(eq(suppressions.id, id), eq(suppressions.organization_id, orgId)),
+    )
     .returning({ id: suppressions.id });
   return result.length > 0;
 }

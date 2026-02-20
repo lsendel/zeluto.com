@@ -1,5 +1,5 @@
-import { eq, and, ilike, sql, desc } from 'drizzle-orm';
-import { forms, formSubmissions } from '@mauntic/content-domain/drizzle';
+import { formSubmissions, forms } from '@mauntic/content-domain/drizzle';
+import { and, desc, eq, ilike, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type FormRow = typeof forms.$inferSelect;
@@ -43,10 +43,7 @@ export async function findAllForms(
       .orderBy(desc(forms.createdAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(forms)
-      .where(where),
+    db.select({ count: sql<number>`count(*)::int` }).from(forms).where(where),
   ]);
 
   return { data, total: countResult[0]?.count ?? 0 };

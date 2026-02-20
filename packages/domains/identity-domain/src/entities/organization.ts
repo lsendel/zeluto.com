@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import { InvariantViolation } from '@mauntic/domain-kernel';
+import { z } from 'zod';
 import { SlugSchema } from '../value-objects/slug.js';
 
 export const OrganizationPropsSchema = z.object({

@@ -39,11 +39,21 @@ export class ProviderHealth {
     return new ProviderHealth(ProviderHealthPropsSchema.parse(props));
   }
 
-  get organizationId() { return this.props.organizationId; }
-  get providerId() { return this.props.providerId; }
-  get circuitState() { return this.props.circuitState; }
-  get successCount() { return this.props.successCount; }
-  get failureCount() { return this.props.failureCount; }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get providerId() {
+    return this.props.providerId;
+  }
+  get circuitState() {
+    return this.props.circuitState;
+  }
+  get successCount() {
+    return this.props.successCount;
+  }
+  get failureCount() {
+    return this.props.failureCount;
+  }
 
   isAvailable(): boolean {
     if (this.props.circuitState === 'closed') return true;

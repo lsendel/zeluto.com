@@ -53,7 +53,7 @@ export function validateSubmission(
 
     if (field.type === 'number') {
       const num = Number(strValue);
-      if (isNaN(num)) {
+      if (Number.isNaN(num)) {
         errors[field.name] = `${field.label} must be a number`;
       }
     }
@@ -74,22 +74,32 @@ export function validateSubmission(
     }
 
     // Length validation
-    if (field.validation?.minLength && strValue.length < field.validation.minLength) {
-      errors[field.name] = `${field.label} must be at least ${field.validation.minLength} characters`;
+    if (
+      field.validation?.minLength &&
+      strValue.length < field.validation.minLength
+    ) {
+      errors[field.name] =
+        `${field.label} must be at least ${field.validation.minLength} characters`;
     }
-    if (field.validation?.maxLength && strValue.length > field.validation.maxLength) {
-      errors[field.name] = `${field.label} must be at most ${field.validation.maxLength} characters`;
+    if (
+      field.validation?.maxLength &&
+      strValue.length > field.validation.maxLength
+    ) {
+      errors[field.name] =
+        `${field.label} must be at most ${field.validation.maxLength} characters`;
     }
 
     // Number range validation
     if (field.type === 'number') {
       const num = Number(strValue);
-      if (!isNaN(num)) {
+      if (!Number.isNaN(num)) {
         if (field.validation?.min !== undefined && num < field.validation.min) {
-          errors[field.name] = `${field.label} must be at least ${field.validation.min}`;
+          errors[field.name] =
+            `${field.label} must be at least ${field.validation.min}`;
         }
         if (field.validation?.max !== undefined && num > field.validation.max) {
-          errors[field.name] = `${field.label} must be at most ${field.validation.max}`;
+          errors[field.name] =
+            `${field.label} must be at most ${field.validation.max}`;
         }
       }
     }
@@ -118,7 +128,9 @@ export function renderFormHtml(form: FormRow): string {
   const fieldHtml = fields
     .map((field) => {
       const required = field.required ? 'required' : '';
-      const requiredMark = field.required ? ' <span class="text-red-500">*</span>' : '';
+      const requiredMark = field.required
+        ? ' <span class="text-red-500">*</span>'
+        : '';
 
       switch (field.type) {
         case 'textarea':
@@ -127,7 +139,7 @@ export function renderFormHtml(form: FormRow): string {
   <textarea name="${field.name}" placeholder="${field.validation?.minLength ? `Min ${field.validation.minLength} chars` : ''}" class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" ${required}></textarea>
 </div>`;
 
-        case 'select':
+        case 'select': {
           const options = (field.options ?? [])
             .map((o) => `<option value="${o.value}">${o.label}</option>`)
             .join('\n    ');
@@ -138,6 +150,7 @@ export function renderFormHtml(form: FormRow): string {
     ${options}
   </select>
 </div>`;
+        }
 
         case 'checkbox':
           return `<div class="mb-4 flex items-center gap-2">
@@ -145,7 +158,7 @@ export function renderFormHtml(form: FormRow): string {
   <label for="field-${field.name}" class="text-sm font-medium text-gray-700">${field.label}${requiredMark}</label>
 </div>`;
 
-        case 'radio':
+        case 'radio': {
           const radioOptions = (field.options ?? [])
             .map(
               (o) =>
@@ -158,6 +171,7 @@ export function renderFormHtml(form: FormRow): string {
     ${radioOptions}
   </div>
 </div>`;
+        }
 
         case 'hidden':
           return `<input type="hidden" name="${field.name}" value="" />`;

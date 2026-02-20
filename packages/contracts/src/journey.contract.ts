@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   ErrorSchema,
   IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -206,15 +206,17 @@ export const journeyContract = c.router({
           failedExecutions: z.number(),
           activeExecutions: z.number(),
           conversionRate: z.number(),
-          stepAnalytics: z.array(z.object({
-            stepId: z.string().uuid(),
-            stepType: z.string(),
-            entrances: z.number(),
-            exits: z.number(),
-            completions: z.number(),
-            failures: z.number(),
-            dropOffRate: z.number(),
-          })),
+          stepAnalytics: z.array(
+            z.object({
+              stepId: z.string().uuid(),
+              stepType: z.string(),
+              entrances: z.number(),
+              exits: z.number(),
+              completions: z.number(),
+              failures: z.number(),
+              dropOffRate: z.number(),
+            }),
+          ),
         }),
         404: ErrorSchema,
       },
@@ -364,7 +366,9 @@ export const journeyContract = c.router({
       path: '/api/v1/journey/journeys/:journeyId/executions',
       pathParams: z.object({ journeyId: z.coerce.number().int().positive() }),
       query: PaginationQuerySchema.extend({
-        status: z.enum(['active', 'completed', 'failed', 'canceled']).optional(),
+        status: z
+          .enum(['active', 'completed', 'failed', 'canceled'])
+          .optional(),
         contactId: z.coerce.number().optional(),
       }),
       responses: {

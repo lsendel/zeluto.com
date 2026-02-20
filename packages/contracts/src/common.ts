@@ -8,7 +8,9 @@ export const PaginationQuerySchema = z.object({
   order: z.enum(['asc', 'desc']).default('desc'),
 });
 
-export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =>
+export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(
+  itemSchema: T,
+) =>
   z.object({
     data: z.array(itemSchema),
     total: z.number(),

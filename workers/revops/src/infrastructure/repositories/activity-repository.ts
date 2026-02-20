@@ -1,5 +1,5 @@
-import { eq, and, desc, sql } from 'drizzle-orm';
 import { activities } from '@mauntic/revops-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ActivityRow = typeof activities.$inferSelect;
@@ -25,7 +25,12 @@ export async function findActivitiesByContact(
   return db
     .select()
     .from(activities)
-    .where(and(eq(activities.organization_id, orgId), eq(activities.contact_id, contactId)))
+    .where(
+      and(
+        eq(activities.organization_id, orgId),
+        eq(activities.contact_id, contactId),
+      ),
+    )
     .orderBy(desc(activities.created_at));
 }
 
@@ -37,7 +42,12 @@ export async function findActivitiesByDeal(
   return db
     .select()
     .from(activities)
-    .where(and(eq(activities.organization_id, orgId), eq(activities.deal_id, dealId)))
+    .where(
+      and(
+        eq(activities.organization_id, orgId),
+        eq(activities.deal_id, dealId),
+      ),
+    )
     .orderBy(desc(activities.created_at));
 }
 

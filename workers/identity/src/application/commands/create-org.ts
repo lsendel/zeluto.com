@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { eq, sql } from 'drizzle-orm';
 import { organizations } from '@mauntic/identity-domain';
+import { eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const CreateOrgInput = z.object({
@@ -25,7 +25,10 @@ function generateSlug(name: string): string {
 /**
  * Ensure a slug is unique by appending a random suffix if needed.
  */
-async function ensureUniqueSlug(db: DrizzleDb, baseSlug: string): Promise<string> {
+async function ensureUniqueSlug(
+  db: DrizzleDb,
+  baseSlug: string,
+): Promise<string> {
   let slug = baseSlug;
   let attempt = 0;
 
@@ -54,7 +57,9 @@ async function ensureUniqueSlug(db: DrizzleDb, baseSlug: string): Promise<string
 export async function createOrg(db: DrizzleDb, input: CreateOrgInput) {
   const parsed = CreateOrgInput.parse(input);
 
-  const baseSlug = parsed.slug ? generateSlug(parsed.slug) : generateSlug(parsed.name);
+  const baseSlug = parsed.slug
+    ? generateSlug(parsed.slug)
+    : generateSlug(parsed.name);
   const slug = await ensureUniqueSlug(db, baseSlug);
 
   const [org] = await db

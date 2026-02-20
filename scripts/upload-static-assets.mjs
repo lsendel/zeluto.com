@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execSync, execFileSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -27,10 +27,21 @@ const uploads = [
 ];
 
 for (const upload of uploads) {
-  console.log(`[static-assets] Uploading ${upload.file} -> ${bucket}/${upload.key}`);
+  console.log(
+    `[static-assets] Uploading ${upload.file} -> ${bucket}/${upload.key}`,
+  );
   execFileSync(
     'pnpm',
-    ['exec', 'wrangler', 'r2', 'object', 'put', `${bucket}/${upload.key}`, '--file', upload.file],
+    [
+      'exec',
+      'wrangler',
+      'r2',
+      'object',
+      'put',
+      `${bucket}/${upload.key}`,
+      '--file',
+      upload.file,
+    ],
     { stdio: 'inherit' },
   );
 }

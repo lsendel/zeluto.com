@@ -1,6 +1,6 @@
+import { organizations } from '@mauntic/identity-domain';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
-import { organizations, organizationMembers } from '@mauntic/identity-domain';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const UpdateOrgInput = z.object({
@@ -15,14 +15,16 @@ export type UpdateOrgInput = z.infer<typeof UpdateOrgInput>;
 export async function updateOrg(
   db: DrizzleDb,
   input: UpdateOrgInput,
-  actorUserId: string,
-  actorRole: string
+  _actorUserId: string,
+  actorRole: string,
 ) {
   const parsed = UpdateOrgInput.parse(input);
 
   // Only owner or admin can update organization
   if (actorRole !== 'owner' && actorRole !== 'admin') {
-    throw new InsufficientPermissionsError('Only owners and admins can update the organization');
+    throw new InsufficientPermissionsError(
+      'Only owners and admins can update the organization',
+    );
   }
 
   // Check organization exists

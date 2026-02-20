@@ -1,14 +1,22 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('Signal Detection', () => {
   describe('Signal Time Decay', () => {
-    const linearDecay = (weight: number, hoursElapsed: number, decayHours: number): number => {
+    const linearDecay = (
+      weight: number,
+      hoursElapsed: number,
+      decayHours: number,
+    ): number => {
       const remaining = Math.max(0, 1 - hoursElapsed / decayHours);
       return weight * remaining;
     };
 
-    const exponentialDecay = (weight: number, hoursElapsed: number, halfLife: number): number => {
-      return weight * Math.pow(0.5, hoursElapsed / halfLife);
+    const exponentialDecay = (
+      weight: number,
+      hoursElapsed: number,
+      halfLife: number,
+    ): number => {
+      return weight * 0.5 ** (hoursElapsed / halfLife);
     };
 
     it('should apply linear decay correctly', () => {
@@ -50,14 +58,18 @@ describe('Signal Detection', () => {
 
     it('should set correct SLA deadline for critical signals', () => {
       const now = new Date('2026-02-19T10:00:00Z');
-      const deadline = new Date(now.getTime() + SLA_HOURS.critical * 60 * 60 * 1000);
+      const deadline = new Date(
+        now.getTime() + SLA_HOURS.critical * 60 * 60 * 1000,
+      );
 
       expect(deadline.toISOString()).toBe('2026-02-19T11:00:00.000Z');
     });
 
     it('should set correct SLA deadline for high signals', () => {
       const now = new Date('2026-02-19T10:00:00Z');
-      const deadline = new Date(now.getTime() + SLA_HOURS.high * 60 * 60 * 1000);
+      const deadline = new Date(
+        now.getTime() + SLA_HOURS.high * 60 * 60 * 1000,
+      );
 
       expect(deadline.toISOString()).toBe('2026-02-19T14:00:00.000Z');
     });
@@ -74,13 +86,18 @@ describe('Signal Detection', () => {
   });
 
   describe('URL-Based Signal Detection', () => {
-    const URL_SIGNAL_OVERRIDES: Record<string, { signalType: string; weight: number }> = {
+    const URL_SIGNAL_OVERRIDES: Record<
+      string,
+      { signalType: string; weight: number }
+    > = {
       pricing: { signalType: 'PRICING_PAGE', weight: 20 },
       demo: { signalType: 'DEMO_REQUEST', weight: 30 },
       'free-trial': { signalType: 'FREE_TRIAL', weight: 25 },
     };
 
-    function detectSignalFromUrl(url: string): { signalType: string; weight: number } | null {
+    function detectSignalFromUrl(
+      url: string,
+    ): { signalType: string; weight: number } | null {
       for (const [keyword, signal] of Object.entries(URL_SIGNAL_OVERRIDES)) {
         if (url.toLowerCase().includes(keyword)) {
           return signal;

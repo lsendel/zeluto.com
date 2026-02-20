@@ -16,10 +16,7 @@ export function createIdempotentConsumer<T>(
 
       try {
         const data = msg.body as any;
-        await handler(
-          data,
-          data.metadata?.tenantContext ?? data.tenantContext,
-        );
+        await handler(data, data.metadata?.tenantContext ?? data.tenantContext);
         await kv.put(idempotencyKey, '1', { expirationTtl: 86400 });
         msg.ack();
       } catch {

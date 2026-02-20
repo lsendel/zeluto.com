@@ -28,7 +28,10 @@ export class TenantContextDurableObject {
     const method = request.method.toUpperCase();
 
     if (method === 'PUT') {
-      const body = (await request.json()) as { context: TenantContext; ttl?: number };
+      const body = (await request.json()) as {
+        context: TenantContext;
+        ttl?: number;
+      };
       const ttlSeconds = Math.max(60, Math.min(body.ttl ?? 300, 3600));
       const expiresAt = Date.now() + ttlSeconds * 1000;
       const record: StoredContext = {
@@ -45,7 +48,8 @@ export class TenantContextDurableObject {
     }
 
     if (method === 'GET') {
-      const record = (await this.state.storage.get<StoredContext>(CONTEXT_KEY)) ?? null;
+      const record =
+        (await this.state.storage.get<StoredContext>(CONTEXT_KEY)) ?? null;
       if (!record) {
         return new Response(null, { status: 404 });
       }
@@ -65,11 +69,17 @@ export class TenantContextDurableObject {
     const method = request.method.toUpperCase();
 
     if (method === 'PUT') {
-      const body = (await request.json()) as { key: string; value: unknown; ttl?: number };
+      const body = (await request.json()) as {
+        key: string;
+        value: unknown;
+        ttl?: number;
+      };
       if (!body.key) {
         return new Response('Missing key', { status: 400 });
       }
-      const ttlSeconds = body.ttl ? Math.max(30, Math.min(body.ttl, 86400)) : null;
+      const ttlSeconds = body.ttl
+        ? Math.max(30, Math.min(body.ttl, 86400))
+        : null;
       const record: StoredState = {
         value: body.value,
         expiresAt: ttlSeconds ? Date.now() + ttlSeconds * 1000 : null,
@@ -91,7 +101,8 @@ export class TenantContextDurableObject {
     }
 
     if (method === 'GET') {
-      const record = (await this.state.storage.get<StoredState>(storageKey)) ?? null;
+      const record =
+        (await this.state.storage.get<StoredState>(storageKey)) ?? null;
       if (!record) {
         return new Response(null, { status: 404 });
       }
@@ -106,7 +117,7 @@ export class TenantContextDurableObject {
   }
 }
 
-async function callTenantDO<T>(
+async function callTenantDO<_T>(
   namespace: DurableObjectNamespace | undefined,
   cacheKey: string,
   path: string,
@@ -166,7 +177,11 @@ export async function fetchTenantState<T>(
   cacheKey: string,
   key: string,
 ): Promise<T | null> {
-  const response = await callTenantDO(namespace, cacheKey, `/state?key=${encodeURIComponent(key)}`);
+  const response = await callTenantDO(
+    namespace,
+    cacheKey,
+    `/state?key=${encodeURIComponent(key)}`,
+  );
   if (!response || response.status !== 200) {
     return null;
   }
@@ -178,7 +193,12 @@ export async function deleteTenantState(
   cacheKey: string,
   key: string,
 ): Promise<void> {
-  await callTenantDO(namespace, cacheKey, `/state?key=${encodeURIComponent(key)}`, {
-    method: 'DELETE',
-  });
+  await callTenantDO(
+    namespace,
+    cacheKey,
+    `/state?key=${encodeURIComponent(key)}`,
+    {
+      method: 'DELETE',
+    },
+  );
 }

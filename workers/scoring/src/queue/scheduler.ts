@@ -1,14 +1,17 @@
 import type { ScheduledEvent } from '@cloudflare/workers-types';
-import type { ScoringQueueEnv, ScoringJobType } from './queue-handler.js';
+import type { ScoringJobType, ScoringQueueEnv } from './queue-handler.js';
 
 const CRON_TO_JOBS: Record<string, ScoringJobType[]> = {
   '0 * * * *': ['scoring.BatchRecompute', 'scoring.SignalDecay'],
   '*/15 * * * *': ['scoring.AlertExpiry'],
 };
 
-export async function handleScheduled(event: ScheduledEvent, env: ScoringQueueEnv & {
-  ENABLE_SCORING_CRON?: string;
-}): Promise<void> {
+export async function handleScheduled(
+  event: ScheduledEvent,
+  env: ScoringQueueEnv & {
+    ENABLE_SCORING_CRON?: string;
+  },
+): Promise<void> {
   if (env.ENABLE_SCORING_CRON && env.ENABLE_SCORING_CRON !== 'true') {
     return;
   }
@@ -19,18 +22,19 @@ export async function handleScheduled(event: ScheduledEvent, env: ScoringQueueEn
   }
 
   if (!env.EVENTS) {
-    console.warn('No scoring queue binding available for scheduled job dispatch');
+    console.warn(
+      'No scoring queue binding available for scheduled job dispatch',
+    );
     return;
   }
 
-  const scheduledFor = new Date(event.scheduledTime ?? Date.now()).toISOString();
+  const scheduledFor = new Date(
+    event.scheduledTime ?? Date.now(),
+  ).toISOString();
 
-  await Promise.all(
-    jobs.map((type) =>
-      env.EVENTS.send({
-        type,
-        scheduledFor,
-      }),
-    ),
-  );
+  const messages = jobs.map((type) => ({
+    body: { type, scheduledFor },
+  }));
+
+  await env.EVENTS.sendBatch(messages as any);
 }

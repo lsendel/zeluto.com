@@ -23,7 +23,7 @@ export const FormBuilderView: FC<FormBuilderProps> = ({
   const isEdit = !!form;
   const title = isEdit ? 'Edit Form' : 'New Form';
   const submitUrl = isEdit
-    ? `/api/v1/content/forms/${form!.id}`
+    ? `/api/v1/content/forms/${form?.id}`
     : '/api/v1/content/forms';
   const fields = (form?.fields ?? []) as FormFieldDef[];
 
@@ -56,7 +56,10 @@ export const FormBuilderView: FC<FormBuilderProps> = ({
         <div class="space-y-6">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="name"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Form Name
               </label>
               <input
@@ -70,7 +73,10 @@ export const FormBuilderView: FC<FormBuilderProps> = ({
               />
             </div>
             <div>
-              <label for="description" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="description"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Description
               </label>
               <input
@@ -104,10 +110,27 @@ export const FormBuilderView: FC<FormBuilderProps> = ({
                     data-field-index={index}
                   >
                     <div class="cursor-move text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <circle cx="9" cy="5" r="1" />
+                        <circle cx="15" cy="5" r="1" />
+                        <circle cx="9" cy="12" r="1" />
+                        <circle cx="15" cy="12" r="1" />
+                        <circle cx="9" cy="19" r="1" />
+                        <circle cx="15" cy="19" r="1" />
+                      </svg>
                     </div>
                     <div class="flex-1 grid grid-cols-3 gap-2">
-                      <span class="text-sm font-medium text-gray-900">{field.label}</span>
+                      <span class="text-sm font-medium text-gray-900">
+                        {field.label}
+                      </span>
                       <span class="text-sm text-gray-500">{field.type}</span>
                       <span class="text-sm text-gray-500">
                         {field.required ? 'Required' : 'Optional'}
@@ -130,9 +153,21 @@ export const FormBuilderView: FC<FormBuilderProps> = ({
             </div>
 
             {/* Add field panel */}
-            <div id="add-field-panel" class="hidden mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div
+              id="add-field-panel"
+              class="hidden mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200"
+            >
               <div class="grid grid-cols-2 gap-3">
-                {['text', 'email', 'tel', 'number', 'textarea', 'select', 'checkbox', 'date'].map((type) => (
+                {[
+                  'text',
+                  'email',
+                  'tel',
+                  'number',
+                  'textarea',
+                  'select',
+                  'checkbox',
+                  'date',
+                ].map((type) => (
                   <button
                     type="button"
                     class="flex items-center gap-2 p-3 bg-white rounded-lg border border-gray-200 hover:border-brand-500 hover:bg-brand-50 text-sm text-gray-700 transition-colors"
@@ -147,7 +182,10 @@ export const FormBuilderView: FC<FormBuilderProps> = ({
 
           {/* Redirect URL */}
           <div>
-            <label for="redirectUrl" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="redirectUrl"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Redirect URL (after submission)
             </label>
             <input

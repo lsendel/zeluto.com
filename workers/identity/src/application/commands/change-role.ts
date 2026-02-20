@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { eq, and } from 'drizzle-orm';
 import { organizationMembers } from '@mauntic/identity-domain';
+import { and, eq } from 'drizzle-orm';
+import { z } from 'zod';
 import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const ChangeRoleInput = z.object({
@@ -15,13 +15,15 @@ export async function changeRole(
   db: DrizzleDb,
   input: ChangeRoleInput,
   actorUserId: string,
-  actorRole: string
+  actorRole: string,
 ) {
   const parsed = ChangeRoleInput.parse(input);
 
   // Only owner can change roles
   if (actorRole !== 'owner') {
-    throw new InsufficientPermissionsError('Only the owner can change member roles');
+    throw new InsufficientPermissionsError(
+      'Only the owner can change member roles',
+    );
   }
 
   // Cannot change own role
@@ -36,8 +38,8 @@ export async function changeRole(
     .where(
       and(
         eq(organizationMembers.organizationId, parsed.organizationId),
-        eq(organizationMembers.userId, parsed.userId)
-      )
+        eq(organizationMembers.userId, parsed.userId),
+      ),
     )
     .limit(1);
 
@@ -52,8 +54,8 @@ export async function changeRole(
     .where(
       and(
         eq(organizationMembers.organizationId, parsed.organizationId),
-        eq(organizationMembers.userId, parsed.userId)
-      )
+        eq(organizationMembers.userId, parsed.userId),
+      ),
     )
     .returning();
 

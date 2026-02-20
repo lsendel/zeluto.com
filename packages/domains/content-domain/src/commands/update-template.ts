@@ -15,6 +15,8 @@ export const UpdateTemplateCommandSchema = z.object({
 
 export type UpdateTemplateCommand = z.infer<typeof UpdateTemplateCommandSchema>;
 
-export function updateTemplateCommand(input: UpdateTemplateCommand): UpdateTemplateCommand {
+export function updateTemplateCommand(
+  input: UpdateTemplateCommand,
+): UpdateTemplateCommand {
   return UpdateTemplateCommandSchema.parse(input);
 }

@@ -1,22 +1,22 @@
-import { Hono } from 'hono';
-import { eq, and, sql } from 'drizzle-orm';
 import type { TenantContext } from '@mauntic/domain-kernel';
 import {
-  organizations,
-  organizationMembers,
   organizationInvites,
-  users,
+  organizationMembers,
+  organizations,
   sessions,
+  users,
 } from '@mauntic/identity-domain';
-import type { DrizzleDb } from '../infrastructure/database.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { Hono } from 'hono';
+import { changeRole } from '../application/commands/change-role.js';
 import { createOrg } from '../application/commands/create-org.js';
-import { updateOrg } from '../application/commands/update-org.js';
 import { inviteMember } from '../application/commands/invite-member.js';
 import { removeMember } from '../application/commands/remove-member.js';
-import { changeRole } from '../application/commands/change-role.js';
-import { listOrgs } from '../application/queries/list-orgs.js';
+import { updateOrg } from '../application/commands/update-org.js';
 import { getOrg } from '../application/queries/get-org.js';
-import { serializeOrg, serializeInvite } from './org-serializers.js';
+import { listOrgs } from '../application/queries/list-orgs.js';
+import type { DrizzleDb } from '../infrastructure/database.js';
+import { serializeInvite, serializeOrg } from './org-serializers.js';
 
 type Env = {
   Bindings: { DB: Hyperdrive };
@@ -53,7 +53,10 @@ orgRoutes.get('/api/v1/identity/organizations', async (c) => {
     });
   } catch (error) {
     console.error('Error listing organizations:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list organizations' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list organizations' },
+      500,
+    );
   }
 });
 
@@ -73,7 +76,10 @@ orgRoutes.post('/api/v1/identity/organizations', async (c) => {
     return c.json(serializeOrg(org), 201);
   } catch (error) {
     console.error('Error creating organization:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create organization' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create organization' },
+      500,
+    );
   }
 });
 
@@ -87,13 +93,19 @@ orgRoutes.get('/api/v1/identity/organizations/:id', async (c) => {
     const org = await getOrg(db, orgId, tenant.userId);
 
     if (!org) {
-      return c.json({ code: 'NOT_FOUND', message: 'Organization not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Organization not found' },
+        404,
+      );
     }
 
     return c.json(serializeOrg(org));
   } catch (error) {
     console.error('Error getting organization:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get organization' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get organization' },
+      500,
+    );
   }
 });
 
@@ -114,7 +126,7 @@ orgRoutes.patch('/api/v1/identity/organizations/:id', async (c) => {
         logo: body.logo,
       },
       tenant.userId,
-      tenant.userRole
+      tenant.userRole,
     );
 
     return c.json(serializeOrg(updated));
@@ -128,7 +140,10 @@ orgRoutes.patch('/api/v1/identity/organizations/:id', async (c) => {
       }
     }
     console.error('Error updating organization:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update organization' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update organization' },
+      500,
+    );
   }
 });
 
@@ -140,25 +155,35 @@ orgRoutes.delete('/api/v1/identity/organizations/:id', async (c) => {
 
   // Only owner can delete
   if (tenant.userRole !== 'owner') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only the owner can delete the organization' }, 403);
+    return c.json(
+      {
+        code: 'FORBIDDEN',
+        message: 'Only the owner can delete the organization',
+      },
+      403,
+    );
   }
 
   try {
     // Verify organization exists and user is a member
     const org = await getOrg(db, orgId, tenant.userId);
     if (!org) {
-      return c.json({ code: 'NOT_FOUND', message: 'Organization not found' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Organization not found' },
+        404,
+      );
     }
 
     // Delete the organization (cascade will remove members and invites)
-    await db
-      .delete(organizations)
-      .where(eq(organizations.id, orgId));
+    await db.delete(organizations).where(eq(organizations.id, orgId));
 
     return c.json({ success: true });
   } catch (error) {
     console.error('Error deleting organization:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete organization' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete organization' },
+      500,
+    );
   }
 });
 
@@ -176,13 +201,16 @@ orgRoutes.post('/api/v1/identity/organizations/:id/switch', async (c) => {
       .where(
         and(
           eq(organizationMembers.organizationId, orgId),
-          eq(organizationMembers.userId, tenant.userId)
-        )
+          eq(organizationMembers.userId, tenant.userId),
+        ),
       )
       .limit(1);
 
     if (!membership) {
-      return c.json({ code: 'FORBIDDEN', message: 'Not a member of this organization' }, 403);
+      return c.json(
+        { code: 'FORBIDDEN', message: 'Not a member of this organization' },
+        403,
+      );
     }
 
     // Update all active sessions for this user to point to the new organization
@@ -216,7 +244,10 @@ orgRoutes.post('/api/v1/identity/organizations/:id/switch', async (c) => {
     });
   } catch (error) {
     console.error('Error switching organization:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to switch organization' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to switch organization' },
+      500,
+    );
   }
 });
 
@@ -240,13 +271,16 @@ orgRoutes.get('/api/v1/identity/organizations/:id/members', async (c) => {
       .where(
         and(
           eq(organizationMembers.organizationId, orgId),
-          eq(organizationMembers.userId, tenant.userId)
-        )
+          eq(organizationMembers.userId, tenant.userId),
+        ),
       )
       .limit(1);
 
     if (!membership) {
-      return c.json({ code: 'FORBIDDEN', message: 'Not a member of this organization' }, 403);
+      return c.json(
+        { code: 'FORBIDDEN', message: 'Not a member of this organization' },
+        403,
+      );
     }
 
     // Count
@@ -282,7 +316,10 @@ orgRoutes.get('/api/v1/identity/organizations/:id/members', async (c) => {
       name: m.name ?? '',
       email: m.email,
       role: m.role,
-      joinedAt: m.joinedAt instanceof Date ? m.joinedAt.toISOString() : String(m.joinedAt),
+      joinedAt:
+        m.joinedAt instanceof Date
+          ? m.joinedAt.toISOString()
+          : String(m.joinedAt),
     }));
 
     return c.json({
@@ -294,91 +331,107 @@ orgRoutes.get('/api/v1/identity/organizations/:id/members', async (c) => {
     });
   } catch (error) {
     console.error('Error listing members:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list members' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list members' },
+      500,
+    );
   }
 });
 
 // PATCH /api/v1/identity/organizations/:id/members/:userId/role - Change member role
-orgRoutes.patch('/api/v1/identity/organizations/:id/members/:userId/role', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const orgId = c.req.param('id');
-  const userId = c.req.param('userId');
+orgRoutes.patch(
+  '/api/v1/identity/organizations/:id/members/:userId/role',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const orgId = c.req.param('id');
+    const userId = c.req.param('userId');
 
-  try {
-    const body = await c.req.json();
-    const updated = await changeRole(
-      db,
-      {
-        organizationId: orgId,
-        userId,
-        role: body.role,
-      },
-      tenant.userId,
-      tenant.userRole
-    );
+    try {
+      const body = await c.req.json();
+      const updated = await changeRole(
+        db,
+        {
+          organizationId: orgId,
+          userId,
+          role: body.role,
+        },
+        tenant.userId,
+        tenant.userRole,
+      );
 
-    // Fetch user info for the response
-    const [user] = await db
-      .select({ name: users.name, email: users.email })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
+      // Fetch user info for the response
+      const [user] = await db
+        .select({ name: users.name, email: users.email })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
-    return c.json({
-      id: updated.id,
-      organizationId: updated.organizationId,
-      userId: updated.userId,
-      name: user?.name ?? '',
-      email: user?.email ?? '',
-      role: updated.role,
-      joinedAt: updated.joinedAt instanceof Date
-        ? updated.joinedAt.toISOString()
-        : String(updated.joinedAt),
-    });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      if (error.name === 'InsufficientPermissionsError') {
-        return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+      return c.json({
+        id: updated.id,
+        organizationId: updated.organizationId,
+        userId: updated.userId,
+        name: user?.name ?? '',
+        email: user?.email ?? '',
+        role: updated.role,
+        joinedAt:
+          updated.joinedAt instanceof Date
+            ? updated.joinedAt.toISOString()
+            : String(updated.joinedAt),
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.name === 'InsufficientPermissionsError') {
+          return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+        }
+        if (error.name === 'CannotChangeOwnRoleError') {
+          return c.json({ code: 'BAD_REQUEST', message: error.message }, 400);
+        }
+        if (error.name === 'MemberNotFoundError') {
+          return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
+        }
       }
-      if (error.name === 'CannotChangeOwnRoleError') {
-        return c.json({ code: 'BAD_REQUEST', message: error.message }, 400);
-      }
-      if (error.name === 'MemberNotFoundError') {
-        return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
-      }
+      console.error('Error changing role:', error);
+      return c.json(
+        { code: 'INTERNAL_ERROR', message: 'Failed to change role' },
+        500,
+      );
     }
-    console.error('Error changing role:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to change role' }, 500);
-  }
-});
+  },
+);
 
 // DELETE /api/v1/identity/organizations/:id/members/:userId - Remove member
-orgRoutes.delete('/api/v1/identity/organizations/:id/members/:userId', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const orgId = c.req.param('id');
-  const userId = c.req.param('userId');
+orgRoutes.delete(
+  '/api/v1/identity/organizations/:id/members/:userId',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const orgId = c.req.param('id');
+    const userId = c.req.param('userId');
 
-  try {
-    await removeMember(db, orgId, userId, tenant.userRole);
-    return c.json({ success: true });
-  } catch (error: unknown) {
-    if (error instanceof Error) {
-      if (error.name === 'InsufficientPermissionsError') {
-        return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+    try {
+      await removeMember(db, orgId, userId, tenant.userRole);
+      return c.json({ success: true });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.name === 'InsufficientPermissionsError') {
+          return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+        }
+        if (error.name === 'CannotRemoveOwnerError') {
+          return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
+        }
+        if (error.name === 'MemberNotFoundError') {
+          return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
+        }
       }
-      if (error.name === 'CannotRemoveOwnerError') {
-        return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
-      }
-      if (error.name === 'MemberNotFoundError') {
-        return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
-      }
+      console.error('Error removing member:', error);
+      return c.json(
+        { code: 'INTERNAL_ERROR', message: 'Failed to remove member' },
+        500,
+      );
     }
-    console.error('Error removing member:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to remove member' }, 500);
-  }
-});
+  },
+);
 
 // ─── Invites ────────────────────────────────────────────────────────────────
 
@@ -394,7 +447,10 @@ orgRoutes.get('/api/v1/identity/organizations/:id/invites', async (c) => {
 
   // Only owner/admin can view invites
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only owners and admins can view invites' }, 403);
+    return c.json(
+      { code: 'FORBIDDEN', message: 'Only owners and admins can view invites' },
+      403,
+    );
   }
 
   try {
@@ -422,7 +478,10 @@ orgRoutes.get('/api/v1/identity/organizations/:id/invites', async (c) => {
     });
   } catch (error) {
     console.error('Error listing invites:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list invites' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list invites' },
+      500,
+    );
   }
 });
 
@@ -442,7 +501,7 @@ orgRoutes.post('/api/v1/identity/organizations/:id/invites', async (c) => {
         role: body.role || 'member',
         invitedBy: tenant.userId,
       },
-      tenant.userRole
+      tenant.userRole,
     );
 
     return c.json(serializeInvite(invite), 201);
@@ -459,48 +518,63 @@ orgRoutes.post('/api/v1/identity/organizations/:id/invites', async (c) => {
       }
     }
     console.error('Error creating invite:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to create invite' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to create invite' },
+      500,
+    );
   }
 });
 
 // DELETE /api/v1/identity/organizations/:id/invites/:inviteId - Cancel invite
-orgRoutes.delete('/api/v1/identity/organizations/:id/invites/:inviteId', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const orgId = c.req.param('id');
-  const inviteId = c.req.param('inviteId');
+orgRoutes.delete(
+  '/api/v1/identity/organizations/:id/invites/:inviteId',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const orgId = c.req.param('id');
+    const inviteId = c.req.param('inviteId');
 
-  // Only owner/admin can cancel invites
-  if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only owners and admins can cancel invites' }, 403);
-  }
-
-  try {
-    const [invite] = await db
-      .select()
-      .from(organizationInvites)
-      .where(
-        and(
-          eq(organizationInvites.id, inviteId),
-          eq(organizationInvites.organizationId, orgId)
-        )
-      )
-      .limit(1);
-
-    if (!invite) {
-      return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
+    // Only owner/admin can cancel invites
+    if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
+      return c.json(
+        {
+          code: 'FORBIDDEN',
+          message: 'Only owners and admins can cancel invites',
+        },
+        403,
+      );
     }
 
-    await db
-      .delete(organizationInvites)
-      .where(eq(organizationInvites.id, inviteId));
+    try {
+      const [invite] = await db
+        .select()
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.id, inviteId),
+            eq(organizationInvites.organizationId, orgId),
+          ),
+        )
+        .limit(1);
 
-    return c.json({ success: true });
-  } catch (error) {
-    console.error('Error canceling invite:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to cancel invite' }, 500);
-  }
-});
+      if (!invite) {
+        return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
+      }
+
+      await db
+        .delete(organizationInvites)
+        .where(eq(organizationInvites.id, inviteId));
+
+      return c.json({ success: true });
+    } catch (error) {
+      console.error('Error canceling invite:', error);
+      return c.json(
+        { code: 'INTERNAL_ERROR', message: 'Failed to cancel invite' },
+        500,
+      );
+    }
+  },
+);
 
 // POST /api/v1/identity/invites/:token/accept - Accept invite
 orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
@@ -517,17 +591,26 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
       .limit(1);
 
     if (!invite) {
-      return c.json({ code: 'NOT_FOUND', message: 'Invite not found or expired' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Invite not found or expired' },
+        404,
+      );
     }
 
     // Check if invite has expired
     if (new Date() > invite.expiresAt) {
-      return c.json({ code: 'BAD_REQUEST', message: 'Invite has expired' }, 400);
+      return c.json(
+        { code: 'BAD_REQUEST', message: 'Invite has expired' },
+        400,
+      );
     }
 
     // Check if already accepted
     if (invite.acceptedAt) {
-      return c.json({ code: 'BAD_REQUEST', message: 'Invite has already been accepted' }, 400);
+      return c.json(
+        { code: 'BAD_REQUEST', message: 'Invite has already been accepted' },
+        400,
+      );
     }
 
     // Check if user is already a member
@@ -537,13 +620,19 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
       .where(
         and(
           eq(organizationMembers.organizationId, invite.organizationId),
-          eq(organizationMembers.userId, tenant.userId)
-        )
+          eq(organizationMembers.userId, tenant.userId),
+        ),
       )
       .limit(1);
 
     if (existingMember) {
-      return c.json({ code: 'BAD_REQUEST', message: 'Already a member of this organization' }, 400);
+      return c.json(
+        {
+          code: 'BAD_REQUEST',
+          message: 'Already a member of this organization',
+        },
+        400,
+      );
     }
 
     // Add user as member
@@ -563,55 +652,70 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
     return c.json({ success: true, organizationId: invite.organizationId });
   } catch (error) {
     console.error('Error accepting invite:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to accept invite' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to accept invite' },
+      500,
+    );
   }
 });
 
 // POST /api/v1/identity/organizations/:id/invites/:inviteId/resend - Resend invite
-orgRoutes.post('/api/v1/identity/organizations/:id/invites/:inviteId/resend', async (c) => {
-  const tenant = c.get('tenant');
-  const db = c.get('db');
-  const orgId = c.req.param('id');
-  const inviteId = c.req.param('inviteId');
+orgRoutes.post(
+  '/api/v1/identity/organizations/:id/invites/:inviteId/resend',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const orgId = c.req.param('id');
+    const inviteId = c.req.param('inviteId');
 
-  // Only owner/admin can resend invites
-  if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only owners and admins can resend invites' }, 403);
-  }
-
-  try {
-    const [invite] = await db
-      .select()
-      .from(organizationInvites)
-      .where(
-        and(
-          eq(organizationInvites.id, inviteId),
-          eq(organizationInvites.organizationId, orgId)
-        )
-      )
-      .limit(1);
-
-    if (!invite) {
-      return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
+    // Only owner/admin can resend invites
+    if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
+      return c.json(
+        {
+          code: 'FORBIDDEN',
+          message: 'Only owners and admins can resend invites',
+        },
+        403,
+      );
     }
 
-    // Extend expiry by 7 days from now
-    const newExpiresAt = new Date();
-    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+    try {
+      const [invite] = await db
+        .select()
+        .from(organizationInvites)
+        .where(
+          and(
+            eq(organizationInvites.id, inviteId),
+            eq(organizationInvites.organizationId, orgId),
+          ),
+        )
+        .limit(1);
 
-    const [updated] = await db
-      .update(organizationInvites)
-      .set({ expiresAt: newExpiresAt })
-      .where(eq(organizationInvites.id, inviteId))
-      .returning();
+      if (!invite) {
+        return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
+      }
 
-    // TODO: Trigger email notification via queue event
+      // Extend expiry by 7 days from now
+      const newExpiresAt = new Date();
+      newExpiresAt.setDate(newExpiresAt.getDate() + 7);
 
-    return c.json(serializeInvite(updated));
-  } catch (error) {
-    console.error('Error resending invite:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to resend invite' }, 500);
-  }
-});
+      const [updated] = await db
+        .update(organizationInvites)
+        .set({ expiresAt: newExpiresAt })
+        .where(eq(organizationInvites.id, inviteId))
+        .returning();
+
+      // TODO: Trigger email notification via queue event
+
+      return c.json(serializeInvite(updated));
+    } catch (error) {
+      console.error('Error resending invite:', error);
+      return c.json(
+        { code: 'INTERNAL_ERROR', message: 'Failed to resend invite' },
+        500,
+      );
+    }
+  },
+);
 
 export default orgRoutes;

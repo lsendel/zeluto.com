@@ -1,4 +1,8 @@
-import type { DeliveryProvider, DeliveryResult, EmailPayload } from '@mauntic/domain-kernel';
+import type {
+  DeliveryProvider,
+  DeliveryResult,
+  EmailPayload,
+} from '@mauntic/domain-kernel';
 
 export interface SesProviderConfig {
   region: string;
@@ -27,7 +31,9 @@ export class SesProvider implements DeliveryProvider<'email'> {
           Subject: { Data: payload.subject, Charset: 'UTF-8' },
           Body: {
             Html: { Data: payload.html, Charset: 'UTF-8' },
-            ...(payload.text ? { Text: { Data: payload.text, Charset: 'UTF-8' } } : {}),
+            ...(payload.text
+              ? { Text: { Data: payload.text, Charset: 'UTF-8' } }
+              : {}),
           },
         },
       },
@@ -50,10 +56,10 @@ export class SesProvider implements DeliveryProvider<'email'> {
 
     // SigV4 signing
     const credentialScope = `${dateStamp}/${region}/ses/aws4_request`;
-    const canonicalHeaders = Object.entries(headers)
+    const canonicalHeaders = `${Object.entries(headers)
       .sort(([a], [b]) => a.toLowerCase().localeCompare(b.toLowerCase()))
       .map(([k, v]) => `${k.toLowerCase()}:${v.trim()}`)
-      .join('\n') + '\n';
+      .join('\n')}\n`;
     const signedHeaders = Object.keys(headers)
       .map((k) => k.toLowerCase())
       .sort()
@@ -77,7 +83,12 @@ export class SesProvider implements DeliveryProvider<'email'> {
       await sha256Hex(canonicalRequest),
     ].join('\n');
 
-    const signingKey = await getSignatureKey(secretAccessKey, dateStamp, region, 'ses');
+    const signingKey = await getSignatureKey(
+      secretAccessKey,
+      dateStamp,
+      region,
+      'ses',
+    );
     const signature = await hmacHex(signingKey, stringToSign);
 
     const authorizationHeader =
@@ -127,9 +138,13 @@ async function sha256Hex(message: string): Promise<string> {
   return arrayBufferToHex(hash);
 }
 
-async function hmac(key: ArrayBuffer | Uint8Array, message: string): Promise<ArrayBuffer> {
+async function hmac(
+  key: ArrayBuffer | Uint8Array,
+  message: string,
+): Promise<ArrayBuffer> {
   const encoder = new TextEncoder();
-  const keyBuffer = key instanceof Uint8Array ? key.buffer as ArrayBuffer : key;
+  const keyBuffer =
+    key instanceof Uint8Array ? (key.buffer as ArrayBuffer) : key;
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
     keyBuffer,
@@ -140,7 +155,10 @@ async function hmac(key: ArrayBuffer | Uint8Array, message: string): Promise<Arr
   return crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(message));
 }
 
-async function hmacHex(key: ArrayBuffer | Uint8Array, message: string): Promise<string> {
+async function hmacHex(
+  key: ArrayBuffer | Uint8Array,
+  message: string,
+): Promise<string> {
   const result = await hmac(key, message);
   return arrayBufferToHex(result);
 }
@@ -152,7 +170,7 @@ async function getSignatureKey(
   service: string,
 ): Promise<ArrayBuffer> {
   const encoder = new TextEncoder();
-  const kDate = await hmac(encoder.encode('AWS4' + secretKey), dateStamp);
+  const kDate = await hmac(encoder.encode(`AWS4${secretKey}`), dateStamp);
   const kRegion = await hmac(kDate, region);
   const kService = await hmac(kRegion, service);
   return hmac(kService, 'aws4_request');

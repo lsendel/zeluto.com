@@ -1,10 +1,13 @@
-import { Hono } from 'hono';
 import type { TenantContext } from '@mauntic/domain-kernel';
-import type { DrizzleDb } from '../infrastructure/database.js';
-import { listUsers } from '../application/queries/list-users.js';
-import { getUser } from '../application/queries/get-user.js';
-import { updateUser, updateUserRole } from '../application/commands/update-user.js';
+import { Hono } from 'hono';
 import { blockUser, unblockUser } from '../application/commands/block-user.js';
+import {
+  updateUser,
+  updateUserRole,
+} from '../application/commands/update-user.js';
+import { getUser } from '../application/queries/get-user.js';
+import { listUsers } from '../application/queries/list-users.js';
+import type { DrizzleDb } from '../infrastructure/database.js';
 import { serializeUser } from '../utils/serialize-user.js';
 
 type Env = {
@@ -40,7 +43,10 @@ userRoutes.get('/api/v1/identity/users', async (c) => {
     });
   } catch (error) {
     console.error('Error listing users:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list users' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list users' },
+      500,
+    );
   }
 });
 
@@ -60,7 +66,10 @@ userRoutes.get('/api/v1/identity/users/:id', async (c) => {
     return c.json(serializeUser(user));
   } catch (error) {
     console.error('Error getting user:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get user' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get user' },
+      500,
+    );
   }
 });
 
@@ -71,8 +80,15 @@ userRoutes.patch('/api/v1/identity/users/:id/profile', async (c) => {
   const userId = c.req.param('id');
 
   // Only the user themselves or an admin/owner can update profiles
-  if (tenant.userId !== userId && tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Insufficient permissions' }, 403);
+  if (
+    tenant.userId !== userId &&
+    tenant.userRole !== 'owner' &&
+    tenant.userRole !== 'admin'
+  ) {
+    return c.json(
+      { code: 'FORBIDDEN', message: 'Insufficient permissions' },
+      403,
+    );
   }
 
   try {
@@ -89,7 +105,10 @@ userRoutes.patch('/api/v1/identity/users/:id/profile', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
     }
     console.error('Error updating user:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update user' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update user' },
+      500,
+    );
   }
 });
 
@@ -101,7 +120,13 @@ userRoutes.patch('/api/v1/identity/users/:id/role', async (c) => {
 
   // Only owner/admin can change user roles
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only owners and admins can change user roles' }, 403);
+    return c.json(
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners and admins can change user roles',
+      },
+      403,
+    );
   }
 
   try {
@@ -117,7 +142,10 @@ userRoutes.patch('/api/v1/identity/users/:id/role', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
     }
     console.error('Error updating user role:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to update user role' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to update user role' },
+      500,
+    );
   }
 });
 
@@ -129,7 +157,10 @@ userRoutes.post('/api/v1/identity/users/:id/block', async (c) => {
 
   // Only owner/admin can block users
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only owners and admins can block users' }, 403);
+    return c.json(
+      { code: 'FORBIDDEN', message: 'Only owners and admins can block users' },
+      403,
+    );
   }
 
   try {
@@ -140,12 +171,18 @@ userRoutes.post('/api/v1/identity/users/:id/block', async (c) => {
       if (error.name === 'CannotBlockOwnerError') {
         return c.json({ code: 'FORBIDDEN', message: error.message }, 403);
       }
-      if (error.name === 'UserNotFoundError' || error.name === 'UserNotInOrgError') {
+      if (
+        error.name === 'UserNotFoundError' ||
+        error.name === 'UserNotInOrgError'
+      ) {
         return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
       }
     }
     console.error('Error blocking user:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to block user' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to block user' },
+      500,
+    );
   }
 });
 
@@ -157,7 +194,13 @@ userRoutes.post('/api/v1/identity/users/:id/unblock', async (c) => {
 
   // Only owner/admin can unblock users
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
-    return c.json({ code: 'FORBIDDEN', message: 'Only owners and admins can unblock users' }, 403);
+    return c.json(
+      {
+        code: 'FORBIDDEN',
+        message: 'Only owners and admins can unblock users',
+      },
+      403,
+    );
   }
 
   try {
@@ -168,7 +211,10 @@ userRoutes.post('/api/v1/identity/users/:id/unblock', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: error.message }, 404);
     }
     console.error('Error unblocking user:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to unblock user' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to unblock user' },
+      500,
+    );
   }
 });
 

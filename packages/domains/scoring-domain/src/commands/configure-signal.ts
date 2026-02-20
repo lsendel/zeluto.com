@@ -9,8 +9,12 @@ export const ConfigureSignalCommandSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-export type ConfigureSignalCommand = z.infer<typeof ConfigureSignalCommandSchema>;
+export type ConfigureSignalCommand = z.infer<
+  typeof ConfigureSignalCommandSchema
+>;
 
-export function configureSignalCommand(input: ConfigureSignalCommand): ConfigureSignalCommand {
+export function configureSignalCommand(
+  input: ConfigureSignalCommand,
+): ConfigureSignalCommand {
   return ConfigureSignalCommandSchema.parse(input);
 }

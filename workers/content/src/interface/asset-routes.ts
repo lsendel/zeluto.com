@@ -1,10 +1,10 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
-  findAssetById,
-  findAllAssets,
   createAsset,
   deleteAsset,
+  findAllAssets,
+  findAssetById,
   listAssetFolders,
 } from '../infrastructure/repositories/asset-repository.js';
 
@@ -22,7 +22,10 @@ assetRoutes.post('/api/v1/content/assets', async (c) => {
     const folder = formData.get('folder') as string | null;
 
     if (!file) {
-      return c.json({ code: 'VALIDATION_ERROR', message: 'file is required' }, 400);
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'file is required' },
+        400,
+      );
     }
 
     const fileName = file.name;
@@ -59,7 +62,10 @@ assetRoutes.post('/api/v1/content/assets', async (c) => {
     return c.json(asset, 201);
   } catch (error) {
     console.error('Upload asset error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to upload asset' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to upload asset' },
+      500,
+    );
   }
 });
 
@@ -88,7 +94,10 @@ assetRoutes.get('/api/v1/content/assets', async (c) => {
     });
   } catch (error) {
     console.error('List assets error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list assets' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list assets' },
+      500,
+    );
   }
 });
 
@@ -102,7 +111,10 @@ assetRoutes.get('/api/v1/content/assets/folders', async (c) => {
     return c.json(folders);
   } catch (error) {
     console.error('List asset folders error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to list folders' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to list folders' },
+      500,
+    );
   }
 });
 
@@ -120,7 +132,10 @@ assetRoutes.get('/api/v1/content/assets/:id', async (c) => {
     return c.json(asset);
   } catch (error) {
     console.error('Get asset error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get asset' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get asset' },
+      500,
+    );
   }
 });
 
@@ -147,7 +162,10 @@ assetRoutes.delete('/api/v1/content/assets/:id', async (c) => {
     return c.json({ success: true });
   } catch (error) {
     console.error('Delete asset error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to delete asset' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to delete asset' },
+      500,
+    );
   }
 });
 
@@ -168,7 +186,10 @@ assetRoutes.get('/api/v1/content/assets/:id/download', async (c) => {
     const object = await r2.get(asset.fileKey);
 
     if (!object) {
-      return c.json({ code: 'NOT_FOUND', message: 'Asset file not found in storage' }, 404);
+      return c.json(
+        { code: 'NOT_FOUND', message: 'Asset file not found in storage' },
+        404,
+      );
     }
 
     return new Response(object.body, {
@@ -181,6 +202,9 @@ assetRoutes.get('/api/v1/content/assets/:id/download', async (c) => {
     });
   } catch (error) {
     console.error('Download asset error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to download asset' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to download asset' },
+      500,
+    );
   }
 });

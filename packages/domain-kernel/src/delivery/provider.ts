@@ -8,7 +8,11 @@ export interface EmailPayload {
   text?: string;
   replyTo?: string;
   headers?: Record<string, string>;
-  attachments?: Array<{ filename: string; content: string; contentType: string }>;
+  attachments?: Array<{
+    filename: string;
+    content: string;
+    contentType: string;
+  }>;
 }
 
 export interface SmsPayload {
@@ -32,12 +36,15 @@ export interface WebhookPayload {
   body?: unknown;
 }
 
-export type ChannelPayload<T extends Channel> =
-  T extends 'email' ? EmailPayload :
-  T extends 'sms' ? SmsPayload :
-  T extends 'push' ? PushPayload :
-  T extends 'webhook' ? WebhookPayload :
-  never;
+export type ChannelPayload<T extends Channel> = T extends 'email'
+  ? EmailPayload
+  : T extends 'sms'
+    ? SmsPayload
+    : T extends 'push'
+      ? PushPayload
+      : T extends 'webhook'
+        ? WebhookPayload
+        : never;
 
 export interface DeliveryResult {
   success: boolean;
@@ -45,7 +52,14 @@ export interface DeliveryResult {
   error?: string;
 }
 
-export type DeliveryStatus = 'queued' | 'sent' | 'delivered' | 'bounced' | 'failed' | 'opened' | 'clicked';
+export type DeliveryStatus =
+  | 'queued'
+  | 'sent'
+  | 'delivered'
+  | 'bounced'
+  | 'failed'
+  | 'opened'
+  | 'clicked';
 
 export interface TrackingEvent {
   type: 'open' | 'click' | 'bounce' | 'complaint' | 'unsubscribe';

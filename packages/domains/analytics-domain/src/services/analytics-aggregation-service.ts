@@ -27,13 +27,17 @@ export interface AnalyticsAggregationRepository {
 export class AnalyticsService {
   constructor(private readonly repo: AnalyticsAggregationRepository) {}
 
-  async runHourlyAggregation(): Promise<Result<HourlyAggregationResult, string>> {
+  async runHourlyAggregation(): Promise<
+    Result<HourlyAggregationResult, string>
+  > {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const result = await this.repo.aggregateHourlyEvents(oneHourAgo);
       return Result.ok<HourlyAggregationResult>(result);
     } catch (error: any) {
-      return Result.fail<HourlyAggregationResult, string>(error.message ?? 'aggregation_failed');
+      return Result.fail<HourlyAggregationResult, string>(
+        error.message ?? 'aggregation_failed',
+      );
     }
   }
 
@@ -44,7 +48,9 @@ export class AnalyticsService {
       const result = await this.repo.generateDailyCampaignStats(yesterday);
       return Result.ok<DailyReportResult>(result);
     } catch (error: any) {
-      return Result.fail<DailyReportResult, string>(error.message ?? 'daily_reports_failed');
+      return Result.fail<DailyReportResult, string>(
+        error.message ?? 'daily_reports_failed',
+      );
     }
   }
 
@@ -55,7 +61,9 @@ export class AnalyticsService {
       const result = await this.repo.generateMonthlyUsage(lastMonth);
       return Result.ok<number>(result);
     } catch (error: any) {
-      return Result.fail<number, string>(error.message ?? 'monthly_usage_failed');
+      return Result.fail<number, string>(
+        error.message ?? 'monthly_usage_failed',
+      );
     }
   }
 
@@ -65,7 +73,9 @@ export class AnalyticsService {
       const result = await this.repo.generateScoreDistribution(today);
       return Result.ok<number>(result);
     } catch (error: any) {
-      return Result.fail<number, string>(error.message ?? 'score_distribution_failed');
+      return Result.fail<number, string>(
+        error.message ?? 'score_distribution_failed',
+      );
     }
   }
 
@@ -77,7 +87,9 @@ export class AnalyticsService {
       const result = await this.repo.generateEnrichmentMetrics(dateStr);
       return Result.ok<number>(result);
     } catch (error: any) {
-      return Result.fail<number, string>(error.message ?? 'enrichment_metrics_failed');
+      return Result.fail<number, string>(
+        error.message ?? 'enrichment_metrics_failed',
+      );
     }
   }
 
@@ -86,7 +98,9 @@ export class AnalyticsService {
       const result = await this.repo.resetDailyWarmup();
       return Result.ok<number>(result);
     } catch (error: any) {
-      return Result.fail<number, string>(error.message ?? 'warmup_reset_failed');
+      return Result.fail<number, string>(
+        error.message ?? 'warmup_reset_failed',
+      );
     }
   }
 }

@@ -1,5 +1,5 @@
+import { type AlertPriority, SignalAlert } from '../entities/signal-alert.js';
 import type { SignalAlertRepository } from '../repositories/signal-alert-repository.js';
-import { SignalAlert, type AlertPriority } from '../entities/signal-alert.js';
 
 // Priority mapping: signal type → alert priority
 const SIGNAL_PRIORITY_MAP: Record<string, AlertPriority> = {
@@ -33,7 +33,11 @@ export class SignalRouter {
     return SIGNAL_PRIORITY_MAP[signalType] ?? 'low';
   }
 
-  async routeSignal(orgId: string, contactId: string, signalType: string): Promise<SignalAlert | null> {
+  async routeSignal(
+    orgId: string,
+    contactId: string,
+    signalType: string,
+  ): Promise<SignalAlert | null> {
     const priority = this.getPriority(signalType);
 
     // Only create alerts for critical and high priority signals
@@ -42,7 +46,7 @@ export class SignalRouter {
     // Check if there's already an open alert for this contact and signal type
     const existingAlerts = await this.alertRepo.findByContact(orgId, contactId);
     const hasOpenAlert = existingAlerts.some(
-      a => a.signalType === signalType && a.status === 'open',
+      (a) => a.signalType === signalType && a.status === 'open',
     );
     if (hasOpenAlert) return null;
 

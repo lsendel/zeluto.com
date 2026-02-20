@@ -23,7 +23,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "build:css": "mkdir -p dist && tailwindcss -i src/styles/tailwind.css -o dist/ui-kit.css --minify"
+    "build:css": "mkdir -p dist && tailwindcss -i src/styles/tailwind.css -o dist/ui-kit.css --minify",
+    "lint": "biome check ./src"
   },
   "dependencies": {
     "hono": "catalog:"

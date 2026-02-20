@@ -13,7 +13,7 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
   const isEdit = !!template;
   const title = isEdit ? 'Edit Template' : 'New Template';
   const submitUrl = isEdit
-    ? `/api/v1/content/templates/${template!.id}`
+    ? `/api/v1/content/templates/${template?.id}`
     : '/api/v1/content/templates';
 
   return (
@@ -45,7 +45,10 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
         <div class="space-y-6">
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="name" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="name"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Name
               </label>
               <input
@@ -64,7 +67,10 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
             </div>
             {!isEdit && (
               <div>
-                <label for="type" class="mb-1 block text-sm font-medium text-gray-700">
+                <label
+                  for="type"
+                  class="mb-1 block text-sm font-medium text-gray-700"
+                >
                   Type
                 </label>
                 <select
@@ -84,7 +90,10 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label for="subject" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="subject"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Subject
               </label>
               <input
@@ -97,7 +106,10 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
               />
             </div>
             <div>
-              <label for="category" class="mb-1 block text-sm font-medium text-gray-700">
+              <label
+                for="category"
+                class="mb-1 block text-sm font-medium text-gray-700"
+              >
                 Category
               </label>
               <input
@@ -112,7 +124,10 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
           </div>
 
           <div>
-            <label for="bodyHtml" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="bodyHtml"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               HTML Content
             </label>
             <textarea
@@ -127,7 +142,10 @@ export const TemplateFormView: FC<TemplateFormProps> = ({
           </div>
 
           <div>
-            <label for="bodyText" class="mb-1 block text-sm font-medium text-gray-700">
+            <label
+              for="bodyText"
+              class="mb-1 block text-sm font-medium text-gray-700"
+            >
               Plain Text Content
             </label>
             <textarea

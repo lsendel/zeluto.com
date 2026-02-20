@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRoleSchema, type UserRole } from './user.js';
+import { type UserRole, UserRoleSchema } from './user.js';
 
 export const OrganizationMemberPropsSchema = z.object({
   id: z.string().uuid(),
@@ -11,7 +11,9 @@ export const OrganizationMemberPropsSchema = z.object({
   updatedAt: z.coerce.date(),
 });
 
-export type OrganizationMemberProps = z.infer<typeof OrganizationMemberPropsSchema>;
+export type OrganizationMemberProps = z.infer<
+  typeof OrganizationMemberPropsSchema
+>;
 
 export class OrganizationMember {
   private constructor(private props: OrganizationMemberProps) {}

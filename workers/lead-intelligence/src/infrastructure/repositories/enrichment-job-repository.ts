@@ -1,5 +1,5 @@
-import { eq, and, desc } from 'drizzle-orm';
 import { enrichmentJobs } from '@mauntic/lead-intelligence-domain/drizzle';
+import { and, desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type EnrichmentJobRow = typeof enrichmentJobs.$inferSelect;
@@ -37,10 +37,7 @@ export async function findJobsByContact(
       .orderBy(desc(enrichmentJobs.created_at))
       .limit(opts.limit)
       .offset(offset),
-    db
-      .select({ count: enrichmentJobs.id })
-      .from(enrichmentJobs)
-      .where(where),
+    db.select({ count: enrichmentJobs.id }).from(enrichmentJobs).where(where),
   ]);
 
   return { data, total: countResult.length };
@@ -54,10 +51,12 @@ export async function findPendingJobs(
   return db
     .select()
     .from(enrichmentJobs)
-    .where(and(
-      eq(enrichmentJobs.organization_id, orgId),
-      eq(enrichmentJobs.status, 'pending'),
-    ))
+    .where(
+      and(
+        eq(enrichmentJobs.organization_id, orgId),
+        eq(enrichmentJobs.status, 'pending'),
+      ),
+    )
     .limit(limit);
 }
 
@@ -65,17 +64,16 @@ export async function createJob(
   db: NeonHttpDatabase,
   data: EnrichmentJobInsert,
 ): Promise<EnrichmentJobRow> {
-  const [row] = await db
-    .insert(enrichmentJobs)
-    .values(data)
-    .returning();
+  const [row] = await db.insert(enrichmentJobs).values(data).returning();
   return row;
 }
 
 export async function updateJob(
   db: NeonHttpDatabase,
   id: string,
-  data: Partial<Omit<EnrichmentJobInsert, 'id' | 'organization_id' | 'created_at'>>,
+  data: Partial<
+    Omit<EnrichmentJobInsert, 'id' | 'organization_id' | 'created_at'>
+  >,
 ): Promise<EnrichmentJobRow | null> {
   const [row] = await db
     .update(enrichmentJobs)

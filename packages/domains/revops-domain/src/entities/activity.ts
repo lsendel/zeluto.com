@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
 export const ActivityTypeSchema = z.enum([
-  'call', 'email', 'meeting', 'demo', 'task', 'note', 'linkedin', 'sms',
+  'call',
+  'email',
+  'meeting',
+  'demo',
+  'task',
+  'note',
+  'linkedin',
+  'sms',
 ]);
 export type ActivityType = z.infer<typeof ActivityTypeSchema>;
 
@@ -49,16 +56,36 @@ export class Activity {
     return new Activity(ActivityPropsSchema.parse(props));
   }
 
-  get id() { return this.props.id; }
-  get organizationId() { return this.props.organizationId; }
-  get type() { return this.props.type; }
-  get contactId() { return this.props.contactId; }
-  get dealId() { return this.props.dealId; }
-  get outcome() { return this.props.outcome; }
-  get durationMinutes() { return this.props.durationMinutes; }
-  get notes() { return this.props.notes; }
-  get scheduledAt() { return this.props.scheduledAt; }
-  get completedAt() { return this.props.completedAt; }
+  get id() {
+    return this.props.id;
+  }
+  get organizationId() {
+    return this.props.organizationId;
+  }
+  get type() {
+    return this.props.type;
+  }
+  get contactId() {
+    return this.props.contactId;
+  }
+  get dealId() {
+    return this.props.dealId;
+  }
+  get outcome() {
+    return this.props.outcome;
+  }
+  get durationMinutes() {
+    return this.props.durationMinutes;
+  }
+  get notes() {
+    return this.props.notes;
+  }
+  get scheduledAt() {
+    return this.props.scheduledAt;
+  }
+  get completedAt() {
+    return this.props.completedAt;
+  }
 
   complete(outcome?: string): void {
     this.props.completedAt = new Date();

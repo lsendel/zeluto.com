@@ -6,7 +6,13 @@
  * listed in `fields`.
  */
 export async function parsePayload(
-  c: { req: { header: (name: string) => string | undefined; json: () => Promise<unknown>; parseBody: () => Promise<Record<string, unknown>> } },
+  c: {
+    req: {
+      header: (name: string) => string | undefined;
+      json: () => Promise<unknown>;
+      parseBody: () => Promise<Record<string, unknown>>;
+    };
+  },
   fields: string[],
 ): Promise<Record<string, string>> {
   const contentType = c.req.header('Content-Type') ?? '';
@@ -31,7 +37,9 @@ export async function parsePayload(
 /**
  * Read the raw JSON body (clones the request so it can be read again).
  */
-export async function parseJsonBody<T = Record<string, unknown>>(c: any): Promise<T | null> {
+export async function parseJsonBody<T = Record<string, unknown>>(
+  c: any,
+): Promise<T | null> {
   const clone = c.req.raw.clone();
   return (await clone.json().catch(() => null)) as T | null;
 }

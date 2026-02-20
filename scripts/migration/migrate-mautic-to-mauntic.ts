@@ -17,18 +17,11 @@
 
 import { neon } from '@neondatabase/serverless';
 import {
-  CONTACT_FIELD_MAP,
-  CONTACT_CUSTOM_FIELD_KEYS,
-  COMPANY_FIELD_MAP,
   COMPANY_CUSTOM_FIELD_KEYS,
-  EMAIL_TEMPLATE_FIELD_MAP,
-  FORM_FIELD_MAP,
-  LANDING_PAGE_FIELD_MAP,
-  CAMPAIGN_FIELD_MAP,
-  CATEGORY_FIELD_MAP,
-  mapMauticStatus,
+  CONTACT_CUSTOM_FIELD_KEYS,
   extractDomain,
   mapCompanySize,
+  mapMauticStatus,
 } from './field-mapping.js';
 
 // ---------------------------------------------------------------------------
@@ -95,7 +88,9 @@ async function createMysqlConnection(_url: string) {
       _sql: string,
       _params?: unknown[],
     ): Promise<[T, unknown]> {
-      console.warn('  [MOCK] MySQL query - install mysql2 to enable real migration');
+      console.warn(
+        '  [MOCK] MySQL query - install mysql2 to enable real migration',
+      );
       return [[] as unknown as T, null];
     },
     async end(): Promise<void> {
@@ -186,7 +181,7 @@ async function migrateUsers(
 
   const userIdMap: IdMap = {};
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of rows) {
@@ -195,7 +190,9 @@ async function migrateUsers(
       const oldId = row.id as number;
       userIdMap[oldId] = newId;
 
-      const name = [row.first_name, row.last_name].filter(Boolean).join(' ') || 'Unknown User';
+      const name =
+        [row.first_name, row.last_name].filter(Boolean).join(' ') ||
+        'Unknown User';
       const email = row.email as string;
       const role = (row.role_id as number) === 1 ? 'admin' : 'member';
 
@@ -203,7 +200,7 @@ async function migrateUsers(
         // Insert into identity.users
         await sql`
           INSERT INTO identity.users (id, email, name, role, is_blocked, email_verified, created_at, updated_at)
-          VALUES (${newId}, ${email}, ${name}, ${role}, false, true, ${row.date_added as string ?? new Date().toISOString()}, NOW())
+          VALUES (${newId}, ${email}, ${name}, ${role}, false, true, ${(row.date_added as string) ?? new Date().toISOString()}, NOW())
           ON CONFLICT (email) DO NOTHING
         `;
 
@@ -252,7 +249,7 @@ async function migrateContacts(
 
   const contactIdMap: IdMap = {};
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
   let offset = 0;
   let totalSource = 0;
@@ -331,9 +328,12 @@ async function migrateContacts(
     durationMs: Date.now() - start,
   };
 
-  log(`  Contacts: ${migrated} migrated, ${skipped} skipped, ${errors} errors`, {
-    duration: formatDuration(stats.durationMs),
-  });
+  log(
+    `  Contacts: ${migrated} migrated, ${skipped} skipped, ${errors} errors`,
+    {
+      duration: formatDuration(stats.durationMs),
+    },
+  );
 
   return { stats, contactIdMap };
 }
@@ -355,7 +355,7 @@ async function migrateCompanies(
 
   const companyIdMap: IdMap = {};
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of rows) {
@@ -372,7 +372,9 @@ async function migrateCompanies(
       }
 
       const domain = extractDomain(row.companywebsite as string | null);
-      const size = mapCompanySize(row.company_number_of_employees as string | null);
+      const size = mapCompanySize(
+        row.company_number_of_employees as string | null,
+      );
 
       if (!DRY_RUN) {
         await sql`
@@ -409,9 +411,12 @@ async function migrateCompanies(
     durationMs: Date.now() - start,
   };
 
-  log(`  Companies: ${migrated} migrated, ${skipped} skipped, ${errors} errors`, {
-    duration: formatDuration(stats.durationMs),
-  });
+  log(
+    `  Companies: ${migrated} migrated, ${skipped} skipped, ${errors} errors`,
+    {
+      duration: formatDuration(stats.durationMs),
+    },
+  );
 
   return { stats, companyIdMap };
 }
@@ -434,7 +439,7 @@ async function migrateEmailTemplates(
 
   const templateIdMap: IdMap = {};
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of rows) {
@@ -482,9 +487,12 @@ async function migrateEmailTemplates(
     durationMs: Date.now() - start,
   };
 
-  log(`  Email templates: ${migrated} migrated, ${skipped} skipped, ${errors} errors`, {
-    duration: formatDuration(stats.durationMs),
-  });
+  log(
+    `  Email templates: ${migrated} migrated, ${skipped} skipped, ${errors} errors`,
+    {
+      duration: formatDuration(stats.durationMs),
+    },
+  );
 
   return { stats, templateIdMap };
 }
@@ -506,7 +514,7 @@ async function migrateForms(
 
   const formIdMap: IdMap = {};
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of formRows) {
@@ -595,7 +603,7 @@ async function migrateLandingPages(
   );
 
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of rows) {
@@ -638,9 +646,12 @@ async function migrateLandingPages(
     durationMs: Date.now() - start,
   };
 
-  log(`  Landing pages: ${migrated} migrated, ${skipped} skipped, ${errors} errors`, {
-    duration: formatDuration(stats.durationMs),
-  });
+  log(
+    `  Landing pages: ${migrated} migrated, ${skipped} skipped, ${errors} errors`,
+    {
+      duration: formatDuration(stats.durationMs),
+    },
+  );
 
   return { stats };
 }
@@ -663,7 +674,7 @@ async function migrateCampaigns(
 
   const campaignIdMap: IdMap = {};
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of rows) {
@@ -710,9 +721,12 @@ async function migrateCampaigns(
     durationMs: Date.now() - start,
   };
 
-  log(`  Campaigns: ${migrated} migrated, ${skipped} skipped, ${errors} errors`, {
-    duration: formatDuration(stats.durationMs),
-  });
+  log(
+    `  Campaigns: ${migrated} migrated, ${skipped} skipped, ${errors} errors`,
+    {
+      duration: formatDuration(stats.durationMs),
+    },
+  );
 
   return { stats, campaignIdMap };
 }
@@ -733,7 +747,7 @@ async function migrateCategories(
   );
 
   let migrated = 0;
-  let skipped = 0;
+  const skipped = 0;
   let errors = 0;
 
   for (const row of rows) {
@@ -769,9 +783,12 @@ async function migrateCategories(
     durationMs: Date.now() - start,
   };
 
-  log(`  Categories->Tags: ${migrated} migrated, ${skipped} skipped, ${errors} errors`, {
-    duration: formatDuration(stats.durationMs),
-  });
+  log(
+    `  Categories->Tags: ${migrated} migrated, ${skipped} skipped, ${errors} errors`,
+    {
+      duration: formatDuration(stats.durationMs),
+    },
+  );
 
   return { stats };
 }
@@ -781,7 +798,7 @@ async function migrateCategories(
 // ---------------------------------------------------------------------------
 
 async function validateRowCounts(
-  mysqlConn: Awaited<ReturnType<typeof createMysqlConnection>>,
+  _mysqlConn: Awaited<ReturnType<typeof createMysqlConnection>>,
   allStats: MigrationStats[],
 ): Promise<void> {
   log('Step 11: Validating row counts...');
@@ -811,7 +828,9 @@ async function validateRowCounts(
     const valid = targetCount === stepStats.migratedCount;
     const emoji = valid ? 'OK' : 'MISMATCH';
 
-    log(`  [${emoji}] ${table.step}: source=${stepStats.sourceCount} migrated=${stepStats.migratedCount} target=${targetCount} errors=${stepStats.errorCount}`);
+    log(
+      `  [${emoji}] ${table.step}: source=${stepStats.sourceCount} migrated=${stepStats.migratedCount} target=${targetCount} errors=${stepStats.errorCount}`,
+    );
 
     if (!valid) allValid = false;
   }
@@ -844,15 +863,24 @@ async function main(): Promise<void> {
     const organizationId = await createDefaultOrganization();
 
     // Step 3: Migrate users
-    const { stats: userStats, userIdMap } = await migrateUsers(mysqlConn, organizationId);
+    const { stats: userStats, userIdMap } = await migrateUsers(
+      mysqlConn,
+      organizationId,
+    );
     allStats.push(userStats);
 
     // Step 4: Migrate contacts
-    const { stats: contactStats, contactIdMap } = await migrateContacts(mysqlConn, organizationId);
+    const { stats: contactStats, contactIdMap } = await migrateContacts(
+      mysqlConn,
+      organizationId,
+    );
     allStats.push(contactStats);
 
     // Step 5: Migrate companies
-    const { stats: companyStats, companyIdMap } = await migrateCompanies(mysqlConn, organizationId);
+    const { stats: companyStats, companyIdMap } = await migrateCompanies(
+      mysqlConn,
+      organizationId,
+    );
     allStats.push(companyStats);
 
     // Step 6: Migrate email templates
@@ -864,11 +892,17 @@ async function main(): Promise<void> {
     allStats.push(templateStats);
 
     // Step 7: Migrate forms
-    const { stats: formStats, formIdMap } = await migrateForms(mysqlConn, organizationId);
+    const { stats: formStats, formIdMap } = await migrateForms(
+      mysqlConn,
+      organizationId,
+    );
     allStats.push(formStats);
 
     // Step 8: Migrate landing pages
-    const { stats: pageStats } = await migrateLandingPages(mysqlConn, organizationId);
+    const { stats: pageStats } = await migrateLandingPages(
+      mysqlConn,
+      organizationId,
+    );
     allStats.push(pageStats);
 
     // Step 9: Migrate campaigns
@@ -880,7 +914,10 @@ async function main(): Promise<void> {
     allStats.push(campaignStats);
 
     // Step 10: Migrate categories -> tags
-    const { stats: categoryStats } = await migrateCategories(mysqlConn, organizationId);
+    const { stats: categoryStats } = await migrateCategories(
+      mysqlConn,
+      organizationId,
+    );
     allStats.push(categoryStats);
 
     // Step 11: Validate

@@ -2,9 +2,8 @@ import { initContract } from '@ts-rest/core';
 import { z } from 'zod';
 import {
   ErrorSchema,
-  IdParamSchema,
-  PaginationQuerySchema,
   PaginatedResponseSchema,
+  PaginationQuerySchema,
 } from './common';
 
 const c = initContract();
@@ -411,7 +410,10 @@ export const identityContract = c.router({
       path: '/api/v1/invites/accept',
       body: AcceptInviteBodySchema,
       responses: {
-        200: z.object({ success: z.boolean(), organizationId: z.string().uuid() }),
+        200: z.object({
+          success: z.boolean(),
+          organizationId: z.string().uuid(),
+        }),
         400: ErrorSchema,
         401: ErrorSchema,
         404: ErrorSchema,

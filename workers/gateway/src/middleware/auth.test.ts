@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { extractSessionToken } from './auth.js';
 
 describe('extractSessionToken', () => {
   it('extracts token from cookie header', () => {
-    const headers = new Headers({ Cookie: 'better-auth.session_token=abc123; other=xyz' });
+    const headers = new Headers({
+      Cookie: 'better-auth.session_token=abc123; other=xyz',
+    });
     expect(extractSessionToken(headers)).toBe('abc123');
   });
 
@@ -18,7 +20,9 @@ describe('extractSessionToken', () => {
   });
 
   it('handles token with special characters', () => {
-    const headers = new Headers({ Cookie: 'better-auth.session_token=abc.def-123_456; foo=bar' });
+    const headers = new Headers({
+      Cookie: 'better-auth.session_token=abc.def-123_456; foo=bar',
+    });
     expect(extractSessionToken(headers)).toBe('abc.def-123_456');
   });
 });

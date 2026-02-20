@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import { logEvent, queryEvents, queryAggregates } from '../infrastructure/repositories/event-repository.js';
+import {
+  logEvent,
+  queryAggregates,
+  queryEvents,
+} from '../infrastructure/repositories/event-repository.js';
 
 export const eventRoutes = new Hono<Env>();
 
@@ -19,7 +23,10 @@ eventRoutes.post('/api/v1/analytics/events', async (c) => {
 
     if (!body.contactId || !body.eventType) {
       return c.json(
-        { code: 'VALIDATION_ERROR', message: 'contactId and eventType are required' },
+        {
+          code: 'VALIDATION_ERROR',
+          message: 'contactId and eventType are required',
+        },
         400,
       );
     }
@@ -34,7 +41,10 @@ eventRoutes.post('/api/v1/analytics/events', async (c) => {
     return c.json(event, 201);
   } catch (error) {
     console.error('Log event error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to log event' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to log event' },
+      500,
+    );
   }
 });
 
@@ -73,7 +83,10 @@ eventRoutes.get('/api/v1/analytics/events', async (c) => {
     });
   } catch (error) {
     console.error('Query events error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to query events' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to query events' },
+      500,
+    );
   }
 });
 
@@ -93,7 +106,10 @@ eventRoutes.get('/api/v1/analytics/events/aggregates', async (c) => {
     return c.json({ data: aggregates });
   } catch (error) {
     console.error('Query aggregates error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to query aggregates' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to query aggregates' },
+      500,
+    );
   }
 });
 
@@ -123,6 +139,9 @@ eventRoutes.get('/api/v1/analytics/contacts/:id/activity', async (c) => {
     });
   } catch (error) {
     console.error('Contact activity error:', error);
-    return c.json({ code: 'INTERNAL_ERROR', message: 'Failed to get contact activity' }, 500);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get contact activity' },
+      500,
+    );
   }
 });

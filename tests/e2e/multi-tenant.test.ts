@@ -1,30 +1,29 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
-  apiRequest,
-  createTestUser,
   createTestOrganization,
-  type TestUser,
+  createTestUser,
   type TestOrganization,
+  type TestUser,
 } from './setup';
 
 describe('Multi-Tenant Isolation', () => {
   let userA: TestUser;
-  let orgA: TestOrganization;
+  let _orgA: TestOrganization;
   let userB: TestUser;
-  let orgB: TestOrganization;
+  let _orgB: TestOrganization;
 
   beforeAll(async () => {
     // Create two separate tenants
     userA = await createTestUser({ name: 'Tenant A Admin' });
-    orgA = await createTestOrganization(userA.token, { name: 'Tenant A' });
+    _orgA = await createTestOrganization(userA.token, { name: 'Tenant A' });
 
     userB = await createTestUser({ name: 'Tenant B Admin' });
-    orgB = await createTestOrganization(userB.token, { name: 'Tenant B' });
+    _orgB = await createTestOrganization(userB.token, { name: 'Tenant B' });
   });
 
   describe('Contact isolation', () => {
-    let contactAId: number;
-    let contactBId: number;
+    let _contactAId: number;
+    let _contactBId: number;
 
     it('should create a contact in Org A', async () => {
       // TODO: Create contact in org A using userA's token
