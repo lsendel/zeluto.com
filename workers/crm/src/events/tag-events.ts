@@ -1,3 +1,7 @@
+import {
+  asContactId,
+  asOrganizationId,
+} from '@mauntic/domain-kernel';
 import type {
   ContactTaggedEvent,
   ContactUntaggedEvent,
@@ -14,7 +18,7 @@ function meta(organizationId: string): DomainEventMetadata {
     timestamp: new Date().toISOString(),
     correlationId: crypto.randomUUID(),
     tenantContext: {
-      organizationId: organizationId as unknown as number,
+      organizationId: asOrganizationId(organizationId),
     },
   };
 }
@@ -27,8 +31,8 @@ export function tagCreated(tag: {
   return {
     type: 'crm.TagCreated',
     data: {
-      organizationId: tag.organizationId as unknown as number,
-      tagId: tag.id as unknown as number,
+      organizationId: asOrganizationId(tag.organizationId),
+      tagId: tag.id,
       name: tag.name,
     },
     metadata: meta(tag.organizationId),
@@ -42,8 +46,8 @@ export function tagDeleted(input: {
   return {
     type: 'crm.TagDeleted',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      tagId: input.tagId as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      tagId: input.tagId,
     },
     metadata: meta(input.organizationId),
   };
@@ -57,9 +61,9 @@ export function contactTagged(input: {
   return {
     type: 'crm.ContactTagged',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      contactId: input.contactId as unknown as number,
-      tagId: input.tagId as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      contactId: asContactId(input.contactId),
+      tagId: input.tagId,
     },
     metadata: meta(input.organizationId),
   };
@@ -73,9 +77,9 @@ export function contactUntagged(input: {
   return {
     type: 'crm.ContactUntagged',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      contactId: input.contactId as unknown as number,
-      tagId: input.tagId as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      contactId: asContactId(input.contactId),
+      tagId: input.tagId,
     },
     metadata: meta(input.organizationId),
   };

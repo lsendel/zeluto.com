@@ -1,3 +1,8 @@
+import {
+  asContactId,
+  asOrganizationId,
+  asUserId,
+} from '@mauntic/domain-kernel';
 import type {
   ContactCreatedEvent,
   ContactDeletedEvent,
@@ -22,10 +27,7 @@ function meta(
     timestamp: new Date().toISOString(),
     correlationId: crypto.randomUUID(),
     tenantContext: {
-      // DomainEventMetadata currently declares organizationId as number.
-      // We pass the UUID and cast to satisfy the legacy type until the
-      // kernel type is updated to string.
-      organizationId: organizationId as unknown as number,
+      organizationId: asOrganizationId(organizationId),
     },
   };
 }
@@ -43,8 +45,8 @@ export function contactCreated(contact: {
   return {
     type: 'crm.ContactCreated',
     data: {
-      organizationId: contact.organizationId as unknown as number,
-      contactId: contact.id as unknown as number,
+      organizationId: asOrganizationId(contact.organizationId),
+      contactId: asContactId(contact.id),
       email: contact.email ?? undefined,
       phone: contact.phone ?? undefined,
     },
@@ -60,8 +62,8 @@ export function contactUpdated(contact: {
   return {
     type: 'crm.ContactUpdated',
     data: {
-      organizationId: contact.organizationId as unknown as number,
-      contactId: contact.id as unknown as number,
+      organizationId: asOrganizationId(contact.organizationId),
+      contactId: asContactId(contact.id),
       fields: contact.fields,
     },
     metadata: meta(contact.organizationId),
@@ -76,9 +78,9 @@ export function contactDeleted(input: {
   return {
     type: 'crm.ContactDeleted',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      contactId: input.contactId as unknown as number,
-      deletedBy: input.deletedBy as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      contactId: asContactId(input.contactId),
+      deletedBy: asUserId(input.deletedBy),
     },
     metadata: meta(input.organizationId),
   };
@@ -93,10 +95,10 @@ export function contactMerged(input: {
   return {
     type: 'crm.ContactMerged',
     data: {
-      organizationId: input.organizationId as unknown as number,
-      winnerId: input.winnerId as unknown as number,
-      loserId: input.loserId as unknown as number,
-      mergedBy: input.mergedBy as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
+      winnerId: input.winnerId,
+      loserId: input.loserId,
+      mergedBy: asUserId(input.mergedBy),
     },
     metadata: meta(input.organizationId),
   };
@@ -111,7 +113,7 @@ export function contactImported(input: {
   return {
     type: 'crm.ContactImported',
     data: {
-      organizationId: input.organizationId as unknown as number,
+      organizationId: asOrganizationId(input.organizationId),
       importId: input.importId,
       count: input.count,
       source: input.source,
