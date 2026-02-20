@@ -1,7 +1,6 @@
-import { organizations } from '@mauntic/identity-domain';
-import { eq } from 'drizzle-orm';
+import type { OrganizationId } from '@mauntic/domain-kernel';
+import type { OrganizationRepository } from '@mauntic/identity-domain';
 import { z } from 'zod';
-import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const UpdateOrgInput = z.object({
   organizationId: z.string().uuid(),
@@ -13,53 +12,30 @@ export const UpdateOrgInput = z.object({
 export type UpdateOrgInput = z.infer<typeof UpdateOrgInput>;
 
 export async function updateOrg(
-  db: DrizzleDb,
+  orgRepo: OrganizationRepository,
   input: UpdateOrgInput,
   _actorUserId: string,
   actorRole: string,
 ) {
   const parsed = UpdateOrgInput.parse(input);
 
-  // Only owner or admin can update organization
   if (actorRole !== 'owner' && actorRole !== 'admin') {
     throw new InsufficientPermissionsError(
       'Only owners and admins can update the organization',
     );
   }
 
-  // Check organization exists
-  const [existing] = await db
-    .select()
-    .from(organizations)
-    .where(eq(organizations.id, parsed.organizationId))
-    .limit(1);
-
-  if (!existing) {
+  const org = await orgRepo.findById(parsed.organizationId as OrganizationId);
+  if (!org) {
     throw new OrgNotFoundError(parsed.organizationId);
   }
 
-  // Build update values
-  const updateValues: Record<string, unknown> = {
-    updatedAt: new Date(),
-  };
-
-  if (parsed.name !== undefined) {
-    updateValues.name = parsed.name;
-  }
-  if (parsed.slug !== undefined) {
-    updateValues.slug = parsed.slug;
-  }
-  if (parsed.logo !== undefined) {
-    updateValues.logo = parsed.logo;
-  }
-
-  const [updated] = await db
-    .update(organizations)
-    .set(updateValues)
-    .where(eq(organizations.id, parsed.organizationId))
-    .returning();
-
-  return updated;
+  org.update({
+    name: parsed.name,
+    logo: parsed.logo,
+  });
+  await orgRepo.save(org);
+  return org;
 }
 
 export class OrgNotFoundError extends Error {

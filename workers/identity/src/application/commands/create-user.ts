@@ -1,7 +1,11 @@
-import { organizationMembers, users } from '@mauntic/identity-domain';
-import { eq } from 'drizzle-orm';
+import type { UserRole } from '@mauntic/identity-domain';
+import {
+  type MemberRepository,
+  OrganizationMember,
+  User,
+  type UserRepository,
+} from '@mauntic/identity-domain';
 import { z } from 'zod';
-import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const CreateUserInput = z.object({
   name: z.string().min(1),
@@ -14,56 +18,35 @@ export const CreateUserInput = z.object({
 
 export type CreateUserInput = z.infer<typeof CreateUserInput>;
 
-export interface CreateUserResult {
-  id: string;
-  name: string | null;
-  email: string;
-  emailVerified: boolean;
-  image: string | null;
-  role: string;
-  isBlocked: boolean | null;
-  lastSignedIn: Date | null;
-  loginMethod: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export async function createUser(
-  db: DrizzleDb,
+  userRepo: UserRepository,
+  memberRepo: MemberRepository,
   input: CreateUserInput,
-): Promise<CreateUserResult> {
+) {
   const parsed = CreateUserInput.parse(input);
 
   // Check for duplicate email
-  const [existing] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, parsed.email))
-    .limit(1);
-
+  const existing = await userRepo.findByEmail(parsed.email);
   if (existing) {
     throw new UserAlreadyExistsError(parsed.email);
   }
 
-  // Insert user
-  const [created] = await db
-    .insert(users)
-    .values({
-      name: parsed.name,
-      email: parsed.email,
-      role: parsed.role,
-    })
-    .returning();
+  const user = User.create({
+    email: parsed.email,
+    name: parsed.name,
+    role: parsed.role as UserRole,
+  });
+  await userRepo.save(user);
 
-  // Add user as member of the organization
-  await db.insert(organizationMembers).values({
+  const member = OrganizationMember.create({
     organizationId: parsed.organizationId,
-    userId: created.id,
-    role: parsed.memberRole,
+    userId: user.id,
+    role: parsed.memberRole as UserRole,
     invitedBy: parsed.invitedBy,
   });
+  await memberRepo.save(member);
 
-  return created;
+  return user;
 }
 
 export class UserAlreadyExistsError extends Error {

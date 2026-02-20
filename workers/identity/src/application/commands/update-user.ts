@@ -1,7 +1,6 @@
-import { users } from '@mauntic/identity-domain';
-import { eq } from 'drizzle-orm';
+import type { UserId } from '@mauntic/domain-kernel';
+import type { UserRepository, UserRole } from '@mauntic/identity-domain';
 import { z } from 'zod';
-import type { DrizzleDb } from '../../infrastructure/database.js';
 
 export const UpdateUserInput = z.object({
   userId: z.string().uuid(),
@@ -11,39 +10,22 @@ export const UpdateUserInput = z.object({
 
 export type UpdateUserInput = z.infer<typeof UpdateUserInput>;
 
-export async function updateUser(db: DrizzleDb, input: UpdateUserInput) {
+export async function updateUser(
+  userRepo: UserRepository,
+  input: UpdateUserInput,
+) {
   const parsed = UpdateUserInput.parse(input);
 
-  // Check user exists
-  const [existing] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, parsed.userId))
-    .limit(1);
-
-  if (!existing) {
+  const user = await userRepo.findById(parsed.userId as UserId);
+  if (!user) {
     throw new UserNotFoundError(parsed.userId);
   }
 
-  // Build update values
-  const updateValues: Record<string, unknown> = {
-    updatedAt: new Date(),
-  };
-
-  if (parsed.name !== undefined) {
-    updateValues.name = parsed.name;
-  }
-  if (parsed.image !== undefined) {
-    updateValues.image = parsed.image;
-  }
-
-  const [updated] = await db
-    .update(users)
-    .set(updateValues)
-    .where(eq(users.id, parsed.userId))
-    .returning();
-
-  return updated;
+  user.updateProfile({
+    name: parsed.name,
+  });
+  await userRepo.save(user);
+  return user;
 }
 
 export const UpdateUserRoleInput = z.object({
@@ -54,28 +36,19 @@ export const UpdateUserRoleInput = z.object({
 export type UpdateUserRoleInput = z.infer<typeof UpdateUserRoleInput>;
 
 export async function updateUserRole(
-  db: DrizzleDb,
+  userRepo: UserRepository,
   input: UpdateUserRoleInput,
 ) {
   const parsed = UpdateUserRoleInput.parse(input);
 
-  const [existing] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, parsed.userId))
-    .limit(1);
-
-  if (!existing) {
+  const user = await userRepo.findById(parsed.userId as UserId);
+  if (!user) {
     throw new UserNotFoundError(parsed.userId);
   }
 
-  const [updated] = await db
-    .update(users)
-    .set({ role: parsed.role, updatedAt: new Date() })
-    .where(eq(users.id, parsed.userId))
-    .returning();
-
-  return updated;
+  user.changeRole(parsed.role as UserRole);
+  await userRepo.save(user);
+  return user;
 }
 
 export class UserNotFoundError extends Error {

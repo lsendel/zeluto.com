@@ -106,8 +106,7 @@ export class SagaCoordinator {
         await this.saveState(state);
       } catch (err) {
         stepState.status = 'failed';
-        stepState.error =
-          err instanceof Error ? err.message : String(err);
+        stepState.error = err instanceof Error ? err.message : String(err);
         state.status = 'compensating';
         await this.saveState(state);
 

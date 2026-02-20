@@ -1,4 +1,8 @@
-import { AggregateRoot, Result } from '@mauntic/domain-kernel';
+import {
+  AggregateRoot,
+  type OrganizationId,
+  Result,
+} from '@mauntic/domain-kernel';
 import { z } from 'zod';
 
 export const ExecutionStatusSchema = z.enum([
@@ -121,7 +125,7 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         timestamp: new Date().toISOString(),
         correlationId: this.id,
         tenantContext: {
-          organizationId: this.props.organizationId as unknown as number,
+          organizationId: this.props.organizationId as OrganizationId,
         },
       },
     });
@@ -153,7 +157,7 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         timestamp: new Date().toISOString(),
         correlationId: this.id,
         tenantContext: {
-          organizationId: this.props.organizationId as unknown as number,
+          organizationId: this.props.organizationId as OrganizationId,
         },
       },
     });
@@ -186,7 +190,7 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         timestamp: new Date().toISOString(),
         correlationId: this.id,
         tenantContext: {
-          organizationId: this.props.organizationId as unknown as number,
+          organizationId: this.props.organizationId as OrganizationId,
         },
       },
     });
@@ -218,7 +222,7 @@ export class JourneyExecution extends AggregateRoot<JourneyExecutionProps> {
         timestamp: new Date().toISOString(),
         correlationId: this.id,
         tenantContext: {
-          organizationId: this.props.organizationId as unknown as number,
+          organizationId: this.props.organizationId as OrganizationId,
         },
       },
     });

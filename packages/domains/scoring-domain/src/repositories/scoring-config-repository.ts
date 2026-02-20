@@ -1,6 +1,8 @@
+import type { OrganizationId, ScoringConfigId } from '@mauntic/domain-kernel';
+
 export interface ScoringConfigEntry {
-  id: string;
-  organizationId: string;
+  id: ScoringConfigId;
+  organizationId: OrganizationId;
   category: string;
   factor: string;
   weight: number;
@@ -8,12 +10,12 @@ export interface ScoringConfigEntry {
 }
 
 export interface ScoringConfigRepository {
-  findByOrganization(orgId: string): Promise<ScoringConfigEntry[]>;
+  findByOrganization(orgId: OrganizationId): Promise<ScoringConfigEntry[]>;
   findByCategory(
-    orgId: string,
+    orgId: OrganizationId,
     category: string,
   ): Promise<ScoringConfigEntry[]>;
   save(config: ScoringConfigEntry): Promise<void>;
   saveBatch(configs: ScoringConfigEntry[]): Promise<void>;
-  delete(orgId: string, id: string): Promise<void>;
+  delete(orgId: OrganizationId, id: ScoringConfigId): Promise<void>;
 }

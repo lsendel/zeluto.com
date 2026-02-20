@@ -1,4 +1,9 @@
-import { type DomainEvent, Result } from '@mauntic/domain-kernel';
+import {
+  type ContactId,
+  type DomainEvent,
+  type OrganizationId,
+  Result,
+} from '@mauntic/domain-kernel';
 import type { LeadScoreRepository } from '@mauntic/scoring-domain';
 import { LeadScore } from '@mauntic/scoring-domain';
 
@@ -19,8 +24,8 @@ export class ScoringService {
   ) {}
 
   async calculateScore(
-    organizationId: string,
-    contactId: string,
+    organizationId: OrganizationId,
+    contactId: ContactId,
     context: ScoringContext,
   ): Promise<Result<LeadScore>> {
     try {

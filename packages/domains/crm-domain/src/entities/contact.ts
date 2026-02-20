@@ -1,4 +1,9 @@
-import { AggregateRoot, InvariantViolation } from '@mauntic/domain-kernel';
+import {
+  AggregateRoot,
+  type ContactId,
+  InvariantViolation,
+  type OrganizationId,
+} from '@mauntic/domain-kernel';
 import { z } from 'zod';
 
 export const ContactStatusSchema = z.enum([
@@ -69,8 +74,8 @@ export class Contact extends AggregateRoot<ContactProps> {
     contact.addDomainEvent({
       type: 'crm.ContactCreated',
       data: {
-        organizationId: props.organizationId,
-        contactId: props.id,
+        organizationId: props.organizationId as OrganizationId,
+        contactId: props.id as ContactId,
         email: props.email ?? undefined,
         phone: props.phone ?? undefined,
       },
@@ -80,7 +85,9 @@ export class Contact extends AggregateRoot<ContactProps> {
         sourceContext: 'crm',
         timestamp: new Date().toISOString(),
         correlationId: props.id,
-        tenantContext: { organizationId: props.organizationId },
+        tenantContext: {
+          organizationId: props.organizationId as OrganizationId,
+        },
       },
     });
 
@@ -166,8 +173,8 @@ export class Contact extends AggregateRoot<ContactProps> {
     this.addDomainEvent({
       type: 'crm.ContactUpdated',
       data: {
-        organizationId: this.props.organizationId,
-        contactId: this.props.id,
+        organizationId: this.props.organizationId as OrganizationId,
+        contactId: this.props.id as ContactId,
         fields: Object.keys(input),
       },
       metadata: {
@@ -176,7 +183,9 @@ export class Contact extends AggregateRoot<ContactProps> {
         sourceContext: 'crm',
         timestamp: new Date().toISOString(),
         correlationId: this.props.id,
-        tenantContext: { organizationId: this.props.organizationId },
+        tenantContext: {
+          organizationId: this.props.organizationId as OrganizationId,
+        },
       },
     });
   }

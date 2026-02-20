@@ -1,12 +1,12 @@
 import type { TenantContext } from '@mauntic/domain-kernel';
+import { asOrganizationId, asUserId } from '@mauntic/domain-kernel';
 import {
   organizationInvites,
   organizationMembers,
-  organizations,
   sessions,
   users,
 } from '@mauntic/identity-domain';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { changeRole } from '../application/commands/change-role.js';
 import { createOrg } from '../application/commands/create-org.js';
@@ -16,6 +16,10 @@ import { updateOrg } from '../application/commands/update-org.js';
 import { getOrg } from '../application/queries/get-org.js';
 import { listOrgs } from '../application/queries/list-orgs.js';
 import type { DrizzleDb } from '../infrastructure/database.js';
+import { DrizzleInviteRepository } from '../infrastructure/repositories/drizzle-invite-repository.js';
+import { DrizzleMemberRepository } from '../infrastructure/repositories/drizzle-member-repository.js';
+import { DrizzleOrganizationRepository } from '../infrastructure/repositories/drizzle-organization-repository.js';
+import { DrizzleUserRepository } from '../infrastructure/repositories/drizzle-user-repository.js';
 import { serializeInvite, serializeOrg } from './org-serializers.js';
 
 type Env = {
@@ -67,7 +71,8 @@ orgRoutes.post('/api/v1/identity/organizations', async (c) => {
 
   try {
     const body = await c.req.json();
-    const org = await createOrg(db, {
+    const orgRepo = new DrizzleOrganizationRepository(db);
+    const org = await createOrg(db, orgRepo, {
       name: body.name,
       slug: body.slug,
       creatorUserId: tenant.userId,
@@ -117,8 +122,9 @@ orgRoutes.patch('/api/v1/identity/organizations/:id', async (c) => {
 
   try {
     const body = await c.req.json();
+    const orgRepo = new DrizzleOrganizationRepository(db);
     const updated = await updateOrg(
-      db,
+      orgRepo,
       {
         organizationId: orgId,
         name: body.name,
@@ -129,7 +135,7 @@ orgRoutes.patch('/api/v1/identity/organizations/:id', async (c) => {
       tenant.userRole,
     );
 
-    return c.json(serializeOrg(updated));
+    return c.json(serializeOrg(updated.toProps()));
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.name === 'OrgNotFoundError') {
@@ -153,7 +159,6 @@ orgRoutes.delete('/api/v1/identity/organizations/:id', async (c) => {
   const db = c.get('db');
   const orgId = c.req.param('id');
 
-  // Only owner can delete
   if (tenant.userRole !== 'owner') {
     return c.json(
       {
@@ -165,7 +170,6 @@ orgRoutes.delete('/api/v1/identity/organizations/:id', async (c) => {
   }
 
   try {
-    // Verify organization exists and user is a member
     const org = await getOrg(db, orgId, tenant.userId);
     if (!org) {
       return c.json(
@@ -174,8 +178,8 @@ orgRoutes.delete('/api/v1/identity/organizations/:id', async (c) => {
       );
     }
 
-    // Delete the organization (cascade will remove members and invites)
-    await db.delete(organizations).where(eq(organizations.id, orgId));
+    const orgRepo = new DrizzleOrganizationRepository(db);
+    await orgRepo.delete(asOrganizationId(orgId));
 
     return c.json({ success: true });
   } catch (error) {
@@ -194,17 +198,11 @@ orgRoutes.post('/api/v1/identity/organizations/:id/switch', async (c) => {
   const orgId = c.req.param('id');
 
   try {
-    // Verify user is a member of the target organization
-    const [membership] = await db
-      .select()
-      .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, orgId),
-          eq(organizationMembers.userId, tenant.userId),
-        ),
-      )
-      .limit(1);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const membership = await memberRepo.findByOrgAndUser(
+      asOrganizationId(orgId),
+      asUserId(tenant.userId),
+    );
 
     if (!membership) {
       return c.json(
@@ -213,33 +211,17 @@ orgRoutes.post('/api/v1/identity/organizations/:id/switch', async (c) => {
       );
     }
 
-    // Update all active sessions for this user to point to the new organization
+    // Update sessions - stays as raw query (session table not in domain repos)
     await db
       .update(sessions)
       .set({ activeOrganizationId: orgId })
       .where(eq(sessions.userId, tenant.userId));
 
-    // Get user info for response
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, tenant.userId))
-      .limit(1);
+    const userRepo = new DrizzleUserRepository(db);
+    const user = await userRepo.findById(asUserId(tenant.userId));
 
     return c.json({
-      user: {
-        id: user.id,
-        name: user.name ?? '',
-        email: user.email,
-        emailVerified: user.emailVerified,
-        image: user.image ?? null,
-        role: user.role,
-        isBlocked: user.isBlocked ?? false,
-        lastSignedIn: user.lastSignedIn?.toISOString() ?? null,
-        loginMethod: user.loginMethod ?? null,
-        createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString(),
-      },
+      user: user ? serializeUser(user.toProps()) : null,
       organizationId: orgId,
     });
   } catch (error) {
@@ -264,17 +246,12 @@ orgRoutes.get('/api/v1/identity/organizations/:id/members', async (c) => {
   const offset = (page - 1) * limit;
 
   try {
-    // Verify user is a member of this org
-    const [membership] = await db
-      .select()
-      .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, orgId),
-          eq(organizationMembers.userId, tenant.userId),
-        ),
-      )
-      .limit(1);
+    // Verify user is a member
+    const memberRepo = new DrizzleMemberRepository(db);
+    const membership = await memberRepo.findByOrgAndUser(
+      asOrganizationId(orgId),
+      asUserId(tenant.userId),
+    );
 
     if (!membership) {
       return c.json(
@@ -283,7 +260,7 @@ orgRoutes.get('/api/v1/identity/organizations/:id/members', async (c) => {
       );
     }
 
-    // Count
+    // Member list with user info stays as a joined query (read model)
     const [countResult] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(organizationMembers)
@@ -291,7 +268,6 @@ orgRoutes.get('/api/v1/identity/organizations/:id/members', async (c) => {
 
     const total = countResult?.count ?? 0;
 
-    // Get members with user info
     const members = await db
       .select({
         id: organizationMembers.id,
@@ -349,8 +325,9 @@ orgRoutes.patch(
 
     try {
       const body = await c.req.json();
+      const memberRepo = new DrizzleMemberRepository(db);
       const updated = await changeRole(
-        db,
+        memberRepo,
         {
           organizationId: orgId,
           userId,
@@ -367,17 +344,18 @@ orgRoutes.patch(
         .where(eq(users.id, userId))
         .limit(1);
 
+      const props = updated.toProps();
       return c.json({
-        id: updated.id,
-        organizationId: updated.organizationId,
-        userId: updated.userId,
+        id: props.id,
+        organizationId: props.organizationId,
+        userId: props.userId,
         name: user?.name ?? '',
         email: user?.email ?? '',
-        role: updated.role,
+        role: props.role,
         joinedAt:
-          updated.joinedAt instanceof Date
-            ? updated.joinedAt.toISOString()
-            : String(updated.joinedAt),
+          props.joinedAt instanceof Date
+            ? props.joinedAt.toISOString()
+            : String(props.joinedAt),
       });
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -410,7 +388,13 @@ orgRoutes.delete(
     const userId = c.req.param('userId');
 
     try {
-      await removeMember(db, orgId, userId, tenant.userRole);
+      const memberRepo = new DrizzleMemberRepository(db);
+      await removeMember(
+        memberRepo,
+        asOrganizationId(orgId),
+        asUserId(userId),
+        tenant.userRole,
+      );
       return c.json({ success: true });
     } catch (error: unknown) {
       if (error instanceof Error) {
@@ -441,11 +425,6 @@ orgRoutes.get('/api/v1/identity/organizations/:id/invites', async (c) => {
   const db = c.get('db');
   const orgId = c.req.param('id');
 
-  const page = Number(c.req.query('page') || '1');
-  const limit = Number(c.req.query('limit') || '20');
-  const offset = (page - 1) * limit;
-
-  // Only owner/admin can view invites
   if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
     return c.json(
       { code: 'FORBIDDEN', message: 'Only owners and admins can view invites' },
@@ -454,27 +433,17 @@ orgRoutes.get('/api/v1/identity/organizations/:id/invites', async (c) => {
   }
 
   try {
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(organizationInvites)
-      .where(eq(organizationInvites.organizationId, orgId));
-
-    const total = countResult?.count ?? 0;
-
-    const invites = await db
-      .select()
-      .from(organizationInvites)
-      .where(eq(organizationInvites.organizationId, orgId))
-      .orderBy(organizationInvites.createdAt)
-      .limit(limit)
-      .offset(offset);
+    const inviteRepo = new DrizzleInviteRepository(db);
+    const invites = await inviteRepo.findByOrganization(
+      asOrganizationId(orgId),
+    );
 
     return c.json({
-      data: invites.map(serializeInvite),
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      data: invites.map((inv) => serializeInvite(inv.toProps())),
+      total: invites.length,
+      page: 1,
+      limit: invites.length,
+      totalPages: 1,
     });
   } catch (error) {
     console.error('Error listing invites:', error);
@@ -493,8 +462,13 @@ orgRoutes.post('/api/v1/identity/organizations/:id/invites', async (c) => {
 
   try {
     const body = await c.req.json();
+    const userRepo = new DrizzleUserRepository(db);
+    const memberRepo = new DrizzleMemberRepository(db);
+    const inviteRepo = new DrizzleInviteRepository(db);
     const invite = await inviteMember(
-      db,
+      userRepo,
+      memberRepo,
+      inviteRepo,
       {
         organizationId: orgId,
         email: body.email,
@@ -504,7 +478,7 @@ orgRoutes.post('/api/v1/identity/organizations/:id/invites', async (c) => {
       tenant.userRole,
     );
 
-    return c.json(serializeInvite(invite), 201);
+    return c.json(serializeInvite(invite.toProps()), 201);
   } catch (error: unknown) {
     if (error instanceof Error) {
       if (error.name === 'InsufficientPermissionsError') {
@@ -531,10 +505,8 @@ orgRoutes.delete(
   async (c) => {
     const tenant = c.get('tenant');
     const db = c.get('db');
-    const orgId = c.req.param('id');
     const inviteId = c.req.param('inviteId');
 
-    // Only owner/admin can cancel invites
     if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
       return c.json(
         {
@@ -546,25 +518,14 @@ orgRoutes.delete(
     }
 
     try {
-      const [invite] = await db
-        .select()
-        .from(organizationInvites)
-        .where(
-          and(
-            eq(organizationInvites.id, inviteId),
-            eq(organizationInvites.organizationId, orgId),
-          ),
-        )
-        .limit(1);
+      const inviteRepo = new DrizzleInviteRepository(db);
+      const invite = await inviteRepo.findById(inviteId);
 
       if (!invite) {
         return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
       }
 
-      await db
-        .delete(organizationInvites)
-        .where(eq(organizationInvites.id, inviteId));
-
+      await inviteRepo.delete(inviteId);
       return c.json({ success: true });
     } catch (error) {
       console.error('Error canceling invite:', error);
@@ -583,13 +544,10 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
   const token = c.req.param('token');
 
   try {
-    // Find the invite by token
-    const [invite] = await db
-      .select()
-      .from(organizationInvites)
-      .where(eq(organizationInvites.token, token))
-      .limit(1);
+    const inviteRepo = new DrizzleInviteRepository(db);
+    const memberRepo = new DrizzleMemberRepository(db);
 
+    const invite = await inviteRepo.findByToken(token);
     if (!invite) {
       return c.json(
         { code: 'NOT_FOUND', message: 'Invite not found or expired' },
@@ -597,15 +555,13 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
       );
     }
 
-    // Check if invite has expired
-    if (new Date() > invite.expiresAt) {
+    if (invite.isExpired()) {
       return c.json(
         { code: 'BAD_REQUEST', message: 'Invite has expired' },
         400,
       );
     }
 
-    // Check if already accepted
     if (invite.acceptedAt) {
       return c.json(
         { code: 'BAD_REQUEST', message: 'Invite has already been accepted' },
@@ -614,16 +570,10 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
     }
 
     // Check if user is already a member
-    const [existingMember] = await db
-      .select()
-      .from(organizationMembers)
-      .where(
-        and(
-          eq(organizationMembers.organizationId, invite.organizationId),
-          eq(organizationMembers.userId, tenant.userId),
-        ),
-      )
-      .limit(1);
+    const existingMember = await memberRepo.findByOrgAndUser(
+      asOrganizationId(invite.organizationId),
+      asUserId(tenant.userId),
+    );
 
     if (existingMember) {
       return c.json(
@@ -635,22 +585,25 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
       );
     }
 
-    await db.transaction(async (tx) => {
-      await tx.insert(organizationMembers).values({
-        organizationId: invite.organizationId,
-        userId: tenant.userId,
-        role: invite.role,
-        invitedBy: invite.invitedBy,
-      });
+    // Use domain entity to accept
+    invite.accept();
+    await inviteRepo.save(invite);
 
-      await tx
-        .update(organizationInvites)
-        .set({ acceptedAt: new Date(), status: 'accepted' })
-        .where(eq(organizationInvites.id, invite.id));
+    // Create membership
+    const { OrganizationMember } = await import('@mauntic/identity-domain');
+    const member = OrganizationMember.create({
+      organizationId: invite.organizationId,
+      userId: tenant.userId,
+      role: invite.role,
+      invitedBy: invite.invitedBy,
     });
+    await memberRepo.save(member);
 
     return c.json({ success: true, organizationId: invite.organizationId });
   } catch (error) {
+    if (error instanceof Error && error.name === 'InvariantViolation') {
+      return c.json({ code: 'BAD_REQUEST', message: error.message }, 400);
+    }
     console.error('Error accepting invite:', error);
     return c.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to accept invite' },
@@ -665,10 +618,8 @@ orgRoutes.post(
   async (c) => {
     const tenant = c.get('tenant');
     const db = c.get('db');
-    const orgId = c.req.param('id');
     const inviteId = c.req.param('inviteId');
 
-    // Only owner/admin can resend invites
     if (tenant.userRole !== 'owner' && tenant.userRole !== 'admin') {
       return c.json(
         {
@@ -680,30 +631,31 @@ orgRoutes.post(
     }
 
     try {
-      const [invite] = await db
-        .select()
-        .from(organizationInvites)
-        .where(
-          and(
-            eq(organizationInvites.id, inviteId),
-            eq(organizationInvites.organizationId, orgId),
-          ),
-        )
-        .limit(1);
+      const inviteRepo = new DrizzleInviteRepository(db);
+      const invite = await inviteRepo.findById(inviteId);
 
       if (!invite) {
         return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
       }
 
-      // Extend expiry by 7 days from now
+      // Extend expiry by saving with updated expiresAt
+      // The invite entity doesn't have a resend method, so we update expiry directly
+      // via the repo (save persists current state + new expiresAt)
       const newExpiresAt = new Date();
       newExpiresAt.setDate(newExpiresAt.getDate() + 7);
 
-      const [updated] = await db
+      // Use raw update for resend since entity doesn't expose expiresAt mutation
+      await db
         .update(organizationInvites)
         .set({ expiresAt: newExpiresAt })
         .where(eq(organizationInvites.id, inviteId))
         .returning();
+
+      // Re-fetch to get updated entity
+      const updated = await inviteRepo.findById(inviteId);
+      if (!updated) {
+        return c.json({ code: 'NOT_FOUND', message: 'Invite not found' }, 404);
+      }
 
       // Publish invite resent event for email notification
       if (c.env.EVENTS) {
@@ -711,8 +663,8 @@ orgRoutes.post(
           type: 'identity.MemberInvited',
           data: {
             organizationId: tenant.organizationId,
-            email: updated.email,
-            role: updated.role,
+            email: updated.toProps().email,
+            role: updated.toProps().role,
             invitedBy: tenant.userId,
           },
           metadata: {
@@ -720,13 +672,13 @@ orgRoutes.post(
             version: 1,
             sourceContext: 'identity',
             timestamp: new Date().toISOString(),
-            correlationId: updated.id,
+            correlationId: updated.toProps().id,
             tenantContext: { organizationId: tenant.organizationId },
           },
         });
       }
 
-      return c.json(serializeInvite(updated));
+      return c.json(serializeInvite(updated.toProps()));
     } catch (error) {
       console.error('Error resending invite:', error);
       return c.json(
@@ -736,5 +688,30 @@ orgRoutes.post(
     }
   },
 );
+
+function serializeUser(user: Record<string, any>) {
+  return {
+    id: user.id,
+    name: user.name ?? '',
+    email: user.email,
+    emailVerified: user.emailVerified ?? false,
+    image: user.image ?? null,
+    role: user.role,
+    isBlocked: user.isBlocked ?? false,
+    lastSignedIn:
+      user.lastSignedIn instanceof Date
+        ? user.lastSignedIn.toISOString()
+        : (user.lastSignedIn ?? null),
+    loginMethod: user.loginMethod ?? null,
+    createdAt:
+      user.createdAt instanceof Date
+        ? user.createdAt.toISOString()
+        : String(user.createdAt),
+    updatedAt:
+      user.updatedAt instanceof Date
+        ? user.updatedAt.toISOString()
+        : String(user.updatedAt),
+  };
+}
 
 export default orgRoutes;

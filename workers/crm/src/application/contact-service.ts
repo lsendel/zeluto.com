@@ -1,5 +1,11 @@
 import { Contact, type ContactRepository } from '@mauntic/crm-domain';
-import { type DomainEvent, Result } from '@mauntic/domain-kernel';
+import {
+  type ContactId,
+  type DomainEvent,
+  type OrganizationId,
+  Result,
+  type UserId,
+} from '@mauntic/domain-kernel';
 import { contactDeleted } from '../events/contact-events.js';
 import type { DomainEventPublisher } from './domain-event-publisher.js';
 
@@ -10,7 +16,7 @@ export class ContactService {
   ) {}
 
   async create(input: {
-    organizationId: string;
+    organizationId: OrganizationId;
     email?: string | null;
     firstName?: string | null;
     lastName?: string | null;
@@ -40,8 +46,8 @@ export class ContactService {
   }
 
   async update(
-    orgId: string,
-    id: string,
+    orgId: OrganizationId,
+    id: ContactId,
     input: {
       email?: string | null;
       firstName?: string | null;
@@ -67,9 +73,9 @@ export class ContactService {
   }
 
   async delete(
-    orgId: string,
-    id: string,
-    actorId: string,
+    orgId: OrganizationId,
+    id: ContactId,
+    actorId: UserId,
   ): Promise<Result<void>> {
     const contact = await this.contactRepo.findById(orgId, id);
     if (!contact) {
