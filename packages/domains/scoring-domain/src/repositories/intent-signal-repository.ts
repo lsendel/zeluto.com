@@ -24,4 +24,5 @@ export interface IntentSignalRepository {
   ): Promise<IntentSignal[]>;
   save(signal: IntentSignal): Promise<void>;
   deleteExpired(orgId: OrganizationId): Promise<number>;
+  deleteAllExpired(): Promise<number>;
 }

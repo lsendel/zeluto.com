@@ -18,4 +18,8 @@ export interface LeadScoreRepository {
   findLeaderboard(orgId: OrganizationId, limit: number): Promise<LeadScore[]>;
   save(score: LeadScore): Promise<void>;
   delete(orgId: OrganizationId, contactId: ContactId): Promise<void>;
+  findAllContactPairs(
+    limit: number,
+    offset: number,
+  ): Promise<Array<{ organizationId: string; contactId: string }>>;
 }
