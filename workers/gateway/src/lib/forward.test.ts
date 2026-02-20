@@ -77,7 +77,7 @@ describe('forwardToService', () => {
 
     const result = await forwardToService(c as any, mockService as any);
     expect(result.status).toBe(503);
-    const body = await result.json();
+    const body = (await result.json()) as { error: string };
     expect(body.error).toBe('SERVICE_UNAVAILABLE');
   });
 });
