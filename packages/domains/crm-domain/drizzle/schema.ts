@@ -121,6 +121,21 @@ export const contact_tags = crmSchema.table('contact_tags', {
   tag_id: uuid('tag_id').notNull(),
 });
 
+// outbox_events: transactional outbox for reliable event publishing
+export const outbox_events = crmSchema.table(
+  'outbox_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    event_type: varchar('event_type', { length: 255 }).notNull(),
+    payload: jsonb('payload').notNull(),
+    created_at: timestamp('created_at').notNull().defaultNow(),
+    published_at: timestamp('published_at'),
+  },
+  (table) => ({
+    unpublishedIdx: { columns: [table.published_at, table.created_at] },
+  }),
+);
+
 // fields: id, organization_id, entity_type (contact/company), name, label, field_type (text/number/date/select/multiselect), options (jsonb), is_required, sort_order, created_at
 export const fields = crmSchema.table(
   'fields',

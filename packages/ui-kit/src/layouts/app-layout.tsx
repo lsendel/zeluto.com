@@ -248,7 +248,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
               <button
                 type="button"
                 class="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
-                hx-post="/api/auth/sign-out"
+                hx-post="/api/auth/logout"
                 hx-swap="none"
                 hx-on--after-request="window.location.href='/login'"
               >
@@ -290,7 +290,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
                 <button
                   type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 lg:hidden"
-                  hx-post="/api/auth/sign-out"
+                  hx-post="/api/auth/logout"
                   hx-swap="none"
                   hx-on--after-request="window.location.href='/login'"
                 >

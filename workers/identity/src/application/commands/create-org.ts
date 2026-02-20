@@ -62,22 +62,23 @@ export async function createOrg(db: DrizzleDb, input: CreateOrgInput) {
     : generateSlug(parsed.name);
   const slug = await ensureUniqueSlug(db, baseSlug);
 
-  const [org] = await db
-    .insert(organizations)
-    .values({
-      name: parsed.name,
-      slug,
-    })
-    .returning();
+  return db.transaction(async (tx) => {
+    const [org] = await tx
+      .insert(organizations)
+      .values({
+        name: parsed.name,
+        slug,
+      })
+      .returning();
 
-  // Insert membership while setting the RLS context within the same statement
-  await db.execute(sql`
-    WITH __ctx AS (
-      SELECT set_config('app.organization_id', ${org.id}::text, true)
-    )
-    INSERT INTO "identity"."organization_members" (organization_id, user_id, role)
-    VALUES (${org.id}, ${parsed.creatorUserId}, 'owner')
-  `);
+    await tx.execute(sql`
+      WITH __ctx AS (
+        SELECT set_config('app.organization_id', ${org.id}::text, true)
+      )
+      INSERT INTO "identity"."organization_members" (organization_id, user_id, role)
+      VALUES (${org.id}, ${parsed.creatorUserId}, 'owner')
+    `);
 
-  return org;
+    return org;
+  });
 }

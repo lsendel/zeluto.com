@@ -2,9 +2,13 @@ import { AppLayout } from '@mauntic/ui-kit';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import type { Env } from '../index.js';
+import { dispatchRequest, type ServiceBinding } from '../lib/dispatch.js';
 import { forwardToService } from '../lib/forward.js';
+import type { SessionOrganization } from '../middleware/auth.js';
 import { getStaticBaseUrl } from '../utils/static-assets.js';
 import { LoginView } from '../views/onboarding/login.js';
+import type { OrgSwitcherModalProps } from '../views/orgs/switcher.js';
+import { OrgSwitcherModal } from '../views/orgs/switcher.js';
 
 export function createPageRoutes() {
   const app = new Hono<Env>();
@@ -61,6 +65,22 @@ export function createPageRoutes() {
       return c.redirect('/app/dashboard');
     }
     return c.html(<LoginView assetsBaseUrl={getStaticBaseUrl(c.env)} />);
+  });
+
+  // Organization switcher modal content (HTMX)
+  app.get('/api/orgs/switcher', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+      return c.json({ error: 'UNAUTHORIZED' }, 401);
+    }
+    const organization = c.get('organization');
+    const organizations = await fetchUserOrganizations(c, organization ?? null);
+    return c.html(
+      <OrgSwitcherModal
+        currentOrgId={organization?.id}
+        organizations={organizations}
+      />,
+    );
   });
 
   // Root redirect
@@ -126,6 +146,74 @@ function getViewServiceBinding(c: Context<Env>, path: string): Fetcher | null {
     return c.env.JOURNEY;
   }
   return null;
+}
+
+function getIdentityServiceBinding(c: Context<Env>): ServiceBinding {
+  return {
+    dispatch: c.env.IDENTITY_DISPATCH,
+    http: c.env.IDENTITY,
+    serviceName: 'identity',
+  };
+}
+
+async function fetchUserOrganizations(
+  c: Context<Env>,
+  currentOrg: SessionOrganization | null,
+): Promise<OrgSwitcherModalProps['organizations']> {
+  const organizations = new Map<
+    string,
+    OrgSwitcherModalProps['organizations'][number]
+  >();
+  const response = await dispatchRequest(
+    c,
+    getIdentityServiceBinding(c),
+    'organizations/list',
+    { page: 1, limit: 50 },
+  );
+
+  if (response?.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      data?: Array<Record<string, unknown>>;
+    } | null;
+    if (body?.data) {
+      for (const org of body.data) {
+        const id = typeof org.id === 'string' ? org.id : null;
+        const name = typeof org.name === 'string' ? org.name : null;
+        if (!id || !name) continue;
+        organizations.set(id, {
+          id,
+          name,
+          slug: typeof org.slug === 'string' ? org.slug : null,
+          plan:
+            typeof (org as Record<string, unknown>).plan === 'string'
+              ? ((org as Record<string, unknown>).plan as string)
+              : typeof (org as Record<string, unknown>).planId === 'string'
+                ? ((org as Record<string, unknown>).planId as string)
+                : null,
+          role:
+            typeof (org as Record<string, unknown>).role === 'string'
+              ? ((org as Record<string, unknown>).role as string)
+              : typeof (org as Record<string, unknown>).membershipRole ===
+                  'string'
+                ? ((org as Record<string, unknown>).membershipRole as string)
+                : null,
+        });
+      }
+    }
+  }
+
+  if (currentOrg) {
+    if (!organizations.has(currentOrg.id)) {
+      organizations.set(currentOrg.id, {
+        id: currentOrg.id,
+        name: currentOrg.name,
+        plan: currentOrg.plan,
+        role: currentOrg.role,
+      });
+    }
+  }
+
+  return Array.from(organizations.values());
 }
 
 function renderStubView(

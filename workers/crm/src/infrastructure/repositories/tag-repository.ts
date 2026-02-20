@@ -45,14 +45,15 @@ export async function deleteTag(
   orgId: string,
   id: string,
 ): Promise<boolean> {
-  // Remove junction rows first
-  await db.delete(contact_tags).where(eq(contact_tags.tag_id, id));
+  return db.transaction(async (tx) => {
+    await tx.delete(contact_tags).where(eq(contact_tags.tag_id, id));
 
-  const result = await db
-    .delete(tags)
-    .where(and(eq(tags.id, id), eq(tags.organization_id, orgId)))
-    .returning({ id: tags.id });
-  return result.length > 0;
+    const result = await tx
+      .delete(tags)
+      .where(and(eq(tags.id, id), eq(tags.organization_id, orgId)))
+      .returning({ id: tags.id });
+    return result.length > 0;
+  });
 }
 
 export async function tagContact(

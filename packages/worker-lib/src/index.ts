@@ -47,6 +47,8 @@ export type {
   QueueMetricStatus,
 } from './monitoring/queue-telemetry.js';
 export { logQueueMetric } from './monitoring/queue-telemetry.js';
+// Outbox
+export { drainOutbox, writeToOutbox } from './outbox/outbox.js';
 export { createIdempotentConsumer } from './queue/consumer.js';
 // Queue
 export { publishBatch, publishEvent } from './queue/publisher.js';

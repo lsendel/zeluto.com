@@ -137,26 +137,27 @@ export async function removeContactsFromSegment(
 ): Promise<number> {
   if (contactIds.length === 0) return 0;
 
-  const result = await db
-    .delete(segment_contacts)
-    .where(
-      and(
-        eq(segment_contacts.segment_id, segmentId),
-        inArray(segment_contacts.contact_id, contactIds),
-      ),
-    )
-    .returning();
+  return db.transaction(async (tx) => {
+    const result = await tx
+      .delete(segment_contacts)
+      .where(
+        and(
+          eq(segment_contacts.segment_id, segmentId),
+          inArray(segment_contacts.contact_id, contactIds),
+        ),
+      )
+      .returning();
 
-  // Update contact_count on the segment
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(segment_contacts)
-    .where(eq(segment_contacts.segment_id, segmentId));
+    const [countResult] = await tx
+      .select({ count: sql<number>`count(*)::int` })
+      .from(segment_contacts)
+      .where(eq(segment_contacts.segment_id, segmentId));
 
-  await db
-    .update(segments)
-    .set({ contact_count: countResult?.count ?? 0, updated_at: new Date() })
-    .where(eq(segments.id, segmentId));
+    await tx
+      .update(segments)
+      .set({ contact_count: countResult?.count ?? 0, updated_at: new Date() })
+      .where(eq(segments.id, segmentId));
 
-  return result.length;
+    return result.length;
+  });
 }

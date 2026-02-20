@@ -296,12 +296,13 @@ segmentRoutes.delete('/api/v1/crm/segments/:id', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Segment not found' }, 404);
     }
 
-    // Remove junction rows first
-    await db
-      .delete(segment_contacts)
-      .where(eq(segment_contacts.segment_id, segmentId));
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(segment_contacts)
+        .where(eq(segment_contacts.segment_id, segmentId));
 
-    await db.delete(segments).where(eq(segments.id, segmentId));
+      await tx.delete(segments).where(eq(segments.id, segmentId));
+    });
 
     return c.json({ success: true });
   } catch (error) {
@@ -389,21 +390,22 @@ segmentRoutes.post('/api/v1/crm/segments/:id/contacts', async (c) => {
     );
 
     if (toInsert.length > 0) {
-      await db.insert(segment_contacts).values(
-        toInsert.map((contactId) => ({
-          segment_id: segmentId,
-          contact_id: contactId,
-        })),
-      );
+      await db.transaction(async (tx) => {
+        await tx.insert(segment_contacts).values(
+          toInsert.map((contactId) => ({
+            segment_id: segmentId,
+            contact_id: contactId,
+          })),
+        );
 
-      // Update contact count
-      await db
-        .update(segments)
-        .set({
-          contact_count: sql`${segments.contact_count} + ${toInsert.length}`,
-          updated_at: new Date(),
-        })
-        .where(eq(segments.id, segmentId));
+        await tx
+          .update(segments)
+          .set({
+            contact_count: sql`${segments.contact_count} + ${toInsert.length}`,
+            updated_at: new Date(),
+          })
+          .where(eq(segments.id, segmentId));
+      });
     }
 
     return c.json({ added: toInsert.length });
@@ -458,28 +460,31 @@ segmentRoutes.delete('/api/v1/crm/segments/:id/contacts', async (c) => {
       );
     }
 
-    const result = await db
-      .delete(segment_contacts)
-      .where(
-        and(
-          eq(segment_contacts.segment_id, segmentId),
-          inArray(segment_contacts.contact_id, body.contactIds),
-        ),
-      )
-      .returning({ id: segment_contacts.id });
+    let removed = 0;
 
-    const removed = result.length;
+    await db.transaction(async (tx) => {
+      const result = await tx
+        .delete(segment_contacts)
+        .where(
+          and(
+            eq(segment_contacts.segment_id, segmentId),
+            inArray(segment_contacts.contact_id, body.contactIds),
+          ),
+        )
+        .returning({ id: segment_contacts.id });
 
-    if (removed > 0) {
-      // Update contact count
-      await db
-        .update(segments)
-        .set({
-          contact_count: sql`GREATEST(${segments.contact_count} - ${removed}, 0)`,
-          updated_at: new Date(),
-        })
-        .where(eq(segments.id, segmentId));
-    }
+      removed = result.length;
+
+      if (removed > 0) {
+        await tx
+          .update(segments)
+          .set({
+            contact_count: sql`GREATEST(${segments.contact_count} - ${removed}, 0)`,
+            updated_at: new Date(),
+          })
+          .where(eq(segments.id, segmentId));
+      }
+    });
 
     return c.json({ removed });
   } catch (error) {

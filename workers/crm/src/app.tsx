@@ -1,16 +1,16 @@
+import { crmContract } from '@mauntic/contracts';
 import type { TenantContext } from '@mauntic/domain-kernel';
 import {
   createDatabase,
   errorHandler,
   tenantMiddleware,
 } from '@mauntic/worker-lib';
+import { fetchRequestHandler } from '@ts-rest/serverless/fetch';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { companyRoutes } from './interface/company-routes.js';
-import { contactRoutes } from './interface/contact-routes.js';
-import { segmentRoutes } from './interface/segment-routes.js';
+import { crmRouter } from './interface/contract-router.js';
 import { viewRoutes } from './interface/view-routes.js';
 import {
   querySegmentContacts,
@@ -96,10 +96,18 @@ app.use('/app/*', async (c, next) => {
 app.use('/api/v1/crm/*', tenantMiddleware());
 app.use('/app/crm/*', tenantMiddleware());
 
-// Mount API routes
-app.route('/', contactRoutes);
-app.route('/', companyRoutes);
-app.route('/', segmentRoutes);
+// Contract-driven API routes via @ts-rest/serverless
+app.all('/api/v1/crm/*', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  return fetchRequestHandler({
+    contract: crmContract,
+    router: crmRouter,
+    request: c.req.raw,
+    options: {},
+    platformContext: { tenant, db, events: c.env.EVENTS },
+  });
+});
 
 // Mount HTMX view routes (HTML fragments)
 app.route('/', viewRoutes);

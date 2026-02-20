@@ -635,19 +635,19 @@ orgRoutes.post('/api/v1/identity/invites/:token/accept', async (c) => {
       );
     }
 
-    // Add user as member
-    await db.insert(organizationMembers).values({
-      organizationId: invite.organizationId,
-      userId: tenant.userId,
-      role: invite.role,
-      invitedBy: invite.invitedBy,
-    });
+    await db.transaction(async (tx) => {
+      await tx.insert(organizationMembers).values({
+        organizationId: invite.organizationId,
+        userId: tenant.userId,
+        role: invite.role,
+        invitedBy: invite.invitedBy,
+      });
 
-    // Mark invite as accepted
-    await db
-      .update(organizationInvites)
-      .set({ acceptedAt: new Date(), status: 'accepted' })
-      .where(eq(organizationInvites.id, invite.id));
+      await tx
+        .update(organizationInvites)
+        .set({ acceptedAt: new Date(), status: 'accepted' })
+        .where(eq(organizationInvites.id, invite.id));
+    });
 
     return c.json({ success: true, organizationId: invite.organizationId });
   } catch (error) {

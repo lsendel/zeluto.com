@@ -127,14 +127,15 @@ export const ContactListView: FC<ContactListProps> = ({
           <h1 class="text-2xl font-bold text-gray-900">Contacts</h1>
           <p class="mt-1 text-sm text-gray-500">{total} total contacts</p>
         </div>
-        <button
+        <a
+          href="/app/crm/contacts/new"
           hx-get="/app/crm/contacts/new"
           hx-target="#app-content"
           hx-push-url="true"
           class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-colors"
         >
           + New Contact
-        </button>
+        </a>
       </div>
 
       {/* Search */}

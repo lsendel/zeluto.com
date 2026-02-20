@@ -135,11 +135,10 @@ tagRoutes.delete('/api/v1/crm/tags/:id', async (c) => {
       return c.json({ code: 'NOT_FOUND', message: 'Tag not found' }, 404);
     }
 
-    // Remove all contact_tags associations first
-    await db.delete(contact_tags).where(eq(contact_tags.tag_id, tagId));
-
-    // Delete the tag
-    await db.delete(tags).where(eq(tags.id, tagId));
+    await db.transaction(async (tx) => {
+      await tx.delete(contact_tags).where(eq(contact_tags.tag_id, tagId));
+      await tx.delete(tags).where(eq(tags.id, tagId));
+    });
 
     return c.json({ success: true });
   } catch (error) {
