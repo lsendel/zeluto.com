@@ -3,6 +3,7 @@ import {
   integer,
   pgSchema,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -28,7 +29,9 @@ export const planLimits = billingSchema.table('plan_limits', {
     .references(() => plans.id),
   resource: varchar('resource', { length: 50 }).notNull(), // contacts, emails_per_month, journeys, campaigns, team_members, integrations, storage_bytes, api_calls_per_month
   limitValue: integer('limit_value').notNull(), // -1 = unlimited
-});
+}, (table) => [
+  uniqueIndex('plan_limits_plan_resource_unique').on(table.planId, table.resource),
+]);
 
 export const subscriptions = billingSchema.table('subscriptions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -45,7 +48,10 @@ export const subscriptions = billingSchema.table('subscriptions', {
   canceledAt: timestamp('canceled_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex('subscriptions_organization_id_unique').on(table.organizationId),
+  uniqueIndex('subscriptions_stripe_subscription_id_unique').on(table.stripeSubscriptionId),
+]);
 
 export const usageRecords = billingSchema.table('usage_records', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -56,7 +62,14 @@ export const usageRecords = billingSchema.table('usage_records', {
   currentValue: integer('current_value').default(0).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex('usage_records_org_resource_period_unique').on(
+    table.organizationId,
+    table.resource,
+    table.periodStart,
+    table.periodEnd,
+  ),
+]);
 
 export const invoices = billingSchema.table('invoices', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -68,4 +81,6 @@ export const invoices = billingSchema.table('invoices', {
   periodEnd: timestamp('period_end'),
   paidAt: timestamp('paid_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex('invoices_stripe_invoice_id_unique').on(table.stripeInvoiceId),
+]);
