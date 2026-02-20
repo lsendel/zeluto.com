@@ -131,9 +131,9 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
 
   const interval = body.billingPeriod === 'yearly' ? 'year' : 'month';
   const successUrl =
-    body.successUrl || `https://${c.env.APP_DOMAIN}/billing/success`;
+    body.successUrl || `https://${c.env.APP_DOMAIN}/app/billing?checkout=success`;
   const cancelUrl =
-    body.cancelUrl || `https://${c.env.APP_DOMAIN}/billing/cancel`;
+    body.cancelUrl || `https://${c.env.APP_DOMAIN}/app/billing?checkout=cancel`;
 
   const manager = new SubscriptionManager(db, stripe);
 
