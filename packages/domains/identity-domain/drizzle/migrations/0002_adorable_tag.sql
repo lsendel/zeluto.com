@@ -1,0 +1,4 @@
+ALTER TABLE "identity"."organization_invites" ALTER COLUMN "token" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "identity"."organization_invites" ADD COLUMN "status" varchar(20) DEFAULT 'pending' NOT NULL;--> statement-breakpoint
+ALTER TABLE "identity"."organization_invites" ADD CONSTRAINT "organization_invites_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "identity"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "identity"."organization_members" ADD CONSTRAINT "organization_members_invited_by_users_id_fk" FOREIGN KEY ("invited_by") REFERENCES "identity"."users"("id") ON DELETE set null ON UPDATE no action;

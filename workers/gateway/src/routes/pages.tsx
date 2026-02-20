@@ -130,7 +130,17 @@ async function handleHtmxRequest(
 ): Promise<Response> {
   const service = getViewServiceBinding(c, path);
   if (service) {
-    return forwardToService(c, service);
+    const response = await forwardToService(c, service);
+    if (response.status >= 500) {
+      c
+        .get('logger')
+        ?.warn(
+          { path, status: response.status },
+          'HTMX view fallback triggered',
+        );
+      return renderStubView(c, path);
+    }
+    return response;
   }
   return renderStubView(c, path);
 }
@@ -220,6 +230,43 @@ function renderStubView(
   c: Context<Env>,
   path: string,
 ): Response | Promise<Response> {
+  if (path.startsWith('/app/contacts')) {
+    return c.html(
+      <section class="space-y-6">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">Contacts</h1>
+            <p class="text-sm text-gray-500">
+              The CRM worker is warming up, but you can still stage new contact
+              ideas while we finish the migration.
+            </p>
+          </div>
+          <a
+            href="/app/crm/contacts/new"
+            hx-get="/app/crm/contacts/new"
+            hx-target="#app-content"
+            hx-push-url="true"
+            class="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 transition-colors"
+          >
+            + New Contact
+          </a>
+        </div>
+
+        <div class="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-sm text-gray-600">
+          <p>
+            Viewing, segmentation, and enrichment will light up as soon as the
+            CRM worker finishes provisioning. In the meantime, use the{" "}
+            <code class="rounded bg-white px-1.5 py-0.5 font-mono text-xs text-gray-800">
+              + New Contact
+            </code>{" "}
+            action above to capture leads—the form will post to the CRM worker
+            once it is available.
+          </p>
+        </div>
+      </section>,
+    );
+  }
+
   if (path.startsWith('/app/dashboard')) {
     return c.html(
       <section class="space-y-6">
@@ -255,6 +302,31 @@ function renderStubView(
           meantime, this placeholder confirms the navigation shell works
           end-to-end.
         </p>
+      </section>,
+    );
+  }
+
+  if (path.startsWith('/app/delivery')) {
+    return c.html(
+      <section class="space-y-6">
+        <h1 class="text-2xl font-bold text-gray-900">Delivery</h1>
+        <p class="text-gray-600">
+          Manage sending domains, email providers, and delivery health from
+          here. The delivery dashboard is wiring up to the delivery worker API.
+        </p>
+        <div class="grid gap-4 md:grid-cols-3">
+          {['Sending Domains', 'Active Providers', 'Suppression List'].map(
+            (label) => (
+              <div
+                class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                key={label}
+              >
+                <p class="text-sm text-gray-500">{label}</p>
+                <p class="mt-2 text-3xl font-semibold text-gray-900">--</p>
+              </div>
+            ),
+          )}
+        </div>
       </section>,
     );
   }

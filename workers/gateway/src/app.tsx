@@ -42,7 +42,14 @@ export function createApp() {
   app.use('/login', authMiddleware());
   app.use('/', authMiddleware());
   app.use('/api/v1/*', tenantMiddleware());
-  app.use('/app/*', tenantMiddleware());
+  app.use('/app/*', async (c, next) => {
+    // Skip tenant context for onboarding routes — users don't have an org yet
+    const path = c.req.path;
+    if (path === '/app/signup' || path.startsWith('/app/onboarding')) {
+      return next();
+    }
+    return tenantMiddleware()(c, next);
+  });
   app.use('/app/*', async (c, next) => csrfMiddleware(c.env.KV)(c, next));
   app.use('/api/*', rateLimitMiddleware());
   app.use('/api/v1/*', quotaMiddleware());
@@ -146,6 +153,19 @@ export function createApp() {
     }
 
     return response;
+  });
+
+  app.post('/api/auth/sign-out', async (c) => {
+    const headers = new Headers(c.req.raw.headers);
+    const request = new Request('https://identity.internal/api/auth/logout', {
+      method: 'POST',
+      headers,
+      body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
+      // @ts-expect-error - duplex is needed for streaming request bodies
+      duplex: 'half',
+    });
+    const response = await c.env.IDENTITY.fetch(request);
+    return new Response(response.body, response);
   });
 
   app.all('/api/auth/*', (c) =>

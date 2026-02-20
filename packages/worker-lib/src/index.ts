@@ -49,6 +49,14 @@ export type {
 export { logQueueMetric } from './monitoring/queue-telemetry.js';
 // Outbox
 export { drainOutbox, writeToOutbox } from './outbox/outbox.js';
+// Saga
+export type {
+  SagaState,
+  SagaStep,
+  SagaStepState,
+  SagaStepStatus,
+} from './saga/saga-coordinator.js';
+export { SagaCoordinator } from './saga/saga-coordinator.js';
 export { createIdempotentConsumer } from './queue/consumer.js';
 // Queue
 export { publishBatch, publishEvent } from './queue/publisher.js';

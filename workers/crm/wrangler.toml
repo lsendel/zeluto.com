@@ -24,3 +24,7 @@ queue = "mauntic-crm-events"
 [[analytics_engine_datasets]]
 binding = "LOGS_DATASET"
 dataset = "mauntic_logs"
+
+# Outbox drain — publish unpublished events every minute
+[triggers]
+crons = ["* * * * *"]
