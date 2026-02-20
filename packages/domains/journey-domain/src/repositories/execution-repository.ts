@@ -1,4 +1,8 @@
-import type { ContactId, JourneyId, OrganizationId } from '@mauntic/domain-kernel';
+import type {
+  ContactId,
+  JourneyId,
+  OrganizationId,
+} from '@mauntic/domain-kernel';
 import type { JourneyExecution } from '../entities/journey-execution.js';
 
 export interface ExecutionRepository {

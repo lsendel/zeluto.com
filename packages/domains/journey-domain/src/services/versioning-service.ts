@@ -1,5 +1,9 @@
+import type {
+  JourneyId,
+  JourneyVersionId,
+  OrganizationId,
+} from '@mauntic/domain-kernel';
 import { Result } from '@mauntic/domain-kernel';
-import type { JourneyId, JourneyVersionId, OrganizationId } from '@mauntic/domain-kernel';
 import { JourneyVersion } from '../entities/journey-version.js';
 import type { JourneyVersionRepository } from '../repositories/journey-version-repository.js';
 

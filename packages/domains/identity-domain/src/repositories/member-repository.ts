@@ -3,7 +3,9 @@ import type { OrganizationMember } from '../entities/organization-member.js';
 
 export interface MemberRepository {
   findById(id: string): Promise<OrganizationMember | null>;
-  findByOrganization(organizationId: OrganizationId): Promise<OrganizationMember[]>;
+  findByOrganization(
+    organizationId: OrganizationId,
+  ): Promise<OrganizationMember[]>;
   findByUser(userId: UserId): Promise<OrganizationMember[]>;
   findByOrgAndUser(
     organizationId: OrganizationId,

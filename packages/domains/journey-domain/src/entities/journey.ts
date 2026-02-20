@@ -1,4 +1,8 @@
-import { AggregateRoot, Result, type OrganizationId } from '@mauntic/domain-kernel';
+import {
+  AggregateRoot,
+  type OrganizationId,
+  Result,
+} from '@mauntic/domain-kernel';
 import { z } from 'zod';
 
 export const JourneyStatusSchema = z.enum([

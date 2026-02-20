@@ -1,6 +1,6 @@
 import type { AnalyticsEngineDataset } from '@cloudflare/workers-types';
 import type { DomainEvent } from '@mauntic/domain-kernel';
-import { asOrganizationId, asContactId } from '@mauntic/domain-kernel';
+import { asContactId, asOrganizationId } from '@mauntic/domain-kernel';
 import {
   createDatabase,
   createLoggerFromEnv,

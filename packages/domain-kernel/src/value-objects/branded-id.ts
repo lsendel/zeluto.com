@@ -151,39 +151,111 @@ export const ResearchJobIdSchema = z
 // Use at system boundaries (route params, DB results) to wrap raw strings.
 // These are compile-time-only casts — zero runtime cost.
 
-export function asOrganizationId(id: string): OrganizationId { return id as OrganizationId; }
-export function asUserId(id: string): UserId { return id as UserId; }
-export function asContactId(id: string): ContactId { return id as ContactId; }
-export function asCompanyId(id: string): CompanyId { return id as CompanyId; }
-export function asCampaignId(id: string): CampaignId { return id as CampaignId; }
-export function asSegmentId(id: string): SegmentId { return id as SegmentId; }
-export function asJourneyId(id: string): JourneyId { return id as JourneyId; }
-export function asJourneyVersionId(id: string): JourneyVersionId { return id as JourneyVersionId; }
-export function asJourneyStepId(id: string): JourneyStepId { return id as JourneyStepId; }
-export function asEmailId(id: string): EmailId { return id as EmailId; }
-export function asFormId(id: string): FormId { return id as FormId; }
-export function asPageId(id: string): PageId { return id as PageId; }
-export function asAssetId(id: string): AssetId { return id as AssetId; }
-export function asWebhookId(id: string): WebhookId { return id as WebhookId; }
-export function asIntegrationId(id: string): IntegrationId { return id as IntegrationId; }
-export function asReportId(id: string): ReportId { return id as ReportId; }
-export function asDeliveryJobId(id: string): DeliveryJobId { return id as DeliveryJobId; }
-export function asTemplateId(id: string): TemplateId { return id as TemplateId; }
-export function asSubscriptionId(id: string): SubscriptionId { return id as SubscriptionId; }
-export function asPlanId(id: string): PlanId { return id as PlanId; }
-export function asEnrichmentJobId(id: string): EnrichmentJobId { return id as EnrichmentJobId; }
-export function asEnrichmentProviderId(id: string): EnrichmentProviderId { return id as EnrichmentProviderId; }
-export function asLeadScoreId(id: string): LeadScoreId { return id as LeadScoreId; }
-export function asIntentSignalId(id: string): IntentSignalId { return id as IntentSignalId; }
-export function asSignalAlertId(id: string): SignalAlertId { return id as SignalAlertId; }
-export function asScoringConfigId(id: string): ScoringConfigId { return id as ScoringConfigId; }
-export function asSignalConfigId(id: string): SignalConfigId { return id as SignalConfigId; }
-export function asScoreHistoryId(id: string): ScoreHistoryId { return id as ScoreHistoryId; }
-export function asDealId(id: string): DealId { return id as DealId; }
-export function asForecastId(id: string): ForecastId { return id as ForecastId; }
-export function asRoutingRuleId(id: string): RoutingRuleId { return id as RoutingRuleId; }
-export function asSequenceId(id: string): SequenceId { return id as SequenceId; }
-export function asProspectId(id: string): ProspectId { return id as ProspectId; }
-export function asActivityId(id: string): ActivityId { return id as ActivityId; }
-export function asWorkflowId(id: string): WorkflowId { return id as WorkflowId; }
-export function asResearchJobId(id: string): ResearchJobId { return id as ResearchJobId; }
+export function asOrganizationId(id: string): OrganizationId {
+  return id as OrganizationId;
+}
+export function asUserId(id: string): UserId {
+  return id as UserId;
+}
+export function asContactId(id: string): ContactId {
+  return id as ContactId;
+}
+export function asCompanyId(id: string): CompanyId {
+  return id as CompanyId;
+}
+export function asCampaignId(id: string): CampaignId {
+  return id as CampaignId;
+}
+export function asSegmentId(id: string): SegmentId {
+  return id as SegmentId;
+}
+export function asJourneyId(id: string): JourneyId {
+  return id as JourneyId;
+}
+export function asJourneyVersionId(id: string): JourneyVersionId {
+  return id as JourneyVersionId;
+}
+export function asJourneyStepId(id: string): JourneyStepId {
+  return id as JourneyStepId;
+}
+export function asEmailId(id: string): EmailId {
+  return id as EmailId;
+}
+export function asFormId(id: string): FormId {
+  return id as FormId;
+}
+export function asPageId(id: string): PageId {
+  return id as PageId;
+}
+export function asAssetId(id: string): AssetId {
+  return id as AssetId;
+}
+export function asWebhookId(id: string): WebhookId {
+  return id as WebhookId;
+}
+export function asIntegrationId(id: string): IntegrationId {
+  return id as IntegrationId;
+}
+export function asReportId(id: string): ReportId {
+  return id as ReportId;
+}
+export function asDeliveryJobId(id: string): DeliveryJobId {
+  return id as DeliveryJobId;
+}
+export function asTemplateId(id: string): TemplateId {
+  return id as TemplateId;
+}
+export function asSubscriptionId(id: string): SubscriptionId {
+  return id as SubscriptionId;
+}
+export function asPlanId(id: string): PlanId {
+  return id as PlanId;
+}
+export function asEnrichmentJobId(id: string): EnrichmentJobId {
+  return id as EnrichmentJobId;
+}
+export function asEnrichmentProviderId(id: string): EnrichmentProviderId {
+  return id as EnrichmentProviderId;
+}
+export function asLeadScoreId(id: string): LeadScoreId {
+  return id as LeadScoreId;
+}
+export function asIntentSignalId(id: string): IntentSignalId {
+  return id as IntentSignalId;
+}
+export function asSignalAlertId(id: string): SignalAlertId {
+  return id as SignalAlertId;
+}
+export function asScoringConfigId(id: string): ScoringConfigId {
+  return id as ScoringConfigId;
+}
+export function asSignalConfigId(id: string): SignalConfigId {
+  return id as SignalConfigId;
+}
+export function asScoreHistoryId(id: string): ScoreHistoryId {
+  return id as ScoreHistoryId;
+}
+export function asDealId(id: string): DealId {
+  return id as DealId;
+}
+export function asForecastId(id: string): ForecastId {
+  return id as ForecastId;
+}
+export function asRoutingRuleId(id: string): RoutingRuleId {
+  return id as RoutingRuleId;
+}
+export function asSequenceId(id: string): SequenceId {
+  return id as SequenceId;
+}
+export function asProspectId(id: string): ProspectId {
+  return id as ProspectId;
+}
+export function asActivityId(id: string): ActivityId {
+  return id as ActivityId;
+}
+export function asWorkflowId(id: string): WorkflowId {
+  return id as WorkflowId;
+}
+export function asResearchJobId(id: string): ResearchJobId {
+  return id as ResearchJobId;
+}

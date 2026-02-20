@@ -1,4 +1,4 @@
-import type { OrganizationId, ContactId } from '@mauntic/domain-kernel';
+import type { ContactId, OrganizationId } from '@mauntic/domain-kernel';
 import type { ScoreHistory } from '../entities/score-history.js';
 
 export interface ScoreHistoryRepository {

@@ -1,15 +1,15 @@
+import {
+  asCampaignId,
+  asContactId,
+  asOrganizationId,
+  asTemplateId,
+} from '@mauntic/domain-kernel';
 import type {
   CampaignCompletedEvent,
   CampaignStartedEvent,
   PointsAwardedEvent,
   SendMessageEvent,
 } from '@mauntic/domain-kernel/events';
-import {
-  asOrganizationId,
-  asContactId,
-  asTemplateId,
-  asCampaignId,
-} from '@mauntic/domain-kernel';
 
 /**
  * Publishes a SendMessage event for each contact in a campaign batch.

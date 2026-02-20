@@ -1,8 +1,11 @@
-import type { OrganizationId, ContactId } from '@mauntic/domain-kernel';
+import type { ContactId, OrganizationId } from '@mauntic/domain-kernel';
 import type { LeadScore } from '../entities/lead-score.js';
 
 export interface LeadScoreRepository {
-  findByContact(orgId: OrganizationId, contactId: ContactId): Promise<LeadScore | null>;
+  findByContact(
+    orgId: OrganizationId,
+    contactId: ContactId,
+  ): Promise<LeadScore | null>;
   findByOrganization(
     orgId: OrganizationId,
     options?: {

@@ -120,7 +120,11 @@ contactRoutes.delete('/api/v1/crm/contacts/:id', async (c) => {
 
   const service = getContactService(c);
 
-  const result = await service.delete(tenant.organizationId, asContactId(id), tenant.userId);
+  const result = await service.delete(
+    tenant.organizationId,
+    asContactId(id),
+    tenant.userId,
+  );
   if (result.isFailure) {
     return c.json({ code: 'NOT_FOUND', message: result.getError() }, 404);
   }

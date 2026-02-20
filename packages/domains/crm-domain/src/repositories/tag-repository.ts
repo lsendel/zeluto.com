@@ -9,7 +9,15 @@ export interface TagRepository {
   ): Promise<{ data: Tag[]; total: number }>;
   save(tag: Tag): Promise<void>;
   delete(orgId: OrganizationId, id: string): Promise<void>;
-  tagContact(orgId: OrganizationId, tagId: string, contactId: ContactId): Promise<void>;
-  untagContact(orgId: OrganizationId, tagId: string, contactId: ContactId): Promise<void>;
+  tagContact(
+    orgId: OrganizationId,
+    tagId: string,
+    contactId: ContactId,
+  ): Promise<void>;
+  untagContact(
+    orgId: OrganizationId,
+    tagId: string,
+    contactId: ContactId,
+  ): Promise<void>;
   findByContact(orgId: OrganizationId, contactId: ContactId): Promise<Tag[]>;
 }

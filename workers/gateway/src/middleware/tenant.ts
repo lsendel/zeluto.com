@@ -1,4 +1,8 @@
-import { type TenantContext, asOrganizationId, asUserId } from '@mauntic/domain-kernel';
+import {
+  asOrganizationId,
+  asUserId,
+  type TenantContext,
+} from '@mauntic/domain-kernel';
 import type { Logger } from '@mauntic/worker-lib';
 import { cacheTenantContext } from '@mauntic/worker-lib';
 import type { MiddlewareHandler } from 'hono';

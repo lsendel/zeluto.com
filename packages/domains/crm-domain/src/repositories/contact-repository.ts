@@ -1,4 +1,8 @@
-import type { ContactId, OrganizationId, SegmentId } from '@mauntic/domain-kernel';
+import type {
+  ContactId,
+  OrganizationId,
+  SegmentId,
+} from '@mauntic/domain-kernel';
 import type { Contact } from '../entities/contact.js';
 
 export interface ContactRepository {

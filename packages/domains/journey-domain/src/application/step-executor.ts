@@ -1,4 +1,10 @@
-import type { DomainEvent, OrganizationId, JourneyId, JourneyStepId, ContactId } from '@mauntic/domain-kernel';
+import type {
+  ContactId,
+  DomainEvent,
+  JourneyId,
+  JourneyStepId,
+  OrganizationId,
+} from '@mauntic/domain-kernel';
 import type { JourneyExecution } from '../entities/journey-execution.js';
 import type { JourneyStep } from '../entities/journey-step.js';
 import {
@@ -69,7 +75,9 @@ function executeAction(ctx: StepExecutionContext): StepExecutionResult {
         sourceContext: 'journey',
         timestamp: new Date().toISOString(),
         correlationId: ctx.execution.id,
-        tenantContext: { organizationId: ctx.execution.organizationId as OrganizationId },
+        tenantContext: {
+          organizationId: ctx.execution.organizationId as OrganizationId,
+        },
       },
     },
   ];

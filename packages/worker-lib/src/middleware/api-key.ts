@@ -1,5 +1,5 @@
-import type { TenantContext } from '@mauntic/domain-kernel/tenant';
 import { asOrganizationId, asUserId } from '@mauntic/domain-kernel';
+import type { TenantContext } from '@mauntic/domain-kernel/tenant';
 import type { MiddlewareHandler } from 'hono';
 
 export interface ApiKeyData {

@@ -1,7 +1,3 @@
-import {
-  asContactId,
-  asOrganizationId,
-} from '@mauntic/domain-kernel';
 import type {
   ContactTaggedEvent,
   ContactUntaggedEvent,
@@ -9,6 +5,7 @@ import type {
   TagCreatedEvent,
   TagDeletedEvent,
 } from '@mauntic/domain-kernel';
+import { asContactId, asOrganizationId } from '@mauntic/domain-kernel';
 
 function meta(organizationId: string): DomainEventMetadata {
   return {

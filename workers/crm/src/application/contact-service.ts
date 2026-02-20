@@ -1,5 +1,11 @@
 import { Contact, type ContactRepository } from '@mauntic/crm-domain';
-import { type DomainEvent, Result, type OrganizationId, type ContactId, type UserId } from '@mauntic/domain-kernel';
+import {
+  type ContactId,
+  type DomainEvent,
+  type OrganizationId,
+  Result,
+  type UserId,
+} from '@mauntic/domain-kernel';
 import { contactDeleted } from '../events/contact-events.js';
 import type { DomainEventPublisher } from './domain-event-publisher.js';
 

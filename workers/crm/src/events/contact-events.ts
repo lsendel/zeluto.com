@@ -1,8 +1,3 @@
-import {
-  asContactId,
-  asOrganizationId,
-  asUserId,
-} from '@mauntic/domain-kernel';
 import type {
   ContactCreatedEvent,
   ContactDeletedEvent,
@@ -10,6 +5,11 @@ import type {
   ContactMergedEvent,
   ContactUpdatedEvent,
   DomainEventMetadata,
+} from '@mauntic/domain-kernel';
+import {
+  asContactId,
+  asOrganizationId,
+  asUserId,
 } from '@mauntic/domain-kernel';
 
 // ---------------------------------------------------------------------------

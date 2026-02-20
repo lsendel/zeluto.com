@@ -49,6 +49,9 @@ export type {
 export { logQueueMetric } from './monitoring/queue-telemetry.js';
 // Outbox
 export { drainOutbox, writeToOutbox } from './outbox/outbox.js';
+export { createIdempotentConsumer } from './queue/consumer.js';
+// Queue
+export { publishBatch, publishEvent } from './queue/publisher.js';
 // Saga
 export type {
   SagaState,
@@ -57,9 +60,6 @@ export type {
   SagaStepStatus,
 } from './saga/saga-coordinator.js';
 export { SagaCoordinator } from './saga/saga-coordinator.js';
-export { createIdempotentConsumer } from './queue/consumer.js';
-// Queue
-export { publishBatch, publishEvent } from './queue/publisher.js';
 // Tenant context cache (Durable Object helpers)
 export {
   cacheTenantContext,

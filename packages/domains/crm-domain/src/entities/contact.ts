@@ -1,4 +1,9 @@
-import { AggregateRoot, InvariantViolation, type OrganizationId, type ContactId } from '@mauntic/domain-kernel';
+import {
+  AggregateRoot,
+  type ContactId,
+  InvariantViolation,
+  type OrganizationId,
+} from '@mauntic/domain-kernel';
 import { z } from 'zod';
 
 export const ContactStatusSchema = z.enum([
@@ -80,7 +85,9 @@ export class Contact extends AggregateRoot<ContactProps> {
         sourceContext: 'crm',
         timestamp: new Date().toISOString(),
         correlationId: props.id,
-        tenantContext: { organizationId: props.organizationId as OrganizationId },
+        tenantContext: {
+          organizationId: props.organizationId as OrganizationId,
+        },
       },
     });
 
@@ -176,7 +183,9 @@ export class Contact extends AggregateRoot<ContactProps> {
         sourceContext: 'crm',
         timestamp: new Date().toISOString(),
         correlationId: this.props.id,
-        tenantContext: { organizationId: this.props.organizationId as OrganizationId },
+        tenantContext: {
+          organizationId: this.props.organizationId as OrganizationId,
+        },
       },
     });
   }

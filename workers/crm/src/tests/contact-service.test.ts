@@ -1,5 +1,9 @@
 import { Contact, type ContactRepository } from '@mauntic/crm-domain'; // Using contract interface
-import { asContactId, asOrganizationId, asUserId } from '@mauntic/domain-kernel';
+import {
+  asContactId,
+  asOrganizationId,
+  asUserId,
+} from '@mauntic/domain-kernel';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContactService } from '../application/contact-service.js';
 import type { DomainEventPublisher } from '../application/domain-event-publisher.js';
@@ -123,9 +127,13 @@ describe('ContactService', () => {
     it('should fail if contact not found', async () => {
       vi.mocked(mockRepo.findById).mockResolvedValue(null);
 
-      const result = await service.update(asOrganizationId('org-id'), asContactId('missing-id'), {
-        firstName: 'Jane',
-      });
+      const result = await service.update(
+        asOrganizationId('org-id'),
+        asContactId('missing-id'),
+        {
+          firstName: 'Jane',
+        },
+      );
 
       expect(result.isFailure).toBe(true);
       expect(result.getError()).toBe('Contact not found');
@@ -152,7 +160,11 @@ describe('ContactService', () => {
     it('should fail if contact not found', async () => {
       vi.mocked(mockRepo.findById).mockResolvedValue(null);
 
-      const result = await service.delete(asOrganizationId('org-1'), asContactId('missing'), asUserId('user-123'));
+      const result = await service.delete(
+        asOrganizationId('org-1'),
+        asContactId('missing'),
+        asUserId('user-123'),
+      );
 
       expect(result.isFailure).toBe(true);
       expect(result.getError()).toBe('Contact not found');

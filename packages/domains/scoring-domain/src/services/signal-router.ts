@@ -1,4 +1,4 @@
-import type { OrganizationId, ContactId } from '@mauntic/domain-kernel';
+import type { ContactId, OrganizationId } from '@mauntic/domain-kernel';
 import { type AlertPriority, SignalAlert } from '../entities/signal-alert.js';
 import type { SignalAlertRepository } from '../repositories/signal-alert-repository.js';
 

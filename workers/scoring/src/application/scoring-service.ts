@@ -1,4 +1,9 @@
-import { type DomainEvent, Result, type OrganizationId, type ContactId } from '@mauntic/domain-kernel';
+import {
+  type ContactId,
+  type DomainEvent,
+  type OrganizationId,
+  Result,
+} from '@mauntic/domain-kernel';
 import type { LeadScoreRepository } from '@mauntic/scoring-domain';
 import { LeadScore } from '@mauntic/scoring-domain';
 

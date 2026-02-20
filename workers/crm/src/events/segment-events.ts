@@ -1,13 +1,13 @@
-import {
-  asOrganizationId,
-  asSegmentId,
-  asUserId,
-} from '@mauntic/domain-kernel';
 import type {
   DomainEventMetadata,
   SegmentCreatedEvent,
   SegmentRebuiltEvent,
   SegmentUpdatedEvent,
+} from '@mauntic/domain-kernel';
+import {
+  asOrganizationId,
+  asSegmentId,
+  asUserId,
 } from '@mauntic/domain-kernel';
 
 function meta(organizationId: string): DomainEventMetadata {

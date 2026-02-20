@@ -1,5 +1,9 @@
+import {
+  asContactId,
+  asOrganizationId,
+  asTemplateId,
+} from '@mauntic/domain-kernel';
 import type { SendMessageEvent } from '@mauntic/domain-kernel/events';
-import { asOrganizationId, asContactId, asTemplateId } from '@mauntic/domain-kernel';
 
 export interface SendEmailFromJourneyParams {
   organizationId: string;
