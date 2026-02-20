@@ -23,10 +23,7 @@ export async function findSsoConnectionById(
     .select()
     .from(ssoConnections)
     .where(
-      and(
-        eq(ssoConnections.id, id),
-        eq(ssoConnections.organizationId, orgId),
-      ),
+      and(eq(ssoConnections.id, id), eq(ssoConnections.organizationId, orgId)),
     );
   return row ?? null;
 }
@@ -47,14 +44,22 @@ export async function findEnabledSsoByDomain(
   return row ?? null;
 }
 
+export async function findEnabledSsoById(
+  db: DrizzleDb,
+  id: string,
+): Promise<SsoConnectionRow | null> {
+  const [row] = await db
+    .select()
+    .from(ssoConnections)
+    .where(and(eq(ssoConnections.id, id), eq(ssoConnections.isEnabled, true)));
+  return row ?? null;
+}
+
 export async function createSsoConnection(
   db: DrizzleDb,
   data: typeof ssoConnections.$inferInsert,
 ): Promise<SsoConnectionRow> {
-  const [row] = await db
-    .insert(ssoConnections)
-    .values(data)
-    .returning();
+  const [row] = await db.insert(ssoConnections).values(data).returning();
   return row;
 }
 
@@ -63,17 +68,17 @@ export async function updateSsoConnection(
   orgId: string,
   id: string,
   data: Partial<
-    Omit<typeof ssoConnections.$inferInsert, 'id' | 'organizationId' | 'createdAt'>
+    Omit<
+      typeof ssoConnections.$inferInsert,
+      'id' | 'organizationId' | 'createdAt'
+    >
   >,
 ): Promise<SsoConnectionRow | null> {
   const [row] = await db
     .update(ssoConnections)
     .set({ ...data, updatedAt: new Date() })
     .where(
-      and(
-        eq(ssoConnections.id, id),
-        eq(ssoConnections.organizationId, orgId),
-      ),
+      and(eq(ssoConnections.id, id), eq(ssoConnections.organizationId, orgId)),
     )
     .returning();
   return row ?? null;
@@ -87,10 +92,7 @@ export async function deleteSsoConnection(
   const result = await db
     .delete(ssoConnections)
     .where(
-      and(
-        eq(ssoConnections.id, id),
-        eq(ssoConnections.organizationId, orgId),
-      ),
+      and(eq(ssoConnections.id, id), eq(ssoConnections.organizationId, orgId)),
     )
     .returning({ id: ssoConnections.id });
   return result.length > 0;

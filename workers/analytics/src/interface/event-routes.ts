@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { buildContactTimelineReadModel } from '../application/contact-timeline-read-model.js';
 import {
   logEvent,
   queryAggregates,
@@ -141,6 +142,41 @@ eventRoutes.get('/api/v1/analytics/contacts/:id/activity', async (c) => {
     console.error('Contact activity error:', error);
     return c.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to get contact activity' },
+      500,
+    );
+  }
+});
+
+// GET /api/v1/analytics/contacts/:id/timeline - Consolidated timeline
+eventRoutes.get('/api/v1/analytics/contacts/:id/timeline', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const contactId = c.req.param('id');
+  const { page = '1', limit = '50', startDate, endDate } = c.req.query();
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(200, Math.max(1, parseInt(limit, 10) || 50));
+
+  try {
+    const result = await queryEvents(db, tenant.organizationId, {
+      page: pageNum,
+      limit: limitNum,
+      contactId,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
+
+    return c.json(
+      buildContactTimelineReadModel(result.data, {
+        page: pageNum,
+        limit: limitNum,
+        total: result.total,
+      }),
+    );
+  } catch (error) {
+    console.error('Contact timeline error:', error);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to get contact timeline' },
       500,
     );
   }

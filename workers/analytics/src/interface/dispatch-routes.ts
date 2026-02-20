@@ -2,6 +2,7 @@ import { createDatabase, tenantMiddleware } from '@mauntic/worker-lib';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { buildContactTimelineReadModel } from '../application/contact-timeline-read-model.js';
 import {
   getCampaignStats,
   getJourneyStats,
@@ -142,6 +143,44 @@ analyticsDispatchRoutes.post('/events/activity', async (c) => {
     limit,
     totalPages: Math.ceil(result.total / limit),
   });
+});
+
+analyticsDispatchRoutes.post('/events/timeline', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const body = (await c.req.json().catch(() => null)) as {
+    contactId?: string;
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+  } | null;
+
+  if (!body?.contactId) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'contactId is required' },
+      400,
+    );
+  }
+
+  const page = Math.max(1, Number(body?.page ?? 1));
+  const limit = Math.max(1, Math.min(200, Number(body?.limit ?? 50)));
+
+  const result = await queryEvents(db, tenant.organizationId, {
+    page,
+    limit,
+    contactId: body.contactId,
+    startDate: body.startDate ?? undefined,
+    endDate: body.endDate ?? undefined,
+  });
+
+  return c.json(
+    buildContactTimelineReadModel(result.data, {
+      page,
+      limit,
+      total: result.total,
+    }),
+  );
 });
 
 analyticsDispatchRoutes.post('/overview', async (c) => {

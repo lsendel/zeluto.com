@@ -82,3 +82,35 @@ Mode: Iterative (small vertical slices per turn)
 1. Add provider-config validation contract tests for SES/SendGrid/Twilio/FCM.
 2. Add integration tests for `/sending-domains/:id/verify` with mocked DNS responses.
 3. Implement provider compatibility guards at create/update time (channel vs provider type).
+
+## Iteration 2 Outcome (W6 Slice 1: SSO Callback Completion)
+
+- Replaced SSO callback placeholders with real provider callback handling in identity worker:
+  - OIDC callback now resolves enabled connection, performs authorization-code exchange via domain service, enforces email-domain policy, and returns normalized authenticated profile payload
+  - SAML callback now resolves enabled connection, parses assertion via domain service, enforces email-domain policy, and returns normalized authenticated profile payload
+  - files:
+    - `workers/identity/src/interface/sso-routes.ts`
+    - `workers/identity/src/infrastructure/repositories/drizzle-sso-repository.ts`
+- Hardened SSO init/callback correlation:
+  - init state now binds to connection id (`<connectionId>:<nonce>`) for both OIDC and SAML entrypoints
+  - callback handlers accept either explicit `connectionId` or state/relayState-derived connection id
+- Added deterministic integration tests for callback flows:
+  - OIDC success path
+  - OIDC domain-mismatch guardrail
+  - SAML success path
+  - SAML invalid-assertion guardrail
+  - init-state connection binding assertion
+  - file:
+    - `workers/identity/src/interface/sso-routes.callback.integration.test.ts`
+- Added identity worker test wiring:
+  - `workers/identity/package.json` adds `test` script + `vitest` dev dependency
+- Validation commands passed:
+  - `pnpm --filter @mauntic/identity test -- --runInBand`
+  - `pnpm --filter @mauntic/identity typecheck`
+  - `pnpm --filter @mauntic/identity exec biome check src/interface/sso-routes.ts src/interface/sso-routes.callback.integration.test.ts src/infrastructure/repositories/drizzle-sso-repository.ts`
+
+## Next Iteration Candidate (W6)
+
+1. Persist callback state/nonce in KV and validate replay/expiry in OIDC/SAML callbacks.
+2. Add SCIM token model and `/scim/v2/Users` minimal CRUD (list/create/active patch) with org membership projection.
+3. Wire SSO callback authenticated profile to actual session creation/link flow in Better Auth.

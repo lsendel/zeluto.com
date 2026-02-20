@@ -7,6 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
     "lint": "biome check ./src"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "^4.67.0"
   }
 }

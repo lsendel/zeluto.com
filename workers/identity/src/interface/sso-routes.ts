@@ -1,6 +1,8 @@
 import {
   buildOidcAuthorizeUrl,
   buildSamlAuthorizeUrl,
+  exchangeOidcCode,
+  parseSamlResponse,
 } from '@mauntic/identity-domain';
 import { Hono } from 'hono';
 import type { DrizzleDb, Env } from '../infrastructure/database.js';
@@ -9,7 +11,7 @@ import {
   createSsoConnection,
   deleteSsoConnection,
   findEnabledSsoByDomain,
-  findSsoConnectionById,
+  findEnabledSsoById,
   findSsoConnectionsByOrg,
   updateSsoConnection,
 } from '../infrastructure/repositories/drizzle-sso-repository.js';
@@ -208,11 +210,7 @@ ssoRoutes.delete('/api/v1/identity/sso/:id', async (c) => {
   const id = c.req.param('id');
 
   try {
-    const deleted = await deleteSsoConnection(
-      db,
-      tenant.organizationId,
-      id,
-    );
+    const deleted = await deleteSsoConnection(db, tenant.organizationId, id);
     if (!deleted) {
       return c.json(
         { code: 'NOT_FOUND', message: 'SSO connection not found' },
@@ -241,31 +239,43 @@ ssoRoutes.get('/api/auth/sso/init', async (c) => {
     );
   }
 
-  const domain = email.split('@')[1]!.toLowerCase();
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'Valid email is required' },
+      400,
+    );
+  }
   const db = createDatabase(c.env);
   const connection = await findEnabledSsoByDomain(db, domain);
 
   if (!connection) {
-    return c.json(
-      {
-        ssoAvailable: false,
-        message: 'No SSO configured for this email domain',
-      },
-    );
+    return c.json({
+      ssoAvailable: false,
+      message: 'No SSO configured for this email domain',
+    });
   }
 
-  const state = crypto.randomUUID();
+  const nonce = crypto.randomUUID();
+  const state = `${connection.id}:${nonce}`;
   const baseUrl = c.env.BETTER_AUTH_URL ?? 'https://zeluto.com';
 
-  if (connection.type === 'oidc' && connection.oidcAuthorizationUrl) {
+  if (
+    connection.type === 'oidc' &&
+    connection.oidcIssuer &&
+    connection.oidcClientId &&
+    connection.oidcClientSecret &&
+    connection.oidcAuthorizationUrl &&
+    connection.oidcTokenUrl
+  ) {
     const redirectUri = `${baseUrl}/api/auth/sso/callback/oidc`;
     const authorizeUrl = buildOidcAuthorizeUrl(
       {
-        issuer: connection.oidcIssuer!,
-        clientId: connection.oidcClientId!,
-        clientSecret: connection.oidcClientSecret!,
+        issuer: connection.oidcIssuer,
+        clientId: connection.oidcClientId,
+        clientSecret: connection.oidcClientSecret,
         authorizationUrl: connection.oidcAuthorizationUrl,
-        tokenUrl: connection.oidcTokenUrl!,
+        tokenUrl: connection.oidcTokenUrl,
         userInfoUrl: connection.oidcUserInfoUrl ?? undefined,
         scopes: connection.oidcScopes ?? 'openid email profile',
       },
@@ -283,25 +293,31 @@ ssoRoutes.get('/api/auth/sso/init', async (c) => {
     });
   }
 
-  if (connection.type === 'saml' && connection.samlSsoUrl) {
+  if (
+    connection.type === 'saml' &&
+    connection.samlEntityId &&
+    connection.samlSsoUrl &&
+    connection.samlCertificate
+  ) {
     const callbackUrl = `${baseUrl}/api/auth/sso/callback/saml`;
     const requestId = crypto.randomUUID();
+    const relayState = `${connection.id}:${requestId}`;
     const authorizeUrl = buildSamlAuthorizeUrl(
       {
-        entityId: connection.samlEntityId!,
+        entityId: connection.samlEntityId,
         ssoUrl: connection.samlSsoUrl,
-        certificate: connection.samlCertificate!,
+        certificate: connection.samlCertificate,
         acsUrl: connection.samlAcsUrl ?? callbackUrl,
       },
       callbackUrl,
-      requestId,
+      relayState,
     );
 
     return c.json({
       ssoAvailable: true,
       type: 'saml',
       redirectUrl: authorizeUrl,
-      state: requestId,
+      state: relayState,
       connectionId: connection.id,
     });
   }
@@ -316,6 +332,7 @@ ssoRoutes.get('/api/auth/sso/init', async (c) => {
 ssoRoutes.get('/api/auth/sso/callback/oidc', async (c) => {
   const code = c.req.query('code');
   const state = c.req.query('state');
+  const explicitConnectionId = c.req.query('connectionId');
 
   if (!code || !state) {
     return c.json(
@@ -324,22 +341,106 @@ ssoRoutes.get('/api/auth/sso/callback/oidc', async (c) => {
     );
   }
 
-  // In production, state should be validated against a stored nonce.
-  // For now, we extract the connection and exchange the code.
-  return c.json({
-    status: 'callback_received',
-    code: code.slice(0, 8) + '...',
-    state,
-    message:
-      'OIDC code exchange and session creation will be wired in the next iteration',
-  });
+  const parsedStateConnectionId = parseConnectionIdFromState(state);
+  const connectionId = explicitConnectionId ?? parsedStateConnectionId;
+  if (!connectionId) {
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'Missing SSO connection identifier',
+      },
+      400,
+    );
+  }
+
+  const db = createDatabase(c.env);
+  const connection = await findEnabledSsoById(db, connectionId);
+  if (!connection) {
+    return c.json(
+      { code: 'NOT_FOUND', message: 'SSO connection not found or disabled' },
+      404,
+    );
+  }
+  if (connection.type !== 'oidc') {
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'Connection is not configured for OIDC',
+      },
+      400,
+    );
+  }
+  if (
+    !connection.oidcIssuer ||
+    !connection.oidcClientId ||
+    !connection.oidcClientSecret ||
+    !connection.oidcAuthorizationUrl ||
+    !connection.oidcTokenUrl
+  ) {
+    return c.json(
+      { code: 'SSO_MISCONFIGURED', message: 'OIDC connection is incomplete' },
+      500,
+    );
+  }
+
+  const redirectUri = `${c.env.BETTER_AUTH_URL ?? 'https://zeluto.com'}/api/auth/sso/callback/oidc`;
+
+  try {
+    const profile = await exchangeOidcCode(
+      {
+        issuer: connection.oidcIssuer,
+        clientId: connection.oidcClientId,
+        clientSecret: connection.oidcClientSecret,
+        authorizationUrl: connection.oidcAuthorizationUrl,
+        tokenUrl: connection.oidcTokenUrl,
+        userInfoUrl: connection.oidcUserInfoUrl ?? undefined,
+        scopes: connection.oidcScopes ?? 'openid email profile',
+      },
+      code,
+      redirectUri,
+    );
+
+    if (!isEmailInDomain(profile.email, connection.emailDomain)) {
+      return c.json(
+        {
+          code: 'FORBIDDEN',
+          message: 'SSO account does not match configured email domain',
+        },
+        403,
+      );
+    }
+
+    return c.json({
+      status: 'authenticated',
+      type: 'oidc',
+      organizationId: connection.organizationId,
+      connectionId: connection.id,
+      profile: {
+        email: profile.email,
+        name: profile.name ?? null,
+        externalId: profile.externalId,
+        provider: profile.provider,
+      },
+      nextAction: 'profile_resolved_create-or-link-session',
+    });
+  } catch (error) {
+    console.error('OIDC callback error:', error);
+    return c.json(
+      {
+        code: 'OIDC_EXCHANGE_FAILED',
+        message: 'Failed to authenticate with OIDC provider',
+      },
+      401,
+    );
+  }
 });
 
 // POST /api/auth/sso/callback/saml - SAML callback (POST binding)
 ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
   const formData = await c.req.parseBody();
-  const samlResponse = formData['SAMLResponse'];
-  const relayState = formData['RelayState'];
+  const samlResponse = formData.SAMLResponse;
+  const relayState = formData.RelayState;
+  const explicitConnectionId = formData.connectionId;
 
   if (!samlResponse || typeof samlResponse !== 'string') {
     return c.json(
@@ -348,10 +449,110 @@ ssoRoutes.post('/api/auth/sso/callback/saml', async (c) => {
     );
   }
 
-  return c.json({
-    status: 'callback_received',
-    relayState,
-    message:
-      'SAML assertion parsing and session creation will be wired in the next iteration',
-  });
+  const relayStateValue =
+    typeof relayState === 'string' ? relayState : undefined;
+  const parsedStateConnectionId = relayStateValue
+    ? parseConnectionIdFromState(relayStateValue)
+    : null;
+  const connectionId =
+    typeof explicitConnectionId === 'string'
+      ? explicitConnectionId
+      : parsedStateConnectionId;
+
+  if (!connectionId) {
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'Missing SSO connection identifier',
+      },
+      400,
+    );
+  }
+
+  const db = createDatabase(c.env);
+  const connection = await findEnabledSsoById(db, connectionId);
+  if (!connection) {
+    return c.json(
+      { code: 'NOT_FOUND', message: 'SSO connection not found or disabled' },
+      404,
+    );
+  }
+  if (connection.type !== 'saml') {
+    return c.json(
+      {
+        code: 'VALIDATION_ERROR',
+        message: 'Connection is not configured for SAML',
+      },
+      400,
+    );
+  }
+  if (
+    !connection.samlEntityId ||
+    !connection.samlSsoUrl ||
+    !connection.samlCertificate
+  ) {
+    return c.json(
+      { code: 'SSO_MISCONFIGURED', message: 'SAML connection is incomplete' },
+      500,
+    );
+  }
+
+  try {
+    const profile = parseSamlResponse(samlResponse, {
+      entityId: connection.samlEntityId,
+      ssoUrl: connection.samlSsoUrl,
+      certificate: connection.samlCertificate,
+      acsUrl:
+        connection.samlAcsUrl ??
+        `${c.env.BETTER_AUTH_URL ?? 'https://zeluto.com'}/api/auth/sso/callback/saml`,
+    });
+
+    if (!isEmailInDomain(profile.email, connection.emailDomain)) {
+      return c.json(
+        {
+          code: 'FORBIDDEN',
+          message: 'SSO account does not match configured email domain',
+        },
+        403,
+      );
+    }
+
+    return c.json({
+      status: 'authenticated',
+      type: 'saml',
+      organizationId: connection.organizationId,
+      connectionId: connection.id,
+      profile: {
+        email: profile.email,
+        name: profile.name ?? null,
+        externalId: profile.externalId,
+        provider: profile.provider,
+      },
+      relayState: relayStateValue ?? null,
+      nextAction: 'profile_resolved_create-or-link-session',
+    });
+  } catch (error) {
+    console.error('SAML callback error:', error);
+    return c.json(
+      {
+        code: 'SAML_ASSERTION_INVALID',
+        message: 'Failed to parse SAML assertion',
+      },
+      401,
+    );
+  }
 });
+
+function parseConnectionIdFromState(state: string): string | null {
+  const trimmed = state.trim();
+  if (trimmed.length === 0) return null;
+  const [connectionId] = trimmed.split(':');
+  if (!connectionId || connectionId.length === 0) return null;
+  return connectionId;
+}
+
+function isEmailInDomain(email: string, domain: string): boolean {
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedDomain = domain.trim().toLowerCase();
+  return normalizedEmail.endsWith(`@${normalizedDomain}`);
+}
