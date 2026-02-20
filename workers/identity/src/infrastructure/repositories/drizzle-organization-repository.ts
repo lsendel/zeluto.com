@@ -8,12 +8,24 @@ import {
 import { eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const ORG_COLUMNS = {
+  id: organizations.id,
+  name: organizations.name,
+  slug: organizations.slug,
+  logo: organizations.logo,
+  planId: organizations.planId,
+  stripeCustomerId: organizations.stripeCustomerId,
+  isBlocked: organizations.isBlocked,
+  createdAt: organizations.createdAt,
+  updatedAt: organizations.updatedAt,
+};
+
 export class DrizzleOrganizationRepository implements OrganizationRepository {
   constructor(private readonly db: NeonHttpDatabase<any>) {}
 
   async findById(id: OrganizationId): Promise<Organization | null> {
     const [row] = await this.db
-      .select()
+      .select(ORG_COLUMNS)
       .from(organizations)
       .where(eq(organizations.id, id))
       .limit(1);
@@ -22,7 +34,7 @@ export class DrizzleOrganizationRepository implements OrganizationRepository {
 
   async findBySlug(slug: string): Promise<Organization | null> {
     const [row] = await this.db
-      .select()
+      .select(ORG_COLUMNS)
       .from(organizations)
       .where(eq(organizations.slug, slug))
       .limit(1);

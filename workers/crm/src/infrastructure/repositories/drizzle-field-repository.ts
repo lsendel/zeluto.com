@@ -8,12 +8,25 @@ import type { OrganizationId } from '@mauntic/domain-kernel';
 import { and, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const FIELD_COLUMNS = {
+  id: fields.id,
+  organization_id: fields.organization_id,
+  entity_type: fields.entity_type,
+  name: fields.name,
+  label: fields.label,
+  field_type: fields.field_type,
+  options: fields.options,
+  is_required: fields.is_required,
+  sort_order: fields.sort_order,
+  created_at: fields.created_at,
+};
+
 export class DrizzleFieldRepository implements FieldRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
   async findById(orgId: OrganizationId, id: string): Promise<Field | null> {
     const [row] = await this.db
-      .select()
+      .select(FIELD_COLUMNS)
       .from(fields)
       .where(and(eq(fields.id, id), eq(fields.organization_id, orgId)))
       .limit(1);
@@ -26,7 +39,7 @@ export class DrizzleFieldRepository implements FieldRepository {
     name: string,
   ): Promise<Field | null> {
     const [row] = await this.db
-      .select()
+      .select(FIELD_COLUMNS)
       .from(fields)
       .where(
         and(
@@ -49,7 +62,7 @@ export class DrizzleFieldRepository implements FieldRepository {
     }
 
     const rows = await this.db
-      .select()
+      .select(FIELD_COLUMNS)
       .from(fields)
       .where(and(...conditions))
       .orderBy(fields.sort_order);

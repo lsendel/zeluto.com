@@ -9,6 +9,16 @@ import { journey_versions } from '@mauntic/journey-domain/drizzle';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const VERSION_COLUMNS = {
+  id: journey_versions.id,
+  journey_id: journey_versions.journey_id,
+  organization_id: journey_versions.organization_id,
+  version_number: journey_versions.version_number,
+  definition: journey_versions.definition,
+  published_at: journey_versions.published_at,
+  created_at: journey_versions.created_at,
+};
+
 export class DrizzleJourneyVersionRepository
   implements JourneyVersionRepository
 {
@@ -19,7 +29,7 @@ export class DrizzleJourneyVersionRepository
     id: JourneyVersionId,
   ): Promise<JourneyVersion | null> {
     const [row] = await this.db
-      .select()
+      .select(VERSION_COLUMNS)
       .from(journey_versions)
       .where(
         and(
@@ -36,7 +46,7 @@ export class DrizzleJourneyVersionRepository
     journeyId: JourneyId,
   ): Promise<JourneyVersion | null> {
     const [row] = await this.db
-      .select()
+      .select(VERSION_COLUMNS)
       .from(journey_versions)
       .where(
         and(
@@ -54,7 +64,7 @@ export class DrizzleJourneyVersionRepository
     journeyId: JourneyId,
   ): Promise<JourneyVersion[]> {
     const rows = await this.db
-      .select()
+      .select(VERSION_COLUMNS)
       .from(journey_versions)
       .where(
         and(

@@ -5,6 +5,17 @@ import { journeys } from '@mauntic/journey-domain/drizzle';
 import { and, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const JOURNEY_COLUMNS = {
+  id: journeys.id,
+  organization_id: journeys.organization_id,
+  name: journeys.name,
+  description: journeys.description,
+  status: journeys.status,
+  created_by: journeys.created_by,
+  created_at: journeys.created_at,
+  updated_at: journeys.updated_at,
+};
+
 export class DrizzleJourneyRepository implements JourneyRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
@@ -13,7 +24,7 @@ export class DrizzleJourneyRepository implements JourneyRepository {
     id: JourneyId,
   ): Promise<Journey | null> {
     const [row] = await this.db
-      .select()
+      .select(JOURNEY_COLUMNS)
       .from(journeys)
       .where(and(eq(journeys.id, id), eq(journeys.organization_id, orgId)))
       .limit(1);
@@ -52,7 +63,7 @@ export class DrizzleJourneyRepository implements JourneyRepository {
 
     const [rows, countResult] = await Promise.all([
       this.db
-        .select()
+        .select(JOURNEY_COLUMNS)
         .from(journeys)
         .where(where)
         .orderBy(desc(journeys.updated_at))

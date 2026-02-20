@@ -53,6 +53,34 @@ export interface IJourneyRepository {
   ): Promise<void>;
 }
 
+const EXECUTION_COLUMNS = {
+  id: journey_executions.id,
+  journey_id: journey_executions.journey_id,
+  journey_version_id: journey_executions.journey_version_id,
+  organization_id: journey_executions.organization_id,
+  contact_id: journey_executions.contact_id,
+  status: journey_executions.status,
+  started_at: journey_executions.started_at,
+  completed_at: journey_executions.completed_at,
+  current_step_id: journey_executions.current_step_id,
+};
+
+const STEP_COLUMNS = {
+  id: journey_steps.id,
+  journey_version_id: journey_steps.journey_version_id,
+  organization_id: journey_steps.organization_id,
+  type: journey_steps.type,
+  config: journey_steps.config,
+  position_x: journey_steps.position_x,
+  position_y: journey_steps.position_y,
+};
+
+const CONNECTION_COLUMNS = {
+  from_step_id: journey_step_connections.from_step_id,
+  to_step_id: journey_step_connections.to_step_id,
+  label: journey_step_connections.label,
+};
+
 export class DrizzleJourneyRepository implements IJourneyRepository {
   constructor(private readonly db: any) {}
 
@@ -61,7 +89,7 @@ export class DrizzleJourneyRepository implements IJourneyRepository {
     organizationId: string,
   ): Promise<JourneyExecution | null> {
     const [row] = await this.db
-      .select()
+      .select(EXECUTION_COLUMNS)
       .from(journey_executions)
       .where(
         and(
@@ -104,7 +132,7 @@ export class DrizzleJourneyRepository implements IJourneyRepository {
     organizationId: string,
   ): Promise<JourneyStep | null> {
     const [row] = await this.db
-      .select()
+      .select(STEP_COLUMNS)
       .from(journey_steps)
       .where(
         and(
@@ -130,7 +158,7 @@ export class DrizzleJourneyRepository implements IJourneyRepository {
     stepId: string,
   ): Promise<Array<{ fromStepId: string; toStepId: string; label?: string }>> {
     const rows = await this.db
-      .select()
+      .select(CONNECTION_COLUMNS)
       .from(journey_step_connections)
       .where(eq(journey_step_connections.from_step_id, stepId));
 
@@ -251,7 +279,7 @@ export class DrizzleJourneyRepository implements IJourneyRepository {
 
   async findStaleExecutions(olderThan: Date): Promise<JourneyExecution[]> {
     const rows = await this.db
-      .select()
+      .select(EXECUTION_COLUMNS)
       .from(journey_executions)
       .where(
         and(

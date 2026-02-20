@@ -4,12 +4,20 @@ import type { ContactId, OrganizationId } from '@mauntic/domain-kernel';
 import { and, count, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const TAG_COLUMNS = {
+  id: tags.id,
+  organization_id: tags.organization_id,
+  name: tags.name,
+  color: tags.color,
+  created_at: tags.created_at,
+};
+
 export class DrizzleTagRepository implements TagRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
   async findById(orgId: OrganizationId, id: string): Promise<Tag | null> {
     const [row] = await this.db
-      .select()
+      .select(TAG_COLUMNS)
       .from(tags)
       .where(and(eq(tags.id, id), eq(tags.organization_id, orgId)))
       .limit(1);
@@ -18,7 +26,7 @@ export class DrizzleTagRepository implements TagRepository {
 
   async findByName(orgId: OrganizationId, name: string): Promise<Tag | null> {
     const [row] = await this.db
-      .select()
+      .select(TAG_COLUMNS)
       .from(tags)
       .where(and(eq(tags.organization_id, orgId), eq(tags.name, name)))
       .limit(1);
@@ -32,7 +40,7 @@ export class DrizzleTagRepository implements TagRepository {
     const offset = (pagination.page - 1) * pagination.limit;
     const [rows, totalResult] = await Promise.all([
       this.db
-        .select()
+        .select(TAG_COLUMNS)
         .from(tags)
         .where(eq(tags.organization_id, orgId))
         .orderBy(tags.name)

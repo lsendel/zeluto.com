@@ -14,6 +14,20 @@ import { intentSignals, signalAlerts } from '@mauntic/scoring-domain/drizzle';
 import { and, eq, lt } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
+const INTENT_SIGNAL_COLUMNS = {
+  id: intentSignals.id,
+  organization_id: intentSignals.organization_id,
+  contact_id: intentSignals.contact_id,
+  signal_type: intentSignals.signal_type,
+  source: intentSignals.source,
+  weight: intentSignals.weight,
+  detected_at: intentSignals.detected_at,
+  expires_at: intentSignals.expires_at,
+  decay_model: intentSignals.decay_model,
+  metadata: intentSignals.metadata,
+  created_at: intentSignals.created_at,
+};
+
 export class DrizzleIntentSignalRepository implements IntentSignalRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
@@ -22,7 +36,7 @@ export class DrizzleIntentSignalRepository implements IntentSignalRepository {
     id: IntentSignalId,
   ): Promise<IntentSignal | null> {
     const [row] = await this.db
-      .select()
+      .select(INTENT_SIGNAL_COLUMNS)
       .from(intentSignals)
       .where(
         and(eq(intentSignals.id, id), eq(intentSignals.organization_id, orgId)),
@@ -36,7 +50,7 @@ export class DrizzleIntentSignalRepository implements IntentSignalRepository {
     contactId: ContactId,
   ): Promise<IntentSignal[]> {
     const rows = await this.db
-      .select()
+      .select(INTENT_SIGNAL_COLUMNS)
       .from(intentSignals)
       .where(
         and(
@@ -52,7 +66,7 @@ export class DrizzleIntentSignalRepository implements IntentSignalRepository {
     contactId: ContactId,
   ): Promise<IntentSignal[]> {
     const rows = await this.db
-      .select()
+      .select(INTENT_SIGNAL_COLUMNS)
       .from(intentSignals)
       .where(
         and(
@@ -68,7 +82,7 @@ export class DrizzleIntentSignalRepository implements IntentSignalRepository {
     signalType: string,
   ): Promise<IntentSignal[]> {
     const rows = await this.db
-      .select()
+      .select(INTENT_SIGNAL_COLUMNS)
       .from(intentSignals)
       .where(
         and(
@@ -142,6 +156,19 @@ export class DrizzleIntentSignalRepository implements IntentSignalRepository {
   }
 }
 
+const SIGNAL_ALERT_COLUMNS = {
+  id: signalAlerts.id,
+  organization_id: signalAlerts.organization_id,
+  contact_id: signalAlerts.contact_id,
+  signal_type: signalAlerts.signal_type,
+  priority: signalAlerts.priority,
+  deadline: signalAlerts.deadline,
+  acknowledged_at: signalAlerts.acknowledged_at,
+  acknowledged_by: signalAlerts.acknowledged_by,
+  status: signalAlerts.status,
+  created_at: signalAlerts.created_at,
+};
+
 export class DrizzleSignalAlertRepository implements SignalAlertRepository {
   constructor(private readonly db: NeonHttpDatabase) {}
 
@@ -150,7 +177,7 @@ export class DrizzleSignalAlertRepository implements SignalAlertRepository {
     id: SignalAlertId,
   ): Promise<SignalAlert | null> {
     const [row] = await this.db
-      .select()
+      .select(SIGNAL_ALERT_COLUMNS)
       .from(signalAlerts)
       .where(
         and(eq(signalAlerts.id, id), eq(signalAlerts.organization_id, orgId)),
@@ -170,7 +197,7 @@ export class DrizzleSignalAlertRepository implements SignalAlertRepository {
       conditions.push(eq(signalAlerts.priority, options.priority));
 
     const query = this.db
-      .select()
+      .select(SIGNAL_ALERT_COLUMNS)
       .from(signalAlerts)
       .where(and(...conditions));
     const rows = await (options?.limit ? query.limit(options.limit) : query);
@@ -182,7 +209,7 @@ export class DrizzleSignalAlertRepository implements SignalAlertRepository {
     contactId: ContactId,
   ): Promise<SignalAlert[]> {
     const rows = await this.db
-      .select()
+      .select(SIGNAL_ALERT_COLUMNS)
       .from(signalAlerts)
       .where(
         and(
@@ -195,7 +222,7 @@ export class DrizzleSignalAlertRepository implements SignalAlertRepository {
 
   async findOverdue(orgId: OrganizationId): Promise<SignalAlert[]> {
     const rows = await this.db
-      .select()
+      .select(SIGNAL_ALERT_COLUMNS)
       .from(signalAlerts)
       .where(
         and(
