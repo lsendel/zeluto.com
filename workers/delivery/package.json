@@ -6,6 +6,7 @@
     "dev": "wrangler dev",
     "build": "wrangler deploy --dry-run",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
     "lint": "biome check ./src"
   },
   "dependencies": {
@@ -15,11 +16,13 @@
     "@mauntic/worker-lib": "workspace:*",
     "@neondatabase/serverless": "catalog:",
     "drizzle-orm": "catalog:",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "wrangler": "^4.67.0"
   }
 }

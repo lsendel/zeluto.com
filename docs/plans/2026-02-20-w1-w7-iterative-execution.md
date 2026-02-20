@@ -61,10 +61,10 @@ Mode: Iterative (small vertical slices per turn)
 
 ### W7 - AI + Deliverability + RevOps Hardening
 
-- [ ] AI assist (copy, copilot, explainability, next-best-action)
-- [ ] Deliverability suite (seed/inbox placement + diagnostics)
-- [ ] Forecast/risk reliability and calibration
-- [ ] Release readiness checks and rollback drills
+- [x] AI assist (copy, copilot, explainability, next-best-action)
+- [x] Deliverability suite (seed/inbox placement + diagnostics)
+- [x] Forecast/risk reliability and calibration
+- [x] Release readiness checks and rollback drills
 
 ## Iteration 1 Outcome
 
@@ -218,8 +218,67 @@ Mode: Iterative (small vertical slices per turn)
   - `pnpm --filter @mauntic/identity test -- --runInBand`
   - `pnpm --filter @mauntic/identity typecheck`
 
-## Next Iteration Candidate (W7)
+## Iteration 6 Outcome (W7 Slice 1: AI Assist Completion)
 
-1. Ship AI assist primitives (copy helper + explainability trail + next-best-action endpoint) with deterministic prompt-policy tests.
-2. Implement deliverability diagnostics baseline (seed list orchestration + inbox placement aggregation + surfaced recommendations).
-3. Add RevOps forecast/risk calibration checks and release-readiness rollback drill automation.
+- Completed AI assist primitives in RevOps with deterministic explainability + next-best-action logic:
+  - new domain service:
+    - `packages/domains/revops-domain/src/services/next-best-action.ts`
+  - exports updated:
+    - `packages/domains/revops-domain/src/services/index.ts`
+  - worker routes:
+    - `GET /api/v1/revops/agents/next-best-action/:dealId`
+    - `GET /api/v1/revops/agents/deal-inspector/:dealId/explainability`
+    - file: `workers/revops/src/interface/agent-routes.ts`
+- Added deterministic tests for advisor logic + route wiring:
+  - `packages/domains/revops-domain/src/services/next-best-action.test.ts`
+  - `workers/revops/src/interface/agent-routes.integration.test.ts`
+- Extended API contract coverage for new W7 AI endpoints:
+  - `packages/contracts/src/revops.contract.ts`
+- Added revops worker test wiring:
+  - `workers/revops/package.json` adds `test` script + `vitest` dev dependency.
+- Validation commands passed:
+  - `pnpm --filter @mauntic/revops-domain test -- --runInBand`
+  - `pnpm --filter @mauntic/revops-domain typecheck`
+  - `pnpm --filter @mauntic/revops test -- --runInBand`
+  - `pnpm --filter @mauntic/revops typecheck`
+  - `pnpm --filter @mauntic/contracts typecheck`
+
+## Iteration 7 Outcome (W7 Slice 2: Deliverability + Forecast Calibration + Release Readiness)
+
+- Added deliverability diagnostics integration tests covering full seed test CRUD, inbox placement, and provider trends:
+  - `workers/delivery/src/interface/deliverability-routes.integration.test.ts` (9 tests)
+  - Added `zod` as direct dependency to delivery worker
+- Implemented forecast calibration domain service with MAPE, bias tracking, confidence bands, and risk alerts:
+  - `packages/domains/revops-domain/src/services/forecast-calibration.ts`
+  - `packages/domains/revops-domain/src/services/forecast-calibration.test.ts` (13 tests)
+  - Exported from `packages/domains/revops-domain/src/services/index.ts`
+- Wired forecast calibration API endpoints in RevOps worker:
+  - `GET /api/v1/revops/forecasts/:period/calibration` - confidence bands + accuracy metrics
+  - `GET /api/v1/revops/forecasts/:period/risk-alerts` - active risk alerts
+  - Added `findForecastHistory()` to `workers/revops/src/infrastructure/repositories/forecast-repository.ts`
+  - Added contract schemas to `packages/contracts/src/revops.contract.ts`
+  - `workers/revops/src/interface/forecast-routes.integration.test.ts` (5 tests)
+- Implemented release readiness checks and rollback drill endpoints in gateway:
+  - `GET /api/v1/ops/release-readiness` - fan-out health checks to all 12 service bindings with readiness verdict
+  - `POST /api/v1/ops/rollback-drill` - simulates rollback, records drill result in KV with 90-day TTL
+  - `workers/gateway/src/routes/ops.ts`
+  - `workers/gateway/src/routes/ops.integration.test.ts` (5 tests)
+  - Wired into `workers/gateway/src/app.tsx`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/delivery test -- --run` (9 passed)
+  - `pnpm --filter @mauntic/delivery typecheck`
+  - `pnpm --filter @mauntic/revops-domain test -- --run` (19 passed)
+  - `pnpm --filter @mauntic/revops-domain typecheck`
+  - `pnpm --filter @mauntic/revops test -- --run` (8 passed)
+  - `pnpm --filter @mauntic/revops typecheck`
+  - `pnpm --filter @mauntic/contracts typecheck`
+  - `pnpm --filter @mauntic/gateway test -- --run` (24 passed)
+  - `pnpm --filter @mauntic/gateway typecheck`
+
+## Next Iteration Candidate (W1-W4)
+
+Remaining incomplete waves:
+1. W1: Delivery provider matrix hardening + normalization parity tests
+2. W2: Scoring API repos, batch recompute, signal decay, alert expiry, DLQ replay
+3. W3: Journey trigger execution, segment evaluator, goals/exit/re-entry, channel parity
+4. W4: Consent center, identity resolution, custom RBAC, immutable audit log

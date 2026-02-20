@@ -24,6 +24,7 @@ import { createJourneyRoutes } from './routes/journey.js';
 import { createLeadIntelligenceRoutes } from './routes/lead-intelligence.js';
 import { createOnboardingRoutes } from './routes/onboarding.js';
 import { createPageRoutes } from './routes/pages.js';
+import { createOpsRoutes } from './routes/ops.js';
 import { createRevopsRoutes } from './routes/revops.js';
 import { createScoringRoutes } from './routes/scoring.js';
 import { createSeoRoutes } from './routes/seo.js';
@@ -185,6 +186,7 @@ export function createApp() {
   app.route('/api/v1/lead-intelligence', createLeadIntelligenceRoutes());
   app.route('/api/v1/scoring', createScoringRoutes());
   app.route('/api/v1/revops', createRevopsRoutes());
+  app.route('/api/v1/ops', createOpsRoutes());
 
   // Public SEO Handlers (e.g. /robots.txt)
   app.route('/', createSeoRoutes());

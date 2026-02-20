@@ -2,6 +2,7 @@ import type { ActivityProps, DealProps } from '@mauntic/revops-domain';
 import {
   DealInspector,
   EmailCopilot,
+  NextBestActionAdvisor,
   SalesCoach,
 } from '@mauntic/revops-domain';
 import { Hono } from 'hono';
@@ -127,6 +128,111 @@ agentRoutes.post('/api/v1/revops/agents/deal-inspector/:dealId', async (c) => {
   }
 });
 
+agentRoutes.get(
+  '/api/v1/revops/agents/deal-inspector/:dealId/explainability',
+  async (c) => {
+    const tenant = c.get('tenant');
+    const db = c.get('db');
+    const { dealId } = c.req.param();
+    const now = parseNowQuery(c.req.query('now'));
+    if (!now) {
+      return c.json(
+        { code: 'VALIDATION_ERROR', message: 'Invalid now query parameter' },
+        400,
+      );
+    }
+
+    try {
+      const dealRow = await findDealById(db, tenant.organizationId, dealId);
+      if (!dealRow) {
+        return c.json({ code: 'NOT_FOUND', message: 'Deal not found' }, 404);
+      }
+
+      const activityRows = await findActivitiesByDeal(
+        db,
+        tenant.organizationId,
+        dealId,
+      );
+      const deal = mapDealRowToProps(dealRow);
+      const activities = activityRows.map(mapActivityRowToProps);
+
+      const inspector = new DealInspector();
+      const report = inspector.inspect(deal, activities);
+      const advisor = new NextBestActionAdvisor(inspector);
+      const explainability = advisor.explain({
+        deal,
+        activities,
+        healthReport: report,
+        now,
+      });
+
+      return c.json({
+        dealId: deal.id,
+        report,
+        explainability,
+      });
+    } catch (error) {
+      console.error('Deal inspector explainability error:', error);
+      return c.json(
+        {
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to generate explainability trail',
+        },
+        500,
+      );
+    }
+  },
+);
+
+agentRoutes.get('/api/v1/revops/agents/next-best-action/:dealId', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const { dealId } = c.req.param();
+  const now = parseNowQuery(c.req.query('now'));
+  if (!now) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'Invalid now query parameter' },
+      400,
+    );
+  }
+
+  try {
+    const dealRow = await findDealById(db, tenant.organizationId, dealId);
+    if (!dealRow) {
+      return c.json({ code: 'NOT_FOUND', message: 'Deal not found' }, 404);
+    }
+
+    const activityRows = await findActivitiesByDeal(
+      db,
+      tenant.organizationId,
+      dealId,
+    );
+    const deal = mapDealRowToProps(dealRow);
+    const activities = activityRows.map(mapActivityRowToProps);
+
+    const inspector = new DealInspector();
+    const report = inspector.inspect(deal, activities);
+    const advisor = new NextBestActionAdvisor(inspector);
+    const recommendation = advisor.recommend({
+      deal,
+      activities,
+      healthReport: report,
+      now,
+    });
+
+    return c.json(recommendation);
+  } catch (error) {
+    console.error('Next best action error:', error);
+    return c.json(
+      {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to generate next-best-action recommendation',
+      },
+      500,
+    );
+  }
+});
+
 agentRoutes.post('/api/v1/revops/activities', async (c) => {
   const tenant = c.get('tenant');
   const db = c.get('db');
@@ -143,3 +249,12 @@ agentRoutes.post('/api/v1/revops/activities', async (c) => {
     );
   }
 });
+
+function parseNowQuery(nowQuery: string | undefined): Date | null {
+  if (!nowQuery) return new Date();
+  const parsed = new Date(nowQuery);
+  if (Number.isNaN(parsed.valueOf())) {
+    return null;
+  }
+  return parsed;
+}
