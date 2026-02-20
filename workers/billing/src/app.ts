@@ -8,6 +8,7 @@ import { logger } from 'hono/logger';
 import type Stripe from 'stripe';
 import { createStripeClient } from './infrastructure/stripe.js';
 import { billingRoutes } from './interface/billing-routes.js';
+import { billingViews } from './interface/billing-views.js';
 import { webhookRoutes } from './interface/webhook-routes.js';
 
 export interface Env {
@@ -68,7 +69,7 @@ export function createApp() {
     }
   });
 
-  // Database and Stripe middleware for all API routes
+  // Database and Stripe middleware for API and view routes
   app.use('/api/*', async (c, next) => {
     const db = createDatabase(c.env.DATABASE_URL);
     const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
@@ -76,6 +77,15 @@ export function createApp() {
     c.set('stripe', stripe);
     await next();
   });
+  app.use('/app/*', async (c, next) => {
+    const db = createDatabase(c.env.DATABASE_URL);
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
+    c.set('db', db as any);
+    c.set('stripe', stripe);
+    await next();
+  });
+  app.use('/app/billing/*', tenantMiddleware());
+  app.use('/app/billing', tenantMiddleware());
 
   // Tenant context required for all billing API routes (except webhooks)
   app.use('/api/v1/billing/plans/*', tenantMiddleware());
@@ -91,6 +101,7 @@ export function createApp() {
   // Mount routes - routes define their own full paths
   app.route('/', billingRoutes);
   app.route('/', webhookRoutes);
+  app.route('/', billingViews);
 
   return app;
 }
