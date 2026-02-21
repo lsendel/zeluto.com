@@ -101,7 +101,7 @@ export function quotaMiddleware(): MiddlewareHandler<Env> {
             resource,
             current: quota.current,
             limit: quota.limit,
-            upgradeUrl: '/app/settings/billing',
+            upgradeUrl: '/app/billing',
           },
           429,
         );
