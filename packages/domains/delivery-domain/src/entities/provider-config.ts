@@ -26,6 +26,55 @@ export const ProviderConfigPropsSchema = z.object({
 
 export type ProviderConfigProps = z.infer<typeof ProviderConfigPropsSchema>;
 
+/**
+ * Maps each provider type to the channels it supports.
+ */
+const PROVIDER_CHANNEL_MAP: Record<ProviderType, readonly Channel[]> = {
+  ses: ['email'],
+  sendgrid: ['email'],
+  postmark: ['email'],
+  custom_smtp: ['email'],
+  twilio: ['sms'],
+  fcm: ['push'],
+};
+
+/**
+ * Required config keys per provider type.
+ */
+const PROVIDER_REQUIRED_CONFIG: Record<ProviderType, readonly string[]> = {
+  ses: ['region', 'accessKeyId', 'secretAccessKey'],
+  sendgrid: ['apiKey'],
+  postmark: ['serverToken'],
+  custom_smtp: ['host', 'port', 'username', 'password'],
+  twilio: ['accountSid', 'authToken', 'fromNumber'],
+  fcm: ['projectId', 'serviceAccountKey'],
+};
+
+export function validateChannelCompatibility(
+  channel: Channel,
+  providerType: ProviderType,
+): void {
+  const allowed = PROVIDER_CHANNEL_MAP[providerType];
+  if (!allowed.includes(channel)) {
+    throw new InvariantViolation(
+      `Provider type '${providerType}' does not support channel '${channel}'. Supported channels: ${allowed.join(', ')}`,
+    );
+  }
+}
+
+export function validateProviderConfig(
+  providerType: ProviderType,
+  config: Record<string, unknown>,
+): void {
+  const required = PROVIDER_REQUIRED_CONFIG[providerType];
+  const missing = required.filter((key) => !(key in config) || config[key] == null || config[key] === '');
+  if (missing.length > 0) {
+    throw new InvariantViolation(
+      `Provider type '${providerType}' requires config keys: ${missing.join(', ')}`,
+    );
+  }
+}
+
 export class ProviderConfig {
   private constructor(private props: ProviderConfigProps) {}
 
@@ -38,6 +87,9 @@ export class ProviderConfig {
     config: Record<string, unknown>;
     priority?: number;
   }): ProviderConfig {
+    validateChannelCompatibility(input.channel, input.providerType);
+    validateProviderConfig(input.providerType, input.config);
+
     return new ProviderConfig(
       ProviderConfigPropsSchema.parse({
         id: crypto.randomUUID(),
@@ -106,6 +158,7 @@ export class ProviderConfig {
   }
 
   updateConfig(config: Record<string, unknown>): void {
+    validateProviderConfig(this.props.providerType, config);
     this.props.config = config;
     this.props.updatedAt = new Date();
   }

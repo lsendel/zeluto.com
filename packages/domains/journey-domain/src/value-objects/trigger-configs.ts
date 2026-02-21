@@ -15,6 +15,22 @@ export const SegmentTriggerConfigSchema = z.object({
 
 export type SegmentTriggerConfig = z.infer<typeof SegmentTriggerConfigSchema>;
 
+export const ScoreTriggerConfigSchema = z.object({
+  type: z.literal('score'),
+  operator: z.enum(['gte', 'lte', 'eq']),
+  threshold: z.number(),
+});
+
+export type ScoreTriggerConfig = z.infer<typeof ScoreTriggerConfigSchema>;
+
+export const IntentTriggerConfigSchema = z.object({
+  type: z.literal('intent'),
+  intentType: z.string().min(1),
+  minStrength: z.number().min(0).max(100).optional(),
+});
+
+export type IntentTriggerConfig = z.infer<typeof IntentTriggerConfigSchema>;
+
 export const ApiTriggerConfigSchema = z.object({
   type: z.literal('api'),
 });
@@ -34,6 +50,8 @@ export type ScheduledTriggerConfig = z.infer<
 export const TriggerConfigSchema = z.discriminatedUnion('type', [
   EventTriggerConfigSchema,
   SegmentTriggerConfigSchema,
+  ScoreTriggerConfigSchema,
+  IntentTriggerConfigSchema,
   ApiTriggerConfigSchema,
   ScheduledTriggerConfigSchema,
 ]);
