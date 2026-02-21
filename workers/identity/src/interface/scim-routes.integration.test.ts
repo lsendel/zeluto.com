@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createScimUser,
+  getScimUserById,
   listScimUsers,
   patchScimUserActive,
 } from '../application/scim-provisioning-service.js';
@@ -20,6 +21,7 @@ vi.mock('../application/scim-provisioning-service.js', async () => {
   return {
     ...actual,
     listScimUsers: vi.fn(),
+    getScimUserById: vi.fn(),
     createScimUser: vi.fn(),
     patchScimUserActive: vi.fn(),
   };
@@ -107,8 +109,7 @@ async function issueToken(app: ReturnType<typeof createScimApp>, env: Env) {
   );
 
   expect(response.status).toBe(201);
-  const payload = await response.json<{ token: string }>();
-  return payload.token;
+  return await response.json<{ id: string; token: string }>();
 }
 
 describe('scim routes', () => {
@@ -177,7 +178,7 @@ describe('scim routes', () => {
   it('lists SCIM users via provisioning service when token is valid', async () => {
     const app = createScimApp();
     const env = baseEnv();
-    const token = await issueToken(app, env);
+    const issued = await issueToken(app, env);
     vi.mocked(listScimUsers).mockResolvedValue({
       resources: [
         {
@@ -185,6 +186,7 @@ describe('scim routes', () => {
           userName: 'one@acme.com',
           active: true,
           name: { formatted: 'One User' },
+          roles: [{ value: 'member', display: 'member', primary: true }],
         },
       ],
       totalResults: 1,
@@ -194,7 +196,7 @@ describe('scim routes', () => {
 
     const response = await app.request(
       'http://localhost/scim/v2/Users?startIndex=1&count=50',
-      { headers: { Authorization: `Bearer ${token}` } },
+      { headers: { Authorization: `Bearer ${issued.token}` } },
       env,
     );
 
@@ -218,6 +220,7 @@ describe('scim routes', () => {
           userName: 'one@acme.com',
           active: true,
           name: { formatted: 'One User' },
+          roles: [{ value: 'member', display: 'member', primary: true }],
         },
       ],
     });
@@ -226,12 +229,13 @@ describe('scim routes', () => {
   it('creates SCIM user via provisioning service when token is valid', async () => {
     const app = createScimApp();
     const env = baseEnv();
-    const token = await issueToken(app, env);
+    const issued = await issueToken(app, env);
     vi.mocked(createScimUser).mockResolvedValue({
       id: 'user-2',
       userName: 'new@acme.com',
       active: true,
       name: { formatted: 'New User' },
+      roles: [{ value: 'member', display: 'member', primary: true }],
     });
 
     const response = await app.request(
@@ -240,7 +244,7 @@ describe('scim routes', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${issued.token}`,
         },
         body: JSON.stringify({
           userName: 'new@acme.com',
@@ -263,18 +267,20 @@ describe('scim routes', () => {
       userName: 'new@acme.com',
       active: true,
       name: { formatted: 'New User' },
+      roles: [{ value: 'member', display: 'member', primary: true }],
     });
   });
 
   it('patches SCIM user active flag via provisioning service when token is valid', async () => {
     const app = createScimApp();
     const env = baseEnv();
-    const token = await issueToken(app, env);
+    const issued = await issueToken(app, env);
     vi.mocked(patchScimUserActive).mockResolvedValue({
       id: 'user-3',
       userName: 'user3@acme.com',
       active: false,
       name: { formatted: 'User Three' },
+      roles: [{ value: 'member', display: 'member', primary: true }],
     });
 
     const response = await app.request(
@@ -283,7 +289,7 @@ describe('scim routes', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${issued.token}`,
         },
         body: JSON.stringify({
           Operations: [{ op: 'replace', path: 'active', value: false }],
@@ -305,6 +311,107 @@ describe('scim routes', () => {
       userName: 'user3@acme.com',
       active: false,
       name: { formatted: 'User Three' },
+      roles: [{ value: 'member', display: 'member', primary: true }],
+    });
+  });
+
+  it('retrieves SCIM user by id via provisioning service when token is valid', async () => {
+    const app = createScimApp();
+    const env = baseEnv();
+    const issued = await issueToken(app, env);
+    vi.mocked(getScimUserById).mockResolvedValue({
+      id: 'user-9',
+      userName: 'user9@acme.com',
+      active: true,
+      name: { formatted: 'User Nine' },
+      roles: [{ value: 'admin', display: 'admin', primary: true }],
+    });
+
+    const response = await app.request(
+      'http://localhost/scim/v2/Users/user-9',
+      { headers: { Authorization: `Bearer ${issued.token}` } },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    expect(getScimUserById).toHaveBeenCalledWith({}, 'org-1', 'user-9');
+    await expect(response.json()).resolves.toEqual({
+      schemas: ['urn:ietf:params:scim:schemas:core:2.0:User'],
+      id: 'user-9',
+      userName: 'user9@acme.com',
+      active: true,
+      name: { formatted: 'User Nine' },
+      roles: [{ value: 'admin', display: 'admin', primary: true }],
+    });
+  });
+
+  it('lists and revokes SCIM tokens for owner/admin users', async () => {
+    const app = createScimApp({ organizationId: 'org-1', userRole: 'owner' });
+    const env = baseEnv();
+    const firstIssued = await issueToken(app, env);
+    await issueToken(app, env);
+
+    const listResponse = await app.request(
+      'http://localhost/api/v1/identity/scim/tokens',
+      undefined,
+      env,
+    );
+
+    expect(listResponse.status).toBe(200);
+    const listPayload = await listResponse.json<{
+      data: Array<{ id: string; token?: string; isActive: boolean }>;
+    }>();
+    expect(listPayload.data.length).toBe(2);
+    expect(listPayload.data.every((token) => token.isActive === true)).toBe(
+      true,
+    );
+    expect(listPayload.data.every((token) => token.token === undefined)).toBe(
+      true,
+    );
+
+    const revokeResponse = await app.request(
+      `http://localhost/api/v1/identity/scim/tokens/${firstIssued.id}`,
+      { method: 'DELETE' },
+      env,
+    );
+    expect(revokeResponse.status).toBe(204);
+
+    const postRevokeList = await app.request(
+      'http://localhost/api/v1/identity/scim/tokens',
+      undefined,
+      env,
+    );
+    const postRevokePayload = await postRevokeList.json<{
+      data: Array<{ id: string; isActive: boolean }>;
+    }>();
+    const revoked = postRevokePayload.data.find((t) => t.id === firstIssued.id);
+    expect(revoked?.isActive).toBe(false);
+  });
+
+  it('blocks revoked SCIM token from provisioning endpoints', async () => {
+    const app = createScimApp();
+    const env = baseEnv();
+    const issued = await issueToken(app, env);
+
+    const revokeResponse = await app.request(
+      `http://localhost/api/v1/identity/scim/tokens/${issued.id}`,
+      { method: 'DELETE' },
+      env,
+    );
+    expect(revokeResponse.status).toBe(204);
+
+    const response = await app.request(
+      'http://localhost/scim/v2/Users',
+      { headers: { Authorization: `Bearer ${issued.token}` } },
+      env,
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      schemas: ['urn:ietf:params:scim:api:messages:2.0:Error'],
+      detail: 'Invalid SCIM token',
+      status: '401',
+      scimType: 'invalidToken',
     });
   });
 });

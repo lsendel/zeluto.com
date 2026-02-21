@@ -32,7 +32,12 @@ export async function validateSessionFromHeaders(
       return { status: 401, body: { error: 'UNAUTHORIZED' } };
     }
 
-    let activeOrgId = session.session.activeOrganizationId;
+    let activeOrgId =
+      (
+        session.session as {
+          activeOrganizationId?: string | null;
+        }
+      ).activeOrganizationId ?? null;
 
     // Auto-assign org when user has exactly one membership
     if (!activeOrgId) {

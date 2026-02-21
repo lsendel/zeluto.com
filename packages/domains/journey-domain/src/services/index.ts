@@ -1,4 +1,9 @@
 export {
+  type EntryDecision,
+  evaluateEntryGuards,
+  type ExecutionRecord,
+} from './entry-guards.js';
+export {
   evaluateConditionSplit,
   evaluateRandomSplit,
 } from './split-evaluator.js';

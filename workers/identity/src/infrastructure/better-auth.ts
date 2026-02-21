@@ -7,6 +7,7 @@ import {
   users,
   verifications,
 } from '@mauntic/identity-domain';
+import type { BetterAuthOptions } from 'better-auth';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { organization } from 'better-auth/plugins';
@@ -16,8 +17,11 @@ import type { DrizzleDb, Env } from './database.js';
  * Create a per-request Better Auth instance
  * (Cloudflare Workers have no long-lived process, so we create auth instance per request)
  */
-export function createAuth(env: Env, db: DrizzleDb) {
-  return betterAuth({
+export function buildBetterAuthOptions(
+  env: Env,
+  db: DrizzleDb,
+): BetterAuthOptions {
+  return {
     basePath: '/api/auth',
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
@@ -87,5 +91,18 @@ export function createAuth(env: Env, db: DrizzleDb) {
         },
       },
     },
-  });
+    session: {
+      additionalFields: {
+        activeOrganizationId: {
+          type: 'string',
+          required: false,
+          input: false,
+        },
+      },
+    },
+  };
+}
+
+export function createAuth(env: Env, db: DrizzleDb) {
+  return betterAuth(buildBetterAuthOptions(env, db));
 }

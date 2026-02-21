@@ -9,6 +9,11 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { handleContactCreated } from './contact-event-handler.js';
 import { handleDeliveryEvent } from './delivery-event-handler.js';
 import { handleFormSubmitted } from './form-event-handler.js';
+import {
+  handleIntentDetected,
+  handleScoreChanged,
+} from './score-event-handler.js';
+import { handleSegmentChanged } from './segment-event-handler.js';
 
 interface QueueEnv {
   DATABASE_URL: string;
@@ -88,6 +93,18 @@ export async function handleJourneyQueue(
         case 'delivery.MessageClicked':
         case 'delivery.MessageBounced':
           await handleDeliveryEvent(db, event as any, env.EVENTS);
+          break;
+
+        case 'scoring.ScoreChanged':
+          await handleScoreChanged(db, event as any, env.EVENTS);
+          break;
+
+        case 'scoring.IntentDetected':
+          await handleIntentDetected(db, event as any, env.EVENTS);
+          break;
+
+        case 'crm.ContactSegmentChanged':
+          await handleSegmentChanged(db, event as any, env.EVENTS);
           break;
 
         default:

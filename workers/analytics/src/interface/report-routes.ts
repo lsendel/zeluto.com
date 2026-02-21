@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
+import { runTypedReport } from '../application/report-runner.js';
 import {
   createReport,
   deleteReport,
@@ -180,18 +181,12 @@ reportRoutes.post('/api/v1/analytics/reports/:id/run', async (c) => {
     // Mark report as run
     await updateReport(db, tenant.organizationId, id, {});
 
-    return c.json({
-      reportId: report.id,
-      generatedAt: new Date().toISOString(),
-      data: {
-        name: report.name,
-        config: report.steps,
-        dateRange: { startDate, endDate },
-        labels: [],
-        datasets: [],
-        summary: {},
-      },
+    const result = await runTypedReport(db, tenant.organizationId, report, {
+      startDate,
+      endDate,
     });
+
+    return c.json(result);
   } catch (error) {
     console.error('Run report error:', error);
     return c.json(

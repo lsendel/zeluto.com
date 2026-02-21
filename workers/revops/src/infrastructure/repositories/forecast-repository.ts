@@ -1,5 +1,5 @@
 import { forecasts } from '@mauntic/revops-domain/drizzle';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, ne } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type ForecastRow = typeof forecasts.$inferSelect;
@@ -30,6 +30,29 @@ export async function findForecastsByRep(
     .where(
       and(eq(forecasts.organization_id, orgId), eq(forecasts.rep_id, repId)),
     );
+}
+
+/**
+ * Fetch historical forecasts for calibration (all periods except the given one).
+ * Returns up to `limit` most recent periods, sorted newest first.
+ */
+export async function findForecastHistory(
+  db: NeonHttpDatabase,
+  orgId: string,
+  excludePeriod: string,
+  limit = 12,
+): Promise<ForecastRow[]> {
+  return db
+    .select()
+    .from(forecasts)
+    .where(
+      and(
+        eq(forecasts.organization_id, orgId),
+        ne(forecasts.period, excludePeriod),
+      ),
+    )
+    .orderBy(desc(forecasts.period))
+    .limit(limit);
 }
 
 export async function upsertForecast(

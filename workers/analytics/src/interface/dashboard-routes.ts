@@ -3,6 +3,7 @@ import type { Env } from '../app.js';
 import {
   getCampaignStats,
   getJourneyStats,
+  getOverviewKpis,
   getOverviewStats,
 } from '../infrastructure/repositories/dashboard-repository.js';
 
@@ -14,31 +15,44 @@ dashboardRoutes.get('/api/v1/analytics/overview', async (c) => {
   const db = c.get('db');
 
   try {
-    const stats = await getOverviewStats(db, tenant.organizationId);
+    const [stats, kpis] = await Promise.all([
+      getOverviewStats(db, tenant.organizationId),
+      getOverviewKpis(db, tenant.organizationId),
+    ]);
 
     // Compute summary from aggregates
     let emailsSentToday = 0;
     let totalOpened = 0;
     let totalClicked = 0;
+    let totalConverted = 0;
     for (const agg of stats.aggregates) {
       if (agg.eventType === 'email_sent') emailsSentToday += agg.count;
       if (agg.eventType === 'email_opened') totalOpened += agg.count;
       if (agg.eventType === 'email_clicked') totalClicked += agg.count;
+      if (
+        agg.eventType === 'conversion' ||
+        agg.eventType === 'deal_won' ||
+        agg.eventType === 'form_submitted'
+      ) {
+        totalConverted += agg.count;
+      }
     }
 
     const openRate =
       emailsSentToday > 0 ? (totalOpened / emailsSentToday) * 100 : 0;
     const clickRate =
       emailsSentToday > 0 ? (totalClicked / emailsSentToday) * 100 : 0;
+    const conversionRate =
+      emailsSentToday > 0 ? (totalConverted / emailsSentToday) * 100 : 0;
 
     return c.json({
-      totalContacts: 0, // Populated from CRM via cross-service call
-      activeJourneys: 0,
-      campaignsSent: 0,
+      totalContacts: kpis.totalContacts,
+      activeJourneys: kpis.activeJourneys,
+      campaignsSent: kpis.campaignsSent,
       emailsSentToday,
       openRate: Math.round(openRate * 100) / 100,
       clickRate: Math.round(clickRate * 100) / 100,
-      conversionRate: 0,
+      conversionRate: Math.round(conversionRate * 100) / 100,
       recentActivity: stats.recentActivity,
     });
   } catch (error) {
@@ -100,7 +114,7 @@ dashboardRoutes.get(
 
       return c.json({
         campaignId,
-        campaignName: '',
+        campaignName: campaignId,
         totalRecipients: sent,
         sent,
         delivered,
@@ -160,7 +174,7 @@ dashboardRoutes.get('/api/v1/analytics/journeys/:id/performance', async (c) => {
 
     return c.json({
       journeyId,
-      journeyName: '',
+      journeyName: journeyId,
       totalStarted,
       totalCompleted,
       totalFailed,

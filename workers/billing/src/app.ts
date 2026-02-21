@@ -98,6 +98,16 @@ export function createApp() {
   app.use('/api/v1/billing/invoices', tenantMiddleware());
   app.use('/api/v1/billing/portal', tenantMiddleware());
 
+  // View routes need db/stripe/tenant context too
+  app.use('/app/*', async (c, next) => {
+    const db = createDatabase(c.env.DATABASE_URL);
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
+    c.set('db', db as any);
+    c.set('stripe', stripe);
+    await next();
+  });
+  app.use('/app/*', tenantMiddleware());
+
   // Mount routes - routes define their own full paths
   app.route('/', billingRoutes);
   app.route('/', webhookRoutes);

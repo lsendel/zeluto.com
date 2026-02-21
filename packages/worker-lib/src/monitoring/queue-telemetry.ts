@@ -2,6 +2,7 @@ export type QueueMetricStatus =
   | 'received'
   | 'ack'
   | 'retry'
+  | 'dlq'
   | 'duplicate'
   | 'error';
 

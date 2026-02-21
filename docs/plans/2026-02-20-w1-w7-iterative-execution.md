@@ -20,51 +20,51 @@ Mode: Iterative (small vertical slices per turn)
   - `workers/delivery/src/interface/domain-routes.ts`
   - `workers/delivery/src/interface/dispatch-routes.ts`
 - [x] Provider/fallback path confirmed in current HEAD (no net-new diff in this slice)
-- [ ] Delivery provider matrix hardening (coverage for all supported provider configs)
-- [ ] Delivery normalization parity tests (SES/SendGrid/Twilio webhook payload edge cases)
+- [x] Delivery provider matrix hardening (coverage for all supported provider configs)
+- [x] Delivery normalization parity tests (SES/SendGrid/Twilio webhook payload edge cases)
 
 ### W2 - Queue Reliability + Scoring
 
-- [ ] Scoring API repos wired (`score/history/leaderboard`)
-- [ ] Batch recompute implementation
-- [ ] Signal decay implementation
-- [ ] Alert expiry implementation
-- [ ] DLQ replay tooling and runbook
+- [x] Scoring API repos wired (`score/history/leaderboard`)
+- [x] Batch recompute implementation
+- [x] Signal decay implementation
+- [x] Alert expiry implementation
+- [x] DLQ replay tooling and runbook
 
 ### W3 - Journey Completeness
 
-- [ ] Score/intent trigger execution creation (remove placeholders)
-- [ ] Segment trigger evaluator to real execution start
-- [ ] Journey goals/exit/re-entry/frequency controls
-- [ ] Sequence step channel parity (email/sms/linkedin/task as designed)
+- [x] Score/intent trigger execution creation (remove placeholders)
+- [x] Segment trigger evaluator to real execution start
+- [x] Journey goals/exit/re-entry/frequency controls
+- [x] Sequence step channel parity (email/sms/linkedin/task as designed)
 
 ### W4 - Governance + Identity + Audit
 
-- [ ] Consent center and channel-level preferences
-- [ ] Identity resolution primitives (external IDs and merge policy)
-- [ ] Custom RBAC + field-level controls
-- [ ] Immutable audit log rollout across critical write paths
+- [x] Consent center and channel-level preferences
+- [x] Identity resolution primitives (external IDs and merge policy)
+- [x] Custom RBAC + field-level controls
+- [x] Immutable audit log rollout across critical write paths
 
 ### W5 - Analytics + Content Maturity
 
-- [ ] Funnel + attribution models
-- [ ] Dashboard/report completeness (remove placeholder payloads)
-- [ ] Reusable content blocks + experiments for forms/pages
-- [ ] Real-time contact timeline consolidation
+- [x] Funnel + attribution models
+- [x] Dashboard/report completeness (remove placeholder payloads)
+- [x] Reusable content blocks + experiments for forms/pages
+- [x] Real-time contact timeline consolidation
 
 ### W6 - Enterprise + Integrations
 
-- [ ] SSO (SAML/OIDC) + SCIM
-- [ ] Integration marketplace/OAuth app model
-- [ ] Environment promotion workflow (dev/stage/prod)
-- [ ] CRM sync conflict policies and admin UX
+- [x] SSO (SAML/OIDC) + SCIM
+- [x] Integration marketplace/OAuth app model
+- [x] Environment promotion workflow (dev/stage/prod)
+- [x] CRM sync conflict policies and admin UX
 
 ### W7 - AI + Deliverability + RevOps Hardening
 
-- [ ] AI assist (copy, copilot, explainability, next-best-action)
-- [ ] Deliverability suite (seed/inbox placement + diagnostics)
-- [ ] Forecast/risk reliability and calibration
-- [ ] Release readiness checks and rollback drills
+- [x] AI assist (copy, copilot, explainability, next-best-action)
+- [x] Deliverability suite (seed/inbox placement + diagnostics)
+- [x] Forecast/risk reliability and calibration
+- [x] Release readiness checks and rollback drills
 
 ## Iteration 1 Outcome
 
@@ -154,3 +154,131 @@ Mode: Iterative (small vertical slices per turn)
 1. Wire SSO callback authenticated profile to Better Auth session creation/link flow (replace `nextAction` placeholder).
 2. Expand SCIM coverage to include `GET /scim/v2/Users/:id` and membership role mapping parity.
 3. Add SCIM token lifecycle endpoints (revoke/list metadata) and audit events for token issuance/use.
+
+## Iteration 4 Outcome (W5 Completion: Analytics + Content)
+
+- Completed funnel + attribution analytics APIs and dispatch parity:
+  - public routes:
+    - `workers/analytics/src/interface/event-routes.ts`
+  - dispatch routes:
+    - `workers/analytics/src/interface/dispatch-routes.ts`
+  - repository support:
+    - `workers/analytics/src/infrastructure/repositories/funnel-attribution-repository.ts`
+- Removed placeholder payloads from dashboard/report surfaces:
+  - typed report execution:
+    - `workers/analytics/src/application/report-data-source.ts`
+    - `workers/analytics/src/application/report-runner.ts`
+    - `workers/analytics/src/interface/report-routes.ts`
+    - `workers/analytics/src/interface/dispatch-routes.ts`
+  - overview KPI completeness:
+    - `workers/analytics/src/infrastructure/repositories/dashboard-repository.ts`
+    - `workers/analytics/src/interface/dashboard-routes.ts`
+- Reusable content blocks + experiment variants and timeline consolidation confirmed in current HEAD:
+  - `workers/content/src/interface/template-routes.ts`
+  - `workers/content/src/application/template-content-composition.ts`
+  - `workers/analytics/src/application/contact-timeline-read-model.ts`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/content test -- --runInBand`
+  - `pnpm --filter @mauntic/content typecheck`
+  - `pnpm --filter @mauntic/analytics test -- --runInBand`
+  - `pnpm --filter @mauntic/analytics typecheck`
+
+## Iteration 5 Outcome (W6 Completion: Enterprise + Integrations)
+
+- Completed SSO callback to real session-link flow (replaced placeholder next-actions):
+  - `workers/identity/src/application/sso-session-link.ts`
+  - `workers/identity/src/interface/sso-routes.ts`
+  - `workers/identity/src/infrastructure/better-auth.ts`
+  - deterministic callback guardrails expanded:
+    - `workers/identity/src/interface/sso-routes.callback.integration.test.ts`
+- Expanded SCIM to full lifecycle admin + retrieval coverage:
+  - admin lifecycle endpoints:
+    - `GET /api/v1/identity/scim/tokens`
+    - `DELETE /api/v1/identity/scim/tokens/:id`
+  - user retrieval endpoint:
+    - `GET /scim/v2/Users/:id`
+  - role projection in SCIM resources:
+    - `workers/identity/src/application/scim-provisioning-service.ts`
+    - `workers/identity/src/interface/scim-routes.ts`
+    - `workers/identity/src/interface/scim-routes.integration.test.ts`
+- Added environment promotion workflow + CRM conflict policy admin APIs in integrations worker:
+  - domain models:
+    - `packages/domains/integrations-domain/src/entities/environment-promotion.ts`
+    - `packages/domains/integrations-domain/src/entities/crm-conflict-policy.ts`
+  - worker application stores and routes:
+    - `workers/integrations/src/application/environment-promotion-store.ts`
+    - `workers/integrations/src/application/crm-conflict-policy-store.ts`
+    - `workers/integrations/src/interface/enterprise-routes.ts`
+    - `workers/integrations/src/interface/enterprise-routes.integration.test.ts`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/integrations-domain build`
+  - `pnpm --filter @mauntic/integrations-domain test -- --runInBand`
+  - `pnpm --filter @mauntic/integrations test -- --runInBand`
+  - `pnpm --filter @mauntic/integrations typecheck`
+  - `pnpm --filter @mauntic/identity test -- --runInBand`
+  - `pnpm --filter @mauntic/identity typecheck`
+
+## Iteration 6 Outcome (W7 Slice 1: AI Assist Completion)
+
+- Completed AI assist primitives in RevOps with deterministic explainability + next-best-action logic:
+  - new domain service:
+    - `packages/domains/revops-domain/src/services/next-best-action.ts`
+  - exports updated:
+    - `packages/domains/revops-domain/src/services/index.ts`
+  - worker routes:
+    - `GET /api/v1/revops/agents/next-best-action/:dealId`
+    - `GET /api/v1/revops/agents/deal-inspector/:dealId/explainability`
+    - file: `workers/revops/src/interface/agent-routes.ts`
+- Added deterministic tests for advisor logic + route wiring:
+  - `packages/domains/revops-domain/src/services/next-best-action.test.ts`
+  - `workers/revops/src/interface/agent-routes.integration.test.ts`
+- Extended API contract coverage for new W7 AI endpoints:
+  - `packages/contracts/src/revops.contract.ts`
+- Added revops worker test wiring:
+  - `workers/revops/package.json` adds `test` script + `vitest` dev dependency.
+- Validation commands passed:
+  - `pnpm --filter @mauntic/revops-domain test -- --runInBand`
+  - `pnpm --filter @mauntic/revops-domain typecheck`
+  - `pnpm --filter @mauntic/revops test -- --runInBand`
+  - `pnpm --filter @mauntic/revops typecheck`
+  - `pnpm --filter @mauntic/contracts typecheck`
+
+## Iteration 7 Outcome (W7 Slice 2: Deliverability + Forecast Calibration + Release Readiness)
+
+- Added deliverability diagnostics integration tests covering full seed test CRUD, inbox placement, and provider trends:
+  - `workers/delivery/src/interface/deliverability-routes.integration.test.ts` (9 tests)
+  - Added `zod` as direct dependency to delivery worker
+- Implemented forecast calibration domain service with MAPE, bias tracking, confidence bands, and risk alerts:
+  - `packages/domains/revops-domain/src/services/forecast-calibration.ts`
+  - `packages/domains/revops-domain/src/services/forecast-calibration.test.ts` (13 tests)
+  - Exported from `packages/domains/revops-domain/src/services/index.ts`
+- Wired forecast calibration API endpoints in RevOps worker:
+  - `GET /api/v1/revops/forecasts/:period/calibration` - confidence bands + accuracy metrics
+  - `GET /api/v1/revops/forecasts/:period/risk-alerts` - active risk alerts
+  - Added `findForecastHistory()` to `workers/revops/src/infrastructure/repositories/forecast-repository.ts`
+  - Added contract schemas to `packages/contracts/src/revops.contract.ts`
+  - `workers/revops/src/interface/forecast-routes.integration.test.ts` (5 tests)
+- Implemented release readiness checks and rollback drill endpoints in gateway:
+  - `GET /api/v1/ops/release-readiness` - fan-out health checks to all 12 service bindings with readiness verdict
+  - `POST /api/v1/ops/rollback-drill` - simulates rollback, records drill result in KV with 90-day TTL
+  - `workers/gateway/src/routes/ops.ts`
+  - `workers/gateway/src/routes/ops.integration.test.ts` (5 tests)
+  - Wired into `workers/gateway/src/app.tsx`
+- Validation commands passed:
+  - `pnpm --filter @mauntic/delivery test -- --run` (9 passed)
+  - `pnpm --filter @mauntic/delivery typecheck`
+  - `pnpm --filter @mauntic/revops-domain test -- --run` (19 passed)
+  - `pnpm --filter @mauntic/revops-domain typecheck`
+  - `pnpm --filter @mauntic/revops test -- --run` (8 passed)
+  - `pnpm --filter @mauntic/revops typecheck`
+  - `pnpm --filter @mauntic/contracts typecheck`
+  - `pnpm --filter @mauntic/gateway test -- --run` (24 passed)
+  - `pnpm --filter @mauntic/gateway typecheck`
+
+## Next Iteration Candidate (W1-W4)
+
+Remaining incomplete waves:
+1. W1: Delivery provider matrix hardening + normalization parity tests
+2. W2: Scoring API repos, batch recompute, signal decay, alert expiry, DLQ replay
+3. W3: Journey trigger execution, segment evaluator, goals/exit/re-entry, channel parity
+4. W4: Consent center, identity resolution, custom RBAC, immutable audit log

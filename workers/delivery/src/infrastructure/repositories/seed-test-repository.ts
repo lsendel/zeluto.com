@@ -1,5 +1,5 @@
 import { seed_tests } from '@mauntic/delivery-domain/drizzle';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 
 export type SeedTestRow = typeof seed_tests.$inferSelect;
@@ -27,6 +27,29 @@ export async function findSeedTestsByOrg(
     .select()
     .from(seed_tests)
     .where(eq(seed_tests.organization_id, orgId))
+    .orderBy(desc(seed_tests.created_at))
+    .limit(opts.limit);
+}
+
+export async function findSeedTestsByWindow(
+  db: NeonHttpDatabase,
+  orgId: string,
+  opts: {
+    since: Date;
+    until: Date;
+    limit: number;
+  },
+): Promise<SeedTestRow[]> {
+  return db
+    .select()
+    .from(seed_tests)
+    .where(
+      and(
+        eq(seed_tests.organization_id, orgId),
+        gte(seed_tests.created_at, opts.since),
+        lt(seed_tests.created_at, opts.until),
+      ),
+    )
     .orderBy(desc(seed_tests.created_at))
     .limit(opts.limit);
 }

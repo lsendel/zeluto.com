@@ -44,6 +44,31 @@ export const RevOpsForecastSchema = z.object({
   weightedValue: z.number(),
 });
 
+export const RevOpsCalibrationMetricsSchema = z.object({
+  mape: z.number(),
+  bias: z.number(),
+  sampleSize: z.number(),
+});
+
+export const RevOpsConfidenceBandSchema = z.object({
+  low: z.number(),
+  mid: z.number(),
+  high: z.number(),
+  confidenceLevel: z.number(),
+});
+
+export const RevOpsRiskAlertSchema = z.object({
+  severity: z.enum(['info', 'warning', 'critical']),
+  title: z.string(),
+  description: z.string(),
+});
+
+export const RevOpsCalibrationReportSchema = z.object({
+  metrics: RevOpsCalibrationMetricsSchema,
+  confidenceBand: RevOpsConfidenceBandSchema,
+  alerts: z.array(RevOpsRiskAlertSchema),
+});
+
 export const RevOpsProspectSchema = z.object({
   id: z.string(),
   contactId: z.string(),
@@ -76,6 +101,57 @@ export const RevOpsPipelineMetricsSchema = z.object({
   avgDealSize: z.number(),
   stageBreakdown: z.record(z.string(), z.number()),
   winRate: z.number(),
+});
+
+export const RevOpsExplainabilitySignalSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  value: z.string(),
+  impact: z.enum(['positive', 'negative', 'neutral']),
+  weight: z.number(),
+  reason: z.string(),
+});
+
+export const RevOpsExplainabilityTrailSchema = z.object({
+  summary: z.string(),
+  confidence: z.number(),
+  generatedAt: z.string(),
+  signals: z.array(RevOpsExplainabilitySignalSchema),
+});
+
+export const RevOpsDealHealthSchema = z.object({
+  dealId: z.string(),
+  riskLevel: z.enum(['healthy', 'at_risk', 'critical']),
+  flags: z.array(z.string()),
+  recommendations: z.array(z.string()),
+  score: z.number(),
+});
+
+export const RevOpsNextBestActionSchema = z.object({
+  type: z.enum([
+    'rescue_call',
+    'reengagement_sequence',
+    'discovery_meeting',
+    'mutual_action_plan',
+    'close_plan_review',
+    'none',
+  ]),
+  priority: z.enum(['urgent', 'high', 'medium', 'low']),
+  title: z.string(),
+  reason: z.string(),
+  dueInHours: z.number(),
+  playbook: z.array(z.string()),
+});
+
+export const RevOpsNextBestActionResponseSchema = z.object({
+  dealId: z.string(),
+  action: RevOpsNextBestActionSchema,
+  risk: z.object({
+    level: z.enum(['healthy', 'at_risk', 'critical']),
+    score: z.number(),
+    flags: z.array(z.string()),
+  }),
+  explainability: RevOpsExplainabilityTrailSchema,
 });
 
 // ---------------------------------------------------------------------------
@@ -170,6 +246,29 @@ export const revopsContract = c.router(
       summary: 'Get forecast for a period',
     },
 
+    // Forecast calibration
+    getForecastCalibration: {
+      method: 'GET',
+      path: '/forecasts/:period/calibration',
+      responses: {
+        200: RevOpsCalibrationReportSchema,
+        404: z.object({ error: z.string() }),
+      },
+      summary: 'Get forecast calibration report with confidence bands and accuracy metrics',
+    },
+    getForecastRiskAlerts: {
+      method: 'GET',
+      path: '/forecasts/:period/risk-alerts',
+      responses: {
+        200: z.object({
+          period: z.string(),
+          alerts: z.array(RevOpsRiskAlertSchema),
+        }),
+        404: z.object({ error: z.string() }),
+      },
+      summary: 'Get active risk alerts for a forecast period',
+    },
+
     // Pipeline metrics
     getPipelineMetrics: {
       method: 'GET',
@@ -181,6 +280,38 @@ export const revopsContract = c.router(
         200: RevOpsPipelineMetricsSchema,
       },
       summary: 'Get pipeline metrics',
+    },
+
+    // AI Assist
+    getNextBestAction: {
+      method: 'GET',
+      path: '/agents/next-best-action/:dealId',
+      query: z.object({
+        now: z.string().optional(),
+      }),
+      responses: {
+        200: RevOpsNextBestActionResponseSchema,
+        400: z.object({ code: z.string(), message: z.string() }),
+        404: z.object({ code: z.string(), message: z.string() }),
+      },
+      summary: 'Get next best action recommendation for a deal',
+    },
+    getDealExplainability: {
+      method: 'GET',
+      path: '/agents/deal-inspector/:dealId/explainability',
+      query: z.object({
+        now: z.string().optional(),
+      }),
+      responses: {
+        200: z.object({
+          dealId: z.string(),
+          report: RevOpsDealHealthSchema,
+          explainability: RevOpsExplainabilityTrailSchema,
+        }),
+        400: z.object({ code: z.string(), message: z.string() }),
+        404: z.object({ code: z.string(), message: z.string() }),
+      },
+      summary: 'Get explainability trail for deal health and recommendation',
     },
 
     // Prospects / SDR

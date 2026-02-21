@@ -6,6 +6,10 @@ import {
   queryAggregates,
   queryEvents,
 } from '../infrastructure/repositories/event-repository.js';
+import {
+  getAttributionModel,
+  getFunnelModel,
+} from '../infrastructure/repositories/funnel-attribution-repository.js';
 
 export const eventRoutes = new Hono<Env>();
 
@@ -109,6 +113,69 @@ eventRoutes.get('/api/v1/analytics/events/aggregates', async (c) => {
     console.error('Query aggregates error:', error);
     return c.json(
       { code: 'INTERNAL_ERROR', message: 'Failed to query aggregates' },
+      500,
+    );
+  }
+});
+
+// GET /api/v1/analytics/funnel - Funnel model
+eventRoutes.get('/api/v1/analytics/funnel', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const { steps, startDate, endDate } = c.req.query();
+
+  const parsedSteps = steps
+    ? steps
+        .split(',')
+        .map((step) => step.trim())
+        .filter((step) => step.length > 0)
+    : ['email_sent', 'email_opened', 'email_clicked', 'conversion'];
+
+  try {
+    const result = await getFunnelModel(db, tenant.organizationId, {
+      steps: parsedSteps,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
+
+    return c.json(result);
+  } catch (error) {
+    console.error('Funnel model error:', error);
+    return c.json(
+      { code: 'INTERNAL_ERROR', message: 'Failed to compute funnel model' },
+      500,
+    );
+  }
+});
+
+// GET /api/v1/analytics/attribution - First/last touch attribution model
+eventRoutes.get('/api/v1/analytics/attribution', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const { conversionEvents, startDate, endDate } = c.req.query();
+
+  const parsedConversionEvents = conversionEvents
+    ? conversionEvents
+        .split(',')
+        .map((eventType) => eventType.trim())
+        .filter((eventType) => eventType.length > 0)
+    : undefined;
+
+  try {
+    const result = await getAttributionModel(db, tenant.organizationId, {
+      conversionEvents: parsedConversionEvents,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
+
+    return c.json(result);
+  } catch (error) {
+    console.error('Attribution model error:', error);
+    return c.json(
+      {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to compute attribution model',
+      },
       500,
     );
   }

@@ -17,6 +17,11 @@ export interface ScimUserResource {
   name: {
     formatted: string;
   };
+  roles: Array<{
+    value: string;
+    display: string;
+    primary: boolean;
+  }>;
 }
 
 export interface ScimUserList {
@@ -48,6 +53,7 @@ export async function listScimUsers(
       id: users.id,
       email: users.email,
       name: users.name,
+      role: organizationMembers.role,
     })
     .from(organizationMembers)
     .innerJoin(users, eq(users.id, organizationMembers.userId))
@@ -57,11 +63,40 @@ export async function listScimUsers(
     .offset(offset);
 
   return {
-    resources: rows.map((row) => toScimUserResource(row, true)),
+    resources: rows.map((row) => toScimUserResource(row, true, row.role)),
     totalResults: countRow?.total ?? 0,
     startIndex,
     itemsPerPage: rows.length,
   };
+}
+
+export async function getScimUserById(
+  db: DrizzleDb,
+  organizationId: string,
+  userId: string,
+): Promise<ScimUserResource> {
+  const [row] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      role: organizationMembers.role,
+    })
+    .from(organizationMembers)
+    .innerJoin(users, eq(users.id, organizationMembers.userId))
+    .where(
+      and(
+        eq(organizationMembers.organizationId, organizationId),
+        eq(users.id, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!row) {
+    throw new ScimUserNotFoundError('User not found');
+  }
+
+  return toScimUserResource(row, true, row.role);
 }
 
 export async function createScimUser(
@@ -140,7 +175,7 @@ export async function createScimUser(
       .where(eq(organizationMembers.id, existingMembership.id));
   }
 
-  return toScimUserResource(userRow, shouldBeActive);
+  return toScimUserResource(userRow, shouldBeActive, 'member');
 }
 
 export async function patchScimUserActive(
@@ -164,7 +199,7 @@ export async function patchScimUserActive(
   }
 
   const [membership] = await db
-    .select({ id: organizationMembers.id })
+    .select({ id: organizationMembers.id, role: organizationMembers.role })
     .from(organizationMembers)
     .where(
       and(
@@ -188,12 +223,13 @@ export async function patchScimUserActive(
       .where(eq(organizationMembers.id, membership.id));
   }
 
-  return toScimUserResource(userRow, active);
+  return toScimUserResource(userRow, active, membership?.role ?? 'member');
 }
 
 function toScimUserResource(
   input: { id: string; email: string; name: string | null },
   active: boolean,
+  role: string | null,
 ): ScimUserResource {
   return {
     id: input.id,
@@ -202,7 +238,27 @@ function toScimUserResource(
     name: {
       formatted: normalizeDisplayName(input.name, input.email),
     },
+    roles: [
+      {
+        value: normalizeRole(role),
+        display: normalizeRole(role),
+        primary: true,
+      },
+    ],
   };
+}
+
+function normalizeRole(role: string | null): string {
+  const normalized = role?.trim().toLowerCase();
+  if (
+    normalized === 'owner' ||
+    normalized === 'admin' ||
+    normalized === 'member' ||
+    normalized === 'viewer'
+  ) {
+    return normalized;
+  }
+  return 'member';
 }
 
 function normalizeEmail(value: string): string {

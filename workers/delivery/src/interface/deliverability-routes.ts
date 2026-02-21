@@ -6,10 +6,15 @@ import {
 import { delivery_events } from '@mauntic/delivery-domain/drizzle';
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
+import {
+  buildInboxPlacementReport,
+  buildProviderTrendReport,
+} from '../application/inbox-placement-analytics.js';
 import type { Env } from '../app.js';
 import {
   findSeedTestById,
   findSeedTestsByOrg,
+  findSeedTestsByWindow,
   insertSeedTest,
   updateSeedTest,
 } from '../infrastructure/repositories/seed-test-repository.js';
@@ -261,6 +266,119 @@ deliverabilityRoutes.post(
 
 // ── Deliverability Diagnostics ──────────────────────────
 
+// GET /api/v1/delivery/diagnostics/inbox-placement - Aggregate seed inbox placement by provider
+deliverabilityRoutes.get('/api/v1/delivery/diagnostics/inbox-placement', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const days = clampNumber(c.req.query('days'), 30, { min: 1, max: 365 });
+  const limit = clampNumber(c.req.query('limit'), 500, { min: 1, max: 5000 });
+  const now = parseNow(c.req.query('now'));
+  if (!now) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'Invalid now query parameter' },
+      400,
+    );
+  }
+
+  try {
+    const since = new Date(now.valueOf() - days * 24 * 60 * 60 * 1000);
+    const seedTests = await findSeedTestsByWindow(db, tenant.organizationId, {
+      since,
+      until: now,
+      limit,
+    });
+    const report = buildInboxPlacementReport(seedTests);
+
+    return c.json({
+      period: {
+        days,
+        since: since.toISOString(),
+        until: now.toISOString(),
+      },
+      ...report,
+    });
+  } catch (error) {
+    console.error('Inbox placement diagnostics error:', error);
+    return c.json(
+      {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to generate inbox placement diagnostics',
+      },
+      500,
+    );
+  }
+});
+
+// GET /api/v1/delivery/diagnostics/providers/trend - Compare provider placement trend period-over-period
+deliverabilityRoutes.get('/api/v1/delivery/diagnostics/providers/trend', async (c) => {
+  const tenant = c.get('tenant');
+  const db = c.get('db');
+  const days = clampNumber(c.req.query('days'), 30, { min: 1, max: 365 });
+  const limit = clampNumber(c.req.query('limit'), 500, { min: 1, max: 5000 });
+  const now = parseNow(c.req.query('now'));
+  if (!now) {
+    return c.json(
+      { code: 'VALIDATION_ERROR', message: 'Invalid now query parameter' },
+      400,
+    );
+  }
+
+  try {
+    const currentStart = new Date(now.valueOf() - days * 24 * 60 * 60 * 1000);
+    const previousStart = new Date(
+      now.valueOf() - 2 * days * 24 * 60 * 60 * 1000,
+    );
+
+    const [currentSeedTests, previousSeedTests] = await Promise.all([
+      findSeedTestsByWindow(db, tenant.organizationId, {
+        since: currentStart,
+        until: now,
+        limit,
+      }),
+      findSeedTestsByWindow(db, tenant.organizationId, {
+        since: previousStart,
+        until: currentStart,
+        limit,
+      }),
+    ]);
+
+    const current = buildInboxPlacementReport(currentSeedTests);
+    const previous = buildInboxPlacementReport(previousSeedTests);
+    const providers = buildProviderTrendReport({
+      current: currentSeedTests,
+      previous: previousSeedTests,
+    });
+
+    return c.json({
+      period: {
+        days,
+        current: {
+          since: currentStart.toISOString(),
+          until: now.toISOString(),
+        },
+        previous: {
+          since: previousStart.toISOString(),
+          until: currentStart.toISOString(),
+        },
+      },
+      totals: {
+        current: current.totals,
+        previous: previous.totals,
+      },
+      providers,
+    });
+  } catch (error) {
+    console.error('Provider trend diagnostics error:', error);
+    return c.json(
+      {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to generate provider trend diagnostics',
+      },
+      500,
+    );
+  }
+});
+
 // GET /api/v1/delivery/diagnostics - Deliverability health report
 deliverabilityRoutes.get('/api/v1/delivery/diagnostics', async (c) => {
   const tenant = c.get('tenant');
@@ -309,6 +427,25 @@ deliverabilityRoutes.get('/api/v1/delivery/diagnostics', async (c) => {
     );
   }
 });
+
+function parseNow(value: string | undefined): Date | null {
+  if (!value) return new Date();
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.valueOf())) {
+    return null;
+  }
+  return parsed;
+}
+
+function clampNumber(
+  input: string | undefined,
+  fallback: number,
+  bounds: { min: number; max: number },
+): number {
+  const parsed = input ? Number.parseInt(input, 10) : fallback;
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(bounds.max, Math.max(bounds.min, parsed));
+}
 
 // GET /api/v1/delivery/diagnostics/trend - Compare current vs previous period
 deliverabilityRoutes.get('/api/v1/delivery/diagnostics/trend', async (c) => {
