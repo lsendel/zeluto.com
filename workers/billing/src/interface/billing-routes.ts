@@ -96,35 +96,37 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
 
   const body = await c.req.json<{
     planId?: string;
-    plan?: string; // plan name (e.g. "starter") — resolved to planId if planId not provided
+    planName?: string;
     billingPeriod: 'monthly' | 'yearly';
     successUrl?: string;
     cancelUrl?: string;
   }>();
 
-  if ((!body.planId && !body.plan) || !body.billingPeriod) {
+  if (!body.billingPeriod || (!body.planId && !body.planName)) {
     return c.json(
       {
         code: 'VALIDATION_ERROR',
-        message: 'planId (or plan name) and billingPeriod are required',
+        message: 'billingPeriod and either planId or planName are required',
       },
       400,
     );
   }
 
-  // Resolve plan name to planId if needed
-  let resolvedPlanId = body.planId;
-  if (!resolvedPlanId && body.plan) {
-    const planService = new PlanService(db);
-    const activePlans = await planService.listActivePlans();
-    const matched = activePlans.find((p) => p.name === body.plan);
-    if (!matched) {
+  // Resolve plan name to ID if needed
+  let planId = body.planId;
+  if (!planId && body.planName) {
+    const [plan] = await db
+      .select({ id: plans.id })
+      .from(plans)
+      .where(eq(plans.name, body.planName))
+      .limit(1);
+    if (!plan) {
       return c.json(
-        { code: 'NOT_FOUND', message: `Plan "${body.plan}" not found` },
+        { code: 'NOT_FOUND', message: `Plan "${body.planName}" not found` },
         404,
       );
     }
-    resolvedPlanId = matched.id;
+    planId = plan.id;
   }
 
   const interval = body.billingPeriod === 'yearly' ? 'year' : 'month';
@@ -138,7 +140,7 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
   try {
     const session = await manager.createCheckoutSession(
       tenant.organizationId,
-      resolvedPlanId!,
+      planId!,
       interval,
       successUrl,
       cancelUrl,

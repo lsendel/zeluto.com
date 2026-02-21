@@ -3,6 +3,21 @@ import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type Stripe from 'stripe';
 import { invoices, subscriptions } from '../../drizzle/schema.js';
 
+function mapStripeStatus(status: string): string {
+  switch (status) {
+    case 'active':
+      return 'active';
+    case 'trialing':
+      return 'trialing';
+    case 'past_due':
+      return 'past_due';
+    case 'canceled':
+      return 'canceled';
+    default:
+      return 'active';
+  }
+}
+
 export class StripeWebhookHandler {
   constructor(private readonly db: NeonHttpDatabase<any>) {}
 
@@ -49,24 +64,21 @@ export class StripeWebhookHandler {
     }
 
     // Record invoice (idempotent — skip if already recorded)
-    await this.db
-      .insert(invoices)
-      .values({
-        organizationId: orgId,
-        stripeInvoiceId: invoice.id,
-        amount: invoice.amount_paid,
-        status: invoice.status || 'paid',
-        periodStart: invoice.period_start
-          ? new Date(invoice.period_start * 1000)
-          : null,
-        periodEnd: invoice.period_end
-          ? new Date(invoice.period_end * 1000)
-          : null,
-        paidAt: new Date(),
-      })
-      .onConflictDoNothing({
-        target: invoices.stripeInvoiceId,
-      });
+    await this.db.insert(invoices).values({
+      organizationId: orgId,
+      stripeInvoiceId: invoice.id,
+      amount: invoice.amount_paid,
+      status: invoice.status || 'paid',
+      periodStart: invoice.period_start
+        ? new Date(invoice.period_start * 1000)
+        : null,
+      periodEnd: invoice.period_end
+        ? new Date(invoice.period_end * 1000)
+        : null,
+      paidAt: new Date(),
+    }).onConflictDoNothing({
+      target: invoices.stripeInvoiceId,
+    });
 
     // Update subscription status to active if it was past_due
     const subscriptionId =
@@ -115,28 +127,27 @@ export class StripeWebhookHandler {
       return;
     }
 
-    const mapStatus = (status: string): string => {
-      switch (status) {
-        case 'active':
-          return 'active';
-        case 'trialing':
-          return 'trialing';
-        case 'past_due':
-          return 'past_due';
-        case 'canceled':
-          return 'canceled';
-        default:
-          return 'active';
-      }
-    };
-
-    // Idempotent upsert — update existing subscription if org already has one
-    await this.db
-      .insert(subscriptions)
-      .values({
-        organizationId: orgId,
+    // Upsert subscription (idempotent — update if org already has one)
+    await this.db.insert(subscriptions).values({
+      organizationId: orgId,
+      planId,
+      status: mapStripeStatus(subscription.status),
+      stripeCustomerId: subscription.customer as string,
+      stripeSubscriptionId: subscription.id,
+      currentPeriodStart: new Date(
+        ((subscription as any).current_period_start || 0) * 1000,
+      ),
+      currentPeriodEnd: new Date(
+        ((subscription as any).current_period_end || 0) * 1000,
+      ),
+      trialEnd: subscription.trial_end
+        ? new Date(subscription.trial_end * 1000)
+        : null,
+    }).onConflictDoUpdate({
+      target: subscriptions.organizationId,
+      set: {
         planId,
-        status: mapStatus(subscription.status),
+        status: mapStripeStatus(subscription.status),
         stripeCustomerId: subscription.customer as string,
         stripeSubscriptionId: subscription.id,
         currentPeriodStart: new Date(
@@ -148,50 +159,18 @@ export class StripeWebhookHandler {
         trialEnd: subscription.trial_end
           ? new Date(subscription.trial_end * 1000)
           : null,
-      })
-      .onConflictDoUpdate({
-        target: subscriptions.organizationId,
-        set: {
-          planId,
-          status: mapStatus(subscription.status),
-          stripeCustomerId: subscription.customer as string,
-          stripeSubscriptionId: subscription.id,
-          currentPeriodStart: new Date(
-            ((subscription as any).current_period_start || 0) * 1000,
-          ),
-          currentPeriodEnd: new Date(
-            ((subscription as any).current_period_end || 0) * 1000,
-          ),
-          trialEnd: subscription.trial_end
-            ? new Date(subscription.trial_end * 1000)
-            : null,
-          updatedAt: new Date(),
-        },
-      });
+        updatedAt: new Date(),
+      },
+    });
   }
 
   private async handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
   ): Promise<void> {
-    const mapStatus = (status: string): string => {
-      switch (status) {
-        case 'active':
-          return 'active';
-        case 'trialing':
-          return 'trialing';
-        case 'past_due':
-          return 'past_due';
-        case 'canceled':
-          return 'canceled';
-        default:
-          return 'past_due';
-      }
-    };
-
     await this.db
       .update(subscriptions)
       .set({
-        status: mapStatus(subscription.status),
+        status: mapStripeStatus(subscription.status),
         currentPeriodStart: new Date(
           ((subscription as any).current_period_start || 0) * 1000,
         ),

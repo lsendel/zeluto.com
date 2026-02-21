@@ -69,7 +69,7 @@ export function createApp() {
     }
   });
 
-  // Database and Stripe middleware for all API routes
+  // Database and Stripe middleware for API and view routes
   app.use('/api/*', async (c, next) => {
     const db = createDatabase(c.env.DATABASE_URL);
     const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
@@ -77,6 +77,15 @@ export function createApp() {
     c.set('stripe', stripe);
     await next();
   });
+  app.use('/app/*', async (c, next) => {
+    const db = createDatabase(c.env.DATABASE_URL);
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
+    c.set('db', db as any);
+    c.set('stripe', stripe);
+    await next();
+  });
+  app.use('/app/billing/*', tenantMiddleware());
+  app.use('/app/billing', tenantMiddleware());
 
   // Tenant context required for all billing API routes (except webhooks)
   app.use('/api/v1/billing/plans/*', tenantMiddleware());

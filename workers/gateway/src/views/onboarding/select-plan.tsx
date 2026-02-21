@@ -198,7 +198,7 @@ export const SelectPlanView: FC<SelectPlanViewProps> = ({ assetsBaseUrl }) => {
               ) : (
                 <form
                   hx-post="/api/v1/billing/subscription/checkout"
-                  hx-vals={`{"plan": "${plan.name}", "billingPeriod": "monthly"}`}
+                  hx-vals={`{"planName": "${plan.name}", "billingPeriod": "monthly"}`}
                   hx-target="#onboarding-content"
                   hx-swap="innerHTML"
                 >
