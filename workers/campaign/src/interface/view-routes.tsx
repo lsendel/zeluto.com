@@ -181,6 +181,13 @@ viewRoutes.get('/app/campaign/campaigns/:id/edit', async (c) => {
   }
 });
 
+// GET /app/campaign/campaigns/:id/ab/new — A/B test builder form
+// Must be registered before /:testId to avoid "new" matching as a testId
+viewRoutes.get('/app/campaign/campaigns/:id/ab/new', (c) => {
+  const campaignId = c.req.param('id');
+  return c.html(<AbTestFormView campaignId={campaignId} />);
+});
+
 // GET /app/campaign/campaigns/:id/ab/:testId — A/B test detail
 viewRoutes.get('/app/campaign/campaigns/:id/ab/:testId', async (c) => {
   const tenant = c.get('tenant');
@@ -220,12 +227,6 @@ viewRoutes.get('/app/campaign/campaigns/:id/ab/:testId', async (c) => {
       500,
     );
   }
-});
-
-// GET /app/campaign/campaigns/:id/ab/new — A/B test builder form
-viewRoutes.get('/app/campaign/campaigns/:id/ab/new', (c) => {
-  const campaignId = c.req.param('id');
-  return c.html(<AbTestFormView campaignId={campaignId} />);
 });
 
 // GET /app/campaign/campaigns/:id/ab/:testId/results — A/B test results
