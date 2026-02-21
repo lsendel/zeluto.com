@@ -13,6 +13,7 @@ import { configRoutes } from './interface/config-routes.js';
 import { dlqRoutes } from './interface/dlq-routes.js';
 import { scoreRoutes } from './interface/score-routes.js';
 import { signalRoutes } from './interface/signal-routes.js';
+import { viewRoutes } from './interface/view-routes.js';
 
 export type Env = {
   Bindings: {
@@ -58,5 +59,6 @@ app.route('/', signalRoutes);
 app.route('/', alertRoutes);
 app.route('/', configRoutes);
 app.route('/', dlqRoutes);
+app.route('/', viewRoutes);
 
 export default app;

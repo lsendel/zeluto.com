@@ -14,6 +14,7 @@ import orgRoutes from './interface/org-routes.js';
 import { scimRoutes } from './interface/scim-routes.js';
 import { ssoRoutes } from './interface/sso-routes.js';
 import userRoutes from './interface/user-routes.js';
+import { viewRoutes } from './interface/view-routes.js';
 
 type AppEnv = {
   Bindings: Env;
@@ -123,9 +124,25 @@ app.use('/api/v1/identity/*', async (c, next) => {
   await next();
 });
 
+// Tenant context + DB middleware for settings view routes
+app.use('/app/settings/*', tenantMiddleware());
+app.use('/app/settings/*', async (c, next) => {
+  const db = createDatabase(c.env);
+  c.set('db', db);
+  await next();
+});
+// Handle bare /app/settings (no trailing subpath)
+app.use('/app/settings', tenantMiddleware());
+app.use('/app/settings', async (c, next) => {
+  const db = createDatabase(c.env);
+  c.set('db', db);
+  await next();
+});
+
 // Mount identity management routes
 app.route('/', userRoutes);
 app.route('/', orgRoutes);
 app.route('/', ssoRoutes);
+app.route('/', viewRoutes);
 
 export default app;

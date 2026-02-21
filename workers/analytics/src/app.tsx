@@ -12,6 +12,7 @@ import { dashboardRoutes } from './interface/dashboard-routes.js';
 import { analyticsDispatchRoutes } from './interface/dispatch-routes.js';
 import { eventRoutes } from './interface/event-routes.js';
 import { reportRoutes } from './interface/report-routes.js';
+import { viewRoutes } from './interface/view-routes.js';
 
 export type Env = {
   Bindings: {
@@ -45,10 +46,22 @@ app.use('/api/*', async (c, next) => {
 // Tenant context middleware for analytics API
 app.use('/api/v1/analytics/*', tenantMiddleware());
 
+// Database + tenant middleware for view routes
+app.use('/app/*', async (c, next) => {
+  const db = createDatabase(c.env.DATABASE_URL);
+  c.set('db', db as any);
+  await next();
+});
+app.use('/app/dashboard', tenantMiddleware());
+app.use('/app/dashboard/*', tenantMiddleware());
+app.use('/app/analytics', tenantMiddleware());
+app.use('/app/analytics/*', tenantMiddleware());
+
 // Mount API routes
 app.route('/', eventRoutes);
 app.route('/', reportRoutes);
 app.route('/', dashboardRoutes);
+app.route('/', viewRoutes);
 app.route('/__dispatch/analytics', analyticsDispatchRoutes);
 
 export default app;

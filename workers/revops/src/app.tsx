@@ -14,6 +14,7 @@ import { forecastRoutes } from './interface/forecast-routes.js';
 import { researchRoutes } from './interface/research-routes.js';
 import { routingRoutes } from './interface/routing-routes.js';
 import { sdrRoutes } from './interface/sdr-routes.js';
+import { viewRoutes } from './interface/view-routes.js';
 import { workflowRoutes } from './interface/workflow-routes.js';
 
 export type Env = {
@@ -64,5 +65,6 @@ app.route('/', sdrRoutes);
 app.route('/', researchRoutes);
 app.route('/', agentRoutes);
 app.route('/', workflowRoutes);
+app.route('/', viewRoutes);
 
 export default app;

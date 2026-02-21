@@ -19,6 +19,7 @@ import { domainRoutes } from './interface/domain-routes.js';
 import { providerRoutes } from './interface/provider-routes.js';
 import { suppressionRoutes } from './interface/suppression-routes.js';
 import { trackingRoutes } from './interface/tracking-routes.js';
+import { viewRoutes } from './interface/view-routes.js';
 import { warmupRoutes } from './interface/warmup-routes.js';
 
 export interface Env {
@@ -83,6 +84,14 @@ export function createApp() {
   app.use('/api/v1/delivery/diagnostics', tenantMiddleware());
   app.use('/api/v1/delivery/diagnostics/*', tenantMiddleware());
 
+  // Database + tenant middleware for view routes
+  app.use('/app/*', async (c, next) => {
+    const db = createDatabase(c.env.DATABASE_URL);
+    c.set('db', db as NeonHttpDatabase);
+    await next();
+  });
+  app.use('/app/delivery/*', tenantMiddleware());
+
   // Mount route handlers
   app.route('/', deliveryRoutes);
   app.route('/', providerRoutes);
@@ -91,6 +100,7 @@ export function createApp() {
   app.route('/', warmupRoutes);
   app.route('/', trackingRoutes);
   app.route('/', deliverabilityRoutes);
+  app.route('/', viewRoutes);
   app.route('/__dispatch/delivery', deliveryDispatchRoutes);
 
   return app;

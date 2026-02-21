@@ -57,6 +57,12 @@ const navIcons = {
   settingsInner: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z',
   billing:
     'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z',
+  scoring:
+    'M13 10V3L4 14h7v7l9-11h-7z',
+  leadIntel:
+    'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+  revops:
+    'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
 };
 
 function buildNavGroups(currentPath?: string): NavGroup[] {
@@ -129,6 +135,35 @@ function buildNavGroups(currentPath?: string): NavGroup[] {
           href: '/app/analytics',
           icon: <Icon d={navIcons.analytics} />,
           active: isActive('/app/analytics'),
+        },
+      ],
+    },
+    {
+      title: 'Platform',
+      items: [
+        {
+          label: 'Scoring',
+          href: '/app/scoring/alerts',
+          icon: <Icon d={navIcons.scoring} />,
+          active: isActive('/app/scoring'),
+        },
+        {
+          label: 'Lead Intel',
+          href: '/app/lead-intelligence/providers',
+          icon: <Icon d={navIcons.leadIntel} />,
+          active: isActive('/app/lead-intelligence'),
+        },
+        {
+          label: 'RevOps',
+          href: '/app/revops/deals',
+          icon: <Icon d={navIcons.revops} />,
+          active: isActive('/app/revops'),
+        },
+        {
+          label: 'Integrations',
+          href: '/app/integrations',
+          icon: <Icon d={navIcons.settings} />,
+          active: isActive('/app/integrations'),
         },
       ],
     },
@@ -248,7 +283,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
               <button
                 type="button"
                 class="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
-                hx-post="/api/auth/logout"
+                hx-post="/api/auth/sign-out"
                 hx-swap="none"
                 hx-on--after-request="window.location.href='/login'"
               >
@@ -290,7 +325,7 @@ export const AppLayout: FC<AppLayoutProps> = ({
                 <button
                   type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 lg:hidden"
-                  hx-post="/api/auth/logout"
+                  hx-post="/api/auth/sign-out"
                   hx-swap="none"
                   hx-on--after-request="window.location.href='/login'"
                 >

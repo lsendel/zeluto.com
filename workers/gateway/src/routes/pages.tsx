@@ -54,6 +54,9 @@ export function createPageRoutes() {
     );
   });
 
+  // Signup redirect → /app/signup
+  app.get('/signup', (c) => c.redirect('/app/signup', 301));
+
   // Login page
   app.get('/login', (c) => {
     const user = c.get('user');
@@ -121,6 +124,18 @@ function resolveViewPath(path: string): string {
   if (path.startsWith('/app/journeys')) {
     return path.replace('/app/journeys', '/app/journey/journeys');
   }
+  if (path.startsWith('/app/campaigns')) {
+    return path.replace('/app/campaigns', '/app/campaign/campaigns');
+  }
+  if (path === '/app/settings') {
+    return '/app/settings/general';
+  }
+  if (path === '/app/delivery') {
+    return '/app/delivery/providers';
+  }
+  if (path === '/app/integrations') {
+    return '/app/integrations/connections';
+  }
   return path;
 }
 
@@ -155,6 +170,33 @@ function getViewServiceBinding(c: Context<Env>, path: string): Fetcher | null {
   }
   if (path.startsWith('/app/billing')) {
     return c.env.BILLING;
+  }
+  if (path.startsWith('/app/campaign') || path.startsWith('/app/campaigns')) {
+    return c.env.CAMPAIGN;
+  }
+  if (path.startsWith('/app/settings')) {
+    return c.env.IDENTITY;
+  }
+  if (path.startsWith('/app/delivery')) {
+    return c.env.DELIVERY;
+  }
+  if (path.startsWith('/app/dashboard')) {
+    return c.env.ANALYTICS;
+  }
+  if (path.startsWith('/app/analytics')) {
+    return c.env.ANALYTICS;
+  }
+  if (path.startsWith('/app/scoring')) {
+    return c.env.SCORING;
+  }
+  if (path.startsWith('/app/lead-intelligence')) {
+    return c.env.LEAD_INTELLIGENCE;
+  }
+  if (path.startsWith('/app/revops')) {
+    return c.env.REVOPS;
+  }
+  if (path.startsWith('/app/integrations')) {
+    return c.env.INTEGRATIONS;
   }
   return null;
 }

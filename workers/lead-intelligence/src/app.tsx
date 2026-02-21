@@ -11,6 +11,7 @@ import { logger } from 'hono/logger';
 import { enrichmentRoutes } from './interface/enrichment-routes.js';
 import { healthRoutes } from './interface/health-routes.js';
 import { providerRoutes } from './interface/provider-routes.js';
+import { viewRoutes } from './interface/view-routes.js';
 import { waterfallRoutes } from './interface/waterfall-routes.js';
 
 export type Env = {
@@ -58,5 +59,6 @@ app.route('/', enrichmentRoutes);
 app.route('/', providerRoutes);
 app.route('/', healthRoutes);
 app.route('/', waterfallRoutes);
+app.route('/', viewRoutes);
 
 export default app;
