@@ -42,7 +42,13 @@ export function createApp() {
   app.use('/app/*', authMiddleware());
   app.use('/login', authMiddleware());
   app.use('/', authMiddleware());
-  app.use('/api/v1/*', tenantMiddleware());
+  app.use('/api/v1/*', async (c, next) => {
+    // Skip tenant context for Stripe webhooks — they have no user session
+    if (c.req.path.startsWith('/api/v1/billing/webhooks/')) {
+      return next();
+    }
+    return tenantMiddleware()(c, next);
+  });
   app.use('/app/*', async (c, next) => {
     // Skip tenant context for onboarding routes — users don't have an org yet
     const path = c.req.path;

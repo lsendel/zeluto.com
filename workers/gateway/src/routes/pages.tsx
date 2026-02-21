@@ -153,6 +153,9 @@ function getViewServiceBinding(c: Context<Env>, path: string): Fetcher | null {
   if (path.startsWith('/app/journey') || path.startsWith('/app/journeys')) {
     return c.env.JOURNEY;
   }
+  if (path.startsWith('/app/billing')) {
+    return c.env.BILLING;
+  }
   return null;
 }
 
@@ -365,22 +368,6 @@ function renderStubView(
           Organization preferences, webhooks, and auth providers will live here.
           The form UI is still wiring up to the billing + identity workers.
         </p>
-      </section>,
-    );
-  }
-
-  if (path.startsWith('/app/billing')) {
-    return c.html(
-      <section class="space-y-6">
-        <h1 class="text-2xl font-bold text-gray-900">Billing</h1>
-        <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-gray-500">Plan</p>
-          <p class="mt-2 text-lg font-semibold text-gray-900">Free (QA)</p>
-          <p class="text-sm text-gray-500">Usage</p>
-          <p class="mt-1 text-lg font-semibold text-gray-900">
-            0 / 5,000 contacts
-          </p>
-        </div>
       </section>,
     );
   }

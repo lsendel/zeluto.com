@@ -95,34 +95,50 @@ billingRoutes.post('/api/v1/billing/subscription/checkout', async (c) => {
   const stripe = c.get('stripe');
 
   const body = await c.req.json<{
-    planId: string;
+    planId?: string;
+    plan?: string; // plan name (e.g. "starter") — resolved to planId if planId not provided
     billingPeriod: 'monthly' | 'yearly';
     successUrl?: string;
     cancelUrl?: string;
   }>();
 
-  if (!body.planId || !body.billingPeriod) {
+  if ((!body.planId && !body.plan) || !body.billingPeriod) {
     return c.json(
       {
         code: 'VALIDATION_ERROR',
-        message: 'planId and billingPeriod are required',
+        message: 'planId (or plan name) and billingPeriod are required',
       },
       400,
     );
   }
 
+  // Resolve plan name to planId if needed
+  let resolvedPlanId = body.planId;
+  if (!resolvedPlanId && body.plan) {
+    const planService = new PlanService(db);
+    const activePlans = await planService.listActivePlans();
+    const matched = activePlans.find((p) => p.name === body.plan);
+    if (!matched) {
+      return c.json(
+        { code: 'NOT_FOUND', message: `Plan "${body.plan}" not found` },
+        404,
+      );
+    }
+    resolvedPlanId = matched.id;
+  }
+
   const interval = body.billingPeriod === 'yearly' ? 'year' : 'month';
   const successUrl =
-    body.successUrl || `https://${c.env.APP_DOMAIN}/billing/success`;
+    body.successUrl || `https://${c.env.APP_DOMAIN}/app/billing?checkout=success`;
   const cancelUrl =
-    body.cancelUrl || `https://${c.env.APP_DOMAIN}/billing/cancel`;
+    body.cancelUrl || `https://${c.env.APP_DOMAIN}/app/billing?checkout=cancel`;
 
   const manager = new SubscriptionManager(db, stripe);
 
   try {
     const session = await manager.createCheckoutSession(
       tenant.organizationId,
-      body.planId,
+      resolvedPlanId!,
       interval,
       successUrl,
       cancelUrl,

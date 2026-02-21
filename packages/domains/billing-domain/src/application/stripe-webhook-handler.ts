@@ -44,24 +44,29 @@ export class StripeWebhookHandler {
   private async handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     const orgId = invoice.metadata?.organizationId;
     if (!orgId) {
-      console.warn('Invoice paid but no organizationId in metadata');
+      console.error(`[webhook] invoice.paid ${invoice.id}: missing organizationId in metadata`);
       return;
     }
 
-    // Record invoice
-    await this.db.insert(invoices).values({
-      organizationId: orgId,
-      stripeInvoiceId: invoice.id,
-      amount: invoice.amount_paid,
-      status: invoice.status || 'paid',
-      periodStart: invoice.period_start
-        ? new Date(invoice.period_start * 1000)
-        : null,
-      periodEnd: invoice.period_end
-        ? new Date(invoice.period_end * 1000)
-        : null,
-      paidAt: new Date(),
-    });
+    // Record invoice (idempotent — skip if already recorded)
+    await this.db
+      .insert(invoices)
+      .values({
+        organizationId: orgId,
+        stripeInvoiceId: invoice.id,
+        amount: invoice.amount_paid,
+        status: invoice.status || 'paid',
+        periodStart: invoice.period_start
+          ? new Date(invoice.period_start * 1000)
+          : null,
+        periodEnd: invoice.period_end
+          ? new Date(invoice.period_end * 1000)
+          : null,
+        paidAt: new Date(),
+      })
+      .onConflictDoNothing({
+        target: invoices.stripeInvoiceId,
+      });
 
     // Update subscription status to active if it was past_due
     const subscriptionId =
@@ -106,7 +111,7 @@ export class StripeWebhookHandler {
     const planId = subscription.metadata?.planId;
 
     if (!orgId || !planId) {
-      console.warn('Subscription created but missing metadata');
+      console.error(`[webhook] subscription.created ${subscription.id}: missing metadata (orgId=${orgId}, planId=${planId})`);
       return;
     }
 
@@ -125,22 +130,44 @@ export class StripeWebhookHandler {
       }
     };
 
-    await this.db.insert(subscriptions).values({
-      organizationId: orgId,
-      planId,
-      status: mapStatus(subscription.status),
-      stripeCustomerId: subscription.customer as string,
-      stripeSubscriptionId: subscription.id,
-      currentPeriodStart: new Date(
-        ((subscription as any).current_period_start || 0) * 1000,
-      ),
-      currentPeriodEnd: new Date(
-        ((subscription as any).current_period_end || 0) * 1000,
-      ),
-      trialEnd: subscription.trial_end
-        ? new Date(subscription.trial_end * 1000)
-        : null,
-    });
+    // Idempotent upsert — update existing subscription if org already has one
+    await this.db
+      .insert(subscriptions)
+      .values({
+        organizationId: orgId,
+        planId,
+        status: mapStatus(subscription.status),
+        stripeCustomerId: subscription.customer as string,
+        stripeSubscriptionId: subscription.id,
+        currentPeriodStart: new Date(
+          ((subscription as any).current_period_start || 0) * 1000,
+        ),
+        currentPeriodEnd: new Date(
+          ((subscription as any).current_period_end || 0) * 1000,
+        ),
+        trialEnd: subscription.trial_end
+          ? new Date(subscription.trial_end * 1000)
+          : null,
+      })
+      .onConflictDoUpdate({
+        target: subscriptions.organizationId,
+        set: {
+          planId,
+          status: mapStatus(subscription.status),
+          stripeCustomerId: subscription.customer as string,
+          stripeSubscriptionId: subscription.id,
+          currentPeriodStart: new Date(
+            ((subscription as any).current_period_start || 0) * 1000,
+          ),
+          currentPeriodEnd: new Date(
+            ((subscription as any).current_period_end || 0) * 1000,
+          ),
+          trialEnd: subscription.trial_end
+            ? new Date(subscription.trial_end * 1000)
+            : null,
+          updatedAt: new Date(),
+        },
+      });
   }
 
   private async handleSubscriptionUpdated(

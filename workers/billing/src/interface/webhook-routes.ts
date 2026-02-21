@@ -2,7 +2,7 @@ import { StripeWebhookHandler } from '@mauntic/billing-domain';
 import { createDatabase } from '@mauntic/worker-lib';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
-import { verifyStripeWebhook } from '../infrastructure/stripe.js';
+import { createStripeClient, verifyStripeWebhook } from '../infrastructure/stripe.js';
 
 export const webhookRoutes = new Hono<Env>();
 
@@ -21,7 +21,9 @@ webhookRoutes.post('/api/v1/billing/webhooks/stripe', async (c) => {
 
   try {
     // Verify webhook signature
+    const stripe = createStripeClient(c.env.STRIPE_SECRET_KEY);
     const event = await verifyStripeWebhook(
+      stripe,
       payload,
       signature,
       c.env.STRIPE_WEBHOOK_SECRET,
