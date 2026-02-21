@@ -1,3 +1,6 @@
+import { Campaign } from '@mauntic/campaign-domain';
+import { campaigns } from '@mauntic/campaign-domain/drizzle';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import type { Env } from '../app.js';
 import {
@@ -35,18 +38,40 @@ viewRoutes.get('/app/campaign/campaigns', async (c) => {
   const limit = Math.min(100, Math.max(1, parseInt(limitStr, 10) || 25));
 
   try {
-    const repo = new DrizzleCampaignRepository(db);
-    const result = await repo.findByOrganization(tenant.organizationId, {
-      page,
-      limit,
-      search: search || undefined,
-      status: status || undefined,
-    });
+    const conditions = [eq(campaigns.organizationId, tenant.organizationId)];
+    if (status) conditions.push(eq(campaigns.status, status));
+    if (search) conditions.push(sql`${campaigns.name} ILIKE ${`%${search}%`}`);
+    const where = and(...conditions);
+
+    const [rows, countResult] = await Promise.all([
+      db
+        .select()
+        .from(campaigns)
+        .where(where)
+        .orderBy(desc(campaigns.updatedAt))
+        .limit(limit)
+        .offset((page - 1) * limit),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(campaigns)
+        .where(where),
+    ]);
+
+    const data = rows.map((row) =>
+      Campaign.reconstitute({
+        ...row,
+        type: row.type as any,
+        status: row.status as any,
+        minScore: null,
+        maxScore: null,
+        grades: null,
+      }),
+    );
 
     return c.html(
       <CampaignListView
-        campaigns={result.data}
-        total={result.total}
+        campaigns={data}
+        total={countResult[0]?.count ?? 0}
         page={page}
         limit={limit}
       />,
