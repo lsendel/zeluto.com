@@ -1,10 +1,14 @@
 export {
   type ActionEmailConfig,
   ActionEmailConfigSchema,
+  type ActionLinkedInConfig,
+  ActionLinkedInConfigSchema,
   type ActionPushConfig,
   ActionPushConfigSchema,
   type ActionSmsConfig,
   ActionSmsConfigSchema,
+  type ActionTaskConfig,
+  ActionTaskConfigSchema,
   type DelayDurationConfig,
   DelayDurationConfigSchema,
   type ExitConfig,
@@ -23,10 +27,18 @@ export {
   ApiTriggerConfigSchema,
   type EventTriggerConfig,
   EventTriggerConfigSchema,
+  type IntentTriggerConfig,
+  IntentTriggerConfigSchema,
   type ScheduledTriggerConfig,
   ScheduledTriggerConfigSchema,
+  type ScoreTriggerConfig,
+  ScoreTriggerConfigSchema,
   type SegmentTriggerConfig,
   SegmentTriggerConfigSchema,
   type TriggerConfig,
   TriggerConfigSchema,
 } from './trigger-configs.js';
+export {
+  type JourneySettings,
+  JourneySettingsSchema,
+} from './journey-settings.js';

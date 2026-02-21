@@ -5,6 +5,15 @@ import type { SuppressionRepository } from '../repositories/suppression-reposito
 import { DeliveryPipeline } from './delivery-pipeline.js';
 import type { ProviderResolver } from './provider-resolver.js';
 
+const TEST_CONFIGS: Record<string, Record<string, unknown>> = {
+  ses: { region: 'us-east-1', accessKeyId: 'AKIATEST', secretAccessKey: 'secret' },
+  sendgrid: { apiKey: 'SG.test' },
+  postmark: { serverToken: 'test-token' },
+  custom_smtp: { host: 'smtp.test', port: 587, username: 'user', password: 'pass' },
+  twilio: { accountSid: 'ACtest', authToken: 'token', fromNumber: '+15551234567' },
+  fcm: { projectId: 'test-project', serviceAccountKey: '{}' },
+};
+
 function createProviderConfig(input: {
   channel: 'email' | 'sms' | 'push' | 'webhook';
   providerType:
@@ -20,7 +29,7 @@ function createProviderConfig(input: {
     organizationId: crypto.randomUUID(),
     channel: input.channel,
     providerType: input.providerType,
-    config: {},
+    config: TEST_CONFIGS[input.providerType] ?? {},
     priority: input.priority,
   });
 }

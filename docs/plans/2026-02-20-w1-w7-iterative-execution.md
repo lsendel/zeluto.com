@@ -20,30 +20,30 @@ Mode: Iterative (small vertical slices per turn)
   - `workers/delivery/src/interface/domain-routes.ts`
   - `workers/delivery/src/interface/dispatch-routes.ts`
 - [x] Provider/fallback path confirmed in current HEAD (no net-new diff in this slice)
-- [ ] Delivery provider matrix hardening (coverage for all supported provider configs)
-- [ ] Delivery normalization parity tests (SES/SendGrid/Twilio webhook payload edge cases)
+- [x] Delivery provider matrix hardening (coverage for all supported provider configs)
+- [x] Delivery normalization parity tests (SES/SendGrid/Twilio webhook payload edge cases)
 
 ### W2 - Queue Reliability + Scoring
 
-- [ ] Scoring API repos wired (`score/history/leaderboard`)
-- [ ] Batch recompute implementation
-- [ ] Signal decay implementation
-- [ ] Alert expiry implementation
-- [ ] DLQ replay tooling and runbook
+- [x] Scoring API repos wired (`score/history/leaderboard`)
+- [x] Batch recompute implementation
+- [x] Signal decay implementation
+- [x] Alert expiry implementation
+- [x] DLQ replay tooling and runbook
 
 ### W3 - Journey Completeness
 
-- [ ] Score/intent trigger execution creation (remove placeholders)
-- [ ] Segment trigger evaluator to real execution start
-- [ ] Journey goals/exit/re-entry/frequency controls
-- [ ] Sequence step channel parity (email/sms/linkedin/task as designed)
+- [x] Score/intent trigger execution creation (remove placeholders)
+- [x] Segment trigger evaluator to real execution start
+- [x] Journey goals/exit/re-entry/frequency controls
+- [x] Sequence step channel parity (email/sms/linkedin/task as designed)
 
 ### W4 - Governance + Identity + Audit
 
-- [ ] Consent center and channel-level preferences
-- [ ] Identity resolution primitives (external IDs and merge policy)
-- [ ] Custom RBAC + field-level controls
-- [ ] Immutable audit log rollout across critical write paths
+- [x] Consent center and channel-level preferences
+- [x] Identity resolution primitives (external IDs and merge policy)
+- [x] Custom RBAC + field-level controls
+- [x] Immutable audit log rollout across critical write paths
 
 ### W5 - Analytics + Content Maturity
 

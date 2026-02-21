@@ -25,6 +25,26 @@ export const ActionPushConfigSchema = z.object({
 
 export type ActionPushConfig = z.infer<typeof ActionPushConfigSchema>;
 
+export const ActionLinkedInConfigSchema = z.object({
+  type: z.literal('send_linkedin'),
+  action: z.enum(['connection_request', 'message', 'inmail']),
+  templateId: z.string().uuid(),
+  note: z.string().max(300).optional(),
+});
+
+export type ActionLinkedInConfig = z.infer<typeof ActionLinkedInConfigSchema>;
+
+export const ActionTaskConfigSchema = z.object({
+  type: z.literal('create_task'),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  assigneeId: z.string().uuid().optional(),
+  dueDays: z.number().int().positive().optional(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
+});
+
+export type ActionTaskConfig = z.infer<typeof ActionTaskConfigSchema>;
+
 export const DelayDurationConfigSchema = z.object({
   type: z.literal('delay'),
   duration: z.number().positive(),
@@ -73,6 +93,8 @@ export const StepConfigSchema = z.discriminatedUnion('type', [
   ActionEmailConfigSchema,
   ActionSmsConfigSchema,
   ActionPushConfigSchema,
+  ActionLinkedInConfigSchema,
+  ActionTaskConfigSchema,
   DelayDurationConfigSchema,
   SplitRandomConfigSchema,
   SplitConditionConfigSchema,

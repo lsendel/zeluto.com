@@ -24,9 +24,13 @@ import {
 
 export interface ScoringQueueEnv {
   DATABASE_URL: string;
+  KV: KVNamespace;
   EVENTS: Queue;
   LOGS_DATASET?: AnalyticsEngineDataset;
 }
+
+const DLQ_MAX_ATTEMPTS = 3;
+const DLQ_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 export type ScoringJobType =
   | 'scoring.CalculateScore'
@@ -148,20 +152,47 @@ export async function handleScoringQueue(
       messageLogger.info({ durationMs, event: 'queue.job.success' });
     } catch (error) {
       const durationMs = Date.now() - startedAt;
+      const errorMsg =
+        error instanceof Error ? error.message : String(error);
       messageLogger.error(
         {
           durationMs,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
           stack: error instanceof Error ? error.stack : undefined,
           event: 'queue.job.failure',
+          attempts: message.attempts,
         },
         'Scoring queue handler failed',
       );
-      message.retry();
+
+      if (message.attempts >= DLQ_MAX_ATTEMPTS) {
+        // Retries exhausted — persist to DLQ in KV
+        const dlqId = crypto.randomUUID();
+        await env.KV.put(
+          `dlq:${dlqId}`,
+          JSON.stringify({
+            id: dlqId,
+            type: type ?? 'unknown',
+            payload,
+            error: errorMsg,
+            attempts: message.attempts,
+            failedAt: new Date().toISOString(),
+          }),
+          { expirationTtl: DLQ_TTL_SECONDS },
+        );
+        message.ack(); // Don't retry again
+        messageLogger.warn(
+          { dlqId, event: 'queue.job.dlq' },
+          'Message moved to DLQ after max retries',
+        );
+      } else {
+        message.retry();
+      }
+
       logQueueMetric({
         queue: queueName,
         messageId: message.id,
-        status: 'retry',
+        status: message.attempts >= DLQ_MAX_ATTEMPTS ? 'dlq' : 'retry',
         eventType: type,
         durationMs,
         organizationId: organizationId ?? undefined,

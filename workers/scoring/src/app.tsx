@@ -10,6 +10,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { alertRoutes } from './interface/alert-routes.js';
 import { configRoutes } from './interface/config-routes.js';
+import { dlqRoutes } from './interface/dlq-routes.js';
 import { scoreRoutes } from './interface/score-routes.js';
 import { signalRoutes } from './interface/signal-routes.js';
 
@@ -56,5 +57,6 @@ app.route('/', scoreRoutes);
 app.route('/', signalRoutes);
 app.route('/', alertRoutes);
 app.route('/', configRoutes);
+app.route('/', dlqRoutes);
 
 export default app;
