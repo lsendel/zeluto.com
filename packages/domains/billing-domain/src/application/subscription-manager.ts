@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import type { NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import type Stripe from 'stripe';
 import { subscriptions } from '../../drizzle/schema.js';
@@ -71,6 +71,7 @@ export class SubscriptionManager {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.organizationId, organizationId))
+      .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
     if (!subscription || !subscription.stripeSubscriptionId) {
@@ -103,6 +104,7 @@ export class SubscriptionManager {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.organizationId, organizationId))
+      .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
     if (!subscription || !subscription.stripeSubscriptionId) {
@@ -171,6 +173,7 @@ export class SubscriptionManager {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.organizationId, organizationId))
+      .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
     return subscription || null;
@@ -184,6 +187,7 @@ export class SubscriptionManager {
       .select()
       .from(subscriptions)
       .where(eq(subscriptions.organizationId, organizationId))
+      .orderBy(desc(subscriptions.createdAt))
       .limit(1);
 
     if (!subscription || !subscription.stripeCustomerId) {
