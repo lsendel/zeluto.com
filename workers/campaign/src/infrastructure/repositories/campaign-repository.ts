@@ -66,18 +66,16 @@ export class DrizzleCampaignRepository implements CampaignRepository {
 
   async save(campaign: Campaign): Promise<void> {
     const props = campaign.toProps();
+    const { minScore, maxScore, grades, ...dbProps } = props;
     const summaryProps = this.mapEntityToSummaryProps(props);
 
     await this.db
       .insert(campaigns)
-      .values({
-        ...props,
-        // Drizzle handles Date objects correctly usually, but we ensure primitives match schema
-      })
+      .values(dbProps)
       .onConflictDoUpdate({
         target: campaigns.id,
         set: {
-          ...props,
+          ...dbProps,
           updatedAt: new Date(),
         },
       });

@@ -8,7 +8,7 @@ import {
 import { Hono } from 'hono';
 import type { Env } from './index.js';
 import { forwardToService } from './lib/forward.js';
-import { authMiddleware } from './middleware/auth.js';
+import { authMiddleware, extractSessionToken } from './middleware/auth.js';
 import { quotaMiddleware } from './middleware/quota.js';
 import { rateLimitMiddleware } from './middleware/rate-limit.js';
 import { tenantMiddleware } from './middleware/tenant.js';
@@ -45,6 +45,10 @@ export function createApp() {
   app.use('/api/v1/*', async (c, next) => {
     // Skip tenant context for Stripe webhooks — they have no user session
     if (c.req.path.startsWith('/api/v1/billing/webhooks/')) {
+      return next();
+    }
+    // Skip tenant context for onboarding — users don't have an org yet
+    if (c.req.path.startsWith('/api/v1/onboarding/')) {
       return next();
     }
     return tenantMiddleware()(c, next);
@@ -164,7 +168,7 @@ export function createApp() {
 
   app.post('/api/auth/sign-out', async (c) => {
     const headers = new Headers(c.req.raw.headers);
-    const request = new Request('https://identity.internal/api/auth/logout', {
+    const request = new Request('https://identity.internal/api/auth/sign-out', {
       method: 'POST',
       headers,
       body: ['GET', 'HEAD'].includes(c.req.method) ? undefined : c.req.raw.body,
@@ -172,6 +176,13 @@ export function createApp() {
       duplex: 'half',
     });
     const response = await c.env.IDENTITY.fetch(request);
+
+    // Invalidate KV session cache so the next request doesn't use stale session
+    const token = extractSessionToken(c.req.raw.headers);
+    if (token && c.env.KV) {
+      c.env.KV.delete(`session:${token.slice(0, 16)}`).catch(() => {});
+    }
+
     return new Response(response.body, response);
   });
 
